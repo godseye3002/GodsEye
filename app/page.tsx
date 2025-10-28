@@ -241,7 +241,7 @@ export default function LandingPage() {
               transition: "all 0.2s ease",
             }}
           >
-            Book a Demo
+            Try a Demo
           </Button>
         </Box>
       </Box>

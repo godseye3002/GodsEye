@@ -11,12 +11,9 @@ The JSON should include the following keys:
 - "targeted_market": An inferred analysis of the ideal customer for this product.
 - "problem_product_is_solving": An inferred analysis of the key problems or pain points this product addresses for its target market.
 
-Additional Context: This product was discovered using the search query "best no white cast sunscreen for face". Use this context to better understand the product's positioning and target market.
-
 Here is the text content:
 ---
-Light Fluid SPF 50 Sunscreen
+One-Stop B2B Platform For Buying, Selling, And Managing Industrial Recyclables.
 
-When to use: AM
-Frequency: Everyday
+Recyclaro is a trusted B2B marketplace for buying and selling recyclables. Connect verified buyers and suppliers of metal, plastic, paper, e-waste, batteries, and textiles for transparent, secure, and sustainable trade.
 ---
