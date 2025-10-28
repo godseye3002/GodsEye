@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Glowing Ring Component</title>
+    <link rel="stylesheet" href="glowing-ring.css">
+    <style>
+        /* Demo styles for better presentation */
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0D0D0F;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .demo-header {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(10, 10, 12, 0.5);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .demo-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #a020f0, #e040fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .demo-header p {
+            margin: 0.5rem 0 0 0;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-header">
+        <h1>Animated Glowing Ring</h1>
+        <p>A CSS-only implementation of a rotating, glowing ring with semi-circular highlight</p>
+    </div>
+
+    <!-- 
+      Animated Glowing Ring Component
+      This is the main component that demonstrates the glowing ring feature
+    -->
+    <div class="animation-container">
+        <!-- The glowing ring element -->
+        <div class="glowing-ring"></div>
+        
+        <!-- Content that appears on top of the animation -->
+        <div class="content">
+            <h1>How it works</h1>
+            <p>This is where your main content will go, sitting on top of the animation.</p>
+            <p>The ring rotates continuously in the background, creating a dynamic, futuristic effect.</p>
+        </div>
+    </div>
+
+    <!-- Integration Instructions -->
+    <div style="max-width: 800px; margin: 3rem auto; padding: 0 2rem; line-height: 1.6;">
+        <h2>Integration Instructions</h2>
+        
+        <h3>1. CSS Integration</h3>
+        <p>Copy the CSS from <code>glowing-ring.css</code> into your project's stylesheet or link it directly:</p>
+        <pre style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code>&lt;link rel="stylesheet" href="glowing-ring.css"&gt;</code></pre>
+        
+        <h3>2. HTML Integration</h3>
+        <p>Use the following HTML structure wherever you want the glowing ring to appear:</p>
+        <pre style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 8px; overflow-x: auto;"><code>&lt;div class="animation-container"&gt;
+  &lt;div class="glowing-ring"&gt;&lt;/div&gt;
+  &lt;div class="content"&gt;
+      &lt;!-- Your content here --&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+        
+        <h3>3. Customization</h3>
+        <ul>
+            <li><strong>Size:</strong> Adjust the <code>width</code> and <code>height</code> in <code>.glowing-ring</code></li>
+            <li><strong>Color:</strong> Change the <code>#a020f0</code> values to your preferred color</li>
+            <li><strong>Speed:</strong> Modify the <code>12s</code> duration in the <code>animation</code> property</li>
+            <li><strong>Thickness:</strong> Adjust the <code>border-width</code> (currently 12px)</li>
+        </ul>
+    </div>
+</body>
+</html>

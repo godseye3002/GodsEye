@@ -1,0 +1,31 @@
+{
+  "product": {
+    "product_name": "Light Fluid SPF 50 Sunscreen",
+    "description": "A lightweight, everyday sunscreen with SPF 50, designed for morning application.",
+    "general_product_type": "Skincare",
+    "specific_product_type": "Sunscreen",
+    "specifications": {
+      "SPF": "50",
+      "application_time": "AM",
+      "frequency": "Everyday"
+    },
+    "features": [
+      {
+        "name": "Light Fluid Formula",
+        "description": "A non-greasy, lightweight fluid that absorbs quickly into the skin."
+      },
+      {
+        "name": "SPF 50 Protection",
+        "description": "Offers high-level protection against harmful UVA and UVB rays."
+      },
+      {
+        "name": "Everyday Use",
+        "description": "Suitable for daily application as part of a skincare routine."
+      }
+    ],
+    "targeted_market": "Individuals seeking daily facial sun protection, particularly those concerned about sun damage and premature aging. Given the search query context, the target market strongly includes consumers looking for sunscreens that do not leave a visible white cast, implying a desire for a cosmetically elegant and transparent finish.",
+    "problem_product_is_solving": "This sunscreen addresses the need for effective daily sun protection to prevent sunburn, premature aging, and potential long-term skin damage from UV exposure. It specifically targets the common problem of white cast left by many sunscreens, offering a transparent and aesthetically pleasing alternative for facial application."
+  },
+  "extraction_method": "product-json-endpoint",
+  "missing_fields": []
+}
