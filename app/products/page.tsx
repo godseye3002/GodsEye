@@ -178,17 +178,20 @@ function ProductsPageContent() {
           position: "relative",
         }}
       >
-        <Typography
-          level="h3"
-          sx={{
-            color: "#F2F5FA",
-            fontWeight: 700,
-            letterSpacing: "-0.03em",
-            fontSize: { xs: "1.5rem", md: "1.75rem" },
-          }}
-        >
-          GodsEye
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+          <Box component="img" src="/GodsEye.png" alt="GodsEye logo" sx={{ width: 22, height: 22 }} />
+          <Typography
+            level="h3"
+            sx={{
+              color: "#F2F5FA",
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              fontSize: { xs: "1.5rem", md: "1.75rem" },
+            }}
+          >
+            GodsEye
+          </Typography>
+        </Box>
         {/* Mobile hamburger */}
         <IconButton
           variant="outlined"

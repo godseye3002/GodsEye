@@ -138,9 +138,12 @@ export default function ResultsPage() {
           },
         }}
       >
-        <Typography level="h4" sx={{ color: textPrimary, fontWeight: 600 }}>
-          GodsEye
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box component="img" src="/GodsEye.png" alt="GodsEye logo" sx={{ width: 22, height: 22 }} />
+          <Typography level="h4" sx={{ color: textPrimary, fontWeight: 600 }}>
+            GodsEye
+          </Typography>
+        </Box>
         <Button variant="outlined" size="sm" onClick={() => router.push("/products")} sx={{ width: { xs: 120, sm: "auto" } }}>
           Back to Dashboard
         </Button>

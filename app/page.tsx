@@ -78,17 +78,20 @@ export default function LandingPage() {
             justifyContent: "space-between",
           }}
         >
-          <Typography
-            level="h3"
-            sx={{
-              color: "#F2F5FA",
-              fontWeight: 700,
-              letterSpacing: "-0.03em",
-              fontSize: { xs: "1.4rem", md: "1.6rem" },
-            }}
-          >
-            GodsEye
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+            <Box component="img" src="/GodsEye.png" alt="GodsEye logo" sx={{ width: 24, height: 24 }} />
+            <Typography
+              level="h3"
+              sx={{
+                color: "#F2F5FA",
+                fontWeight: 700,
+                letterSpacing: "-0.03em",
+                fontSize: { xs: "1.4rem", md: "1.6rem" },
+              }}
+            >
+              GodsEye
+            </Typography>
+          </Box>
           <Button
             onClick={() => router.push("/products")}
             variant="solid"
