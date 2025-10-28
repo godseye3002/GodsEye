@@ -57,6 +57,7 @@ interface GeminiCallResult {
 }
 
 const API_KEY: string = process.env.GEMINI_API_KEY || '';
+const isProd = process.env.NODE_ENV === 'production';
 const REQUEST_TIMEOUT = 30000;
 
 if (!API_KEY) {
@@ -334,7 +335,9 @@ ${promptText}
 ---
 `;
 
-  await fs.writeFile('prompt_content.txt', prompt, 'utf8');
+  if (!isProd) {
+    await fs.writeFile('prompt_content.txt', prompt, 'utf8');
+  }
 
   const generated = await model.generateContent(prompt);
   const response = await generated.response;
@@ -352,8 +355,11 @@ ${promptText}
   } catch (error) {
     parsed = extractJsonSubstring(raw);
     if (!parsed) {
-      await fs.writeFile('gemini_raw.txt', raw, 'utf8');
-      throw new Error('Gemini response was not valid JSON. Raw response written to gemini_raw.txt');
+      if (!isProd) {
+        await fs.writeFile('gemini_raw.txt', raw, 'utf8');
+        throw new Error('Gemini response was not valid JSON. Raw response written to gemini_raw.txt');
+      }
+      throw new Error('Gemini response was not valid JSON.');
     }
   }
 
@@ -397,15 +403,15 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
     return null;
   }
 
-  console.log('Fetching URL:', url);
+  if (!isProd) console.log('Fetching URL:', url);
 
   let html: string | null = null;
   try {
     html = await fetchRawHtml(url);
-    console.log('[SCRAPER] Server HTML length:', html.length);
+    if (!isProd) console.log('[SCRAPER] Server HTML length:', html.length);
   } catch (error) {
     const message = (error as Error).message || String(error);
-    console.warn('[SCRAPER] Failed to fetch server HTML:', message);
+    if (!isProd) console.warn('[SCRAPER] Failed to fetch server HTML:', message);
   }
 
   const extractionState: ExtractionState = {
@@ -494,7 +500,7 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
   extractionState.product_name = extractionState.product_name ? String(extractionState.product_name).trim() : null;
   extractionState.description = extractionState.description ? String(extractionState.description).trim() : null;
 
-  console.log('[SCRAPER] Extraction method chosen:', extractionState.method);
+  if (!isProd) console.log('[SCRAPER] Extraction method chosen:', extractionState.method);
 
   let cleanedForLLM = '';
   if (extractionState.product_name && extractionState.description) {
@@ -508,23 +514,29 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
   }
 
   if (!cleanedForLLM || cleanedForLLM.length < 20) {
-    console.warn('[SCRAPER] LLM input is small; Gemini may return nulls for some fields.');
+    if (!isProd) console.warn('[SCRAPER] LLM input is small; Gemini may return nulls for some fields.');
   }
 
   try {
-    console.log('[LLM] Sending cleaned text to Gemini (gemini-2.5-flash-lite)...');
+    if (!isProd) console.log('[LLM] Sending cleaned text to Gemini (gemini-2.5-flash-lite)...');
     const { parsed: geminiJson, raw: geminiRaw, usage } = await callGemini(cleanedForLLM || '', searchQuery);
     const product = shapeStrict(geminiJson);
     const missingFields = computeMissingFields(product);
 
-    console.log('\n/* JavaScript variable: product */\n');
-    console.log('const product = ' + JSON.stringify(product, null, 2) + ';\n');
+    if (!isProd) {
+      console.log('\n/* JavaScript variable: product */\n');
+      console.log('const product = ' + JSON.stringify(product, null, 2) + ';\n');
+    }
 
     const finalOutput = { product, extraction_method: extractionState.method, missing_fields: missingFields };
-    await fs.writeFile('final_output.json', JSON.stringify(finalOutput, null, 2), 'utf8');
+    if (!isProd) {
+      await fs.writeFile('final_output.json', JSON.stringify(finalOutput, null, 2), 'utf8');
+    }
 
-    console.log('\n--- Final output (product) ---');
-    console.log(JSON.stringify(finalOutput, null, 2));
+    if (!isProd) {
+      console.log('\n--- Final output (product) ---');
+      console.log(JSON.stringify(finalOutput, null, 2));
+    }
 
     const tokenUsage: TokenUsage | undefined = usage
       ? {
@@ -535,7 +547,7 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
       : undefined;
 
     try {
-      if (tokenUsage) {
+      if (tokenUsage && !isProd) {
         const input = tokenUsage.inputTokens ?? 0;
         const output = tokenUsage.outputTokens ?? 0;
         const total = tokenUsage.totalTokens ?? input + output;
@@ -552,7 +564,7 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
     };
   } catch (error) {
     const message = (error as Error).message || String(error);
-    console.error('Fatal error:', message);
+    if (!isProd) console.error('Fatal error:', message);
     return null;
   }
 }

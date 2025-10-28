@@ -22,7 +22,9 @@ export async function POST(request: Request) {
       .single();
 
     if (userError) {
-      console.error('Error fetching user credits:', userError);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Check Credits] Error fetching user credits:', userError);
+      }
       return NextResponse.json(
         { error: 'Failed to fetch user credits', details: userError.message },
         { status: 500 }
@@ -39,7 +41,9 @@ export async function POST(request: Request) {
       creditsRequired,
     });
   } catch (error: any) {
-    console.error('Check credits API error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Check Credits] Error:', error);
+    }
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

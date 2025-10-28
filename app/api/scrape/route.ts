@@ -29,9 +29,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`Starting scraping process for URL: ${url}`);
-    if (searchQuery) {
-      console.log(`Using search query context: ${searchQuery}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Scrape] Starting process for URL: ${url}`);
+      if (searchQuery) {
+        console.log(`[Scrape] Using search query context: ${searchQuery}`);
+      }
     }
     
     const result = await scrapeAndExtractProductInfo(url, searchQuery);
@@ -66,7 +68,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in scrape API route:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error in scrape API route:', error);
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

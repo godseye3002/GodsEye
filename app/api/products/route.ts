@@ -23,7 +23,9 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching products:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Products] Error fetching:', error);
+      }
       return NextResponse.json(
         { error: 'Failed to fetch products', details: error.message },
         { status: 500 }
@@ -32,7 +34,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ products: data || [] });
   } catch (error: any) {
-    console.error('Products GET error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Products] GET error:', error);
+    }
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
@@ -76,7 +80,9 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error('Error creating product:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Products] Error creating:', error);
+      }
       return NextResponse.json(
         { error: 'Failed to create product', details: error.message },
         { status: 500 }
@@ -85,7 +91,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ product: data });
   } catch (error: any) {
-    console.error('Products POST error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Products] POST error:', error);
+    }
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }
@@ -136,7 +144,9 @@ export async function DELETE(request: Request) {
       .eq('id', productId);
 
     if (deleteError) {
-      console.error('Error deleting product:', deleteError);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Products] Error deleting:', deleteError);
+      }
       return NextResponse.json(
         { error: 'Failed to delete product', details: deleteError.message },
         { status: 500 }
@@ -145,7 +155,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Products DELETE error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Products] DELETE error:', error);
+    }
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

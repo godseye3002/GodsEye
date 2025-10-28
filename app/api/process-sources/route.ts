@@ -86,7 +86,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`[Process Sources] Filtered ${thirdPartySources.length} third-party sites from ${sourceLinks.length} total sources`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Process Sources] Filtered ${thirdPartySources.length} third-party sites from ${sourceLinks.length} total sources`);
+    }
 
     const genAI = new GoogleGenerativeAI(API_KEY);
     const model = genAI.getGenerativeModel({
@@ -196,8 +198,10 @@ Important:
       const input = usage?.promptTokenCount ?? usage?.totalTokenCount ?? 0;
       const output = usage?.candidatesTokenCount ?? 0;
       const total = usage?.totalTokenCount ?? input + output;
-      console.log('[Gemini][Process Sources]' + (analysisId ? ` [analysisId=${analysisId}]` : '') + (pipeline ? ` [pipeline=${pipeline}]` : ''),
-        { inputTokens: input, outputTokens: output, totalTokens: total, sourcesProcessed: thirdPartySources.length });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Gemini][Process Sources]' + (analysisId ? ` [analysisId=${analysisId}]` : '') + (pipeline ? ` [pipeline=${pipeline}]` : ''),
+          { inputTokens: input, outputTokens: output, totalTokens: total, sourcesProcessed: thirdPartySources.length });
+      }
       addTokens(analysisId, pipeline, 'Process Sources', input, output, total);
     } catch {}
 
@@ -216,7 +220,9 @@ Important:
         throw new Error('Invalid response structure');
       }
 
-      console.log(`[Process Sources] Successfully processed ${processedData.sources.length} sources`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Process Sources] Successfully processed ${processedData.sources.length} sources`);
+      }
       
       // Fetch favicons for all processed sources
       if (processedData.sources.length > 0) {
@@ -231,9 +237,13 @@ Important:
           }));
           
           const foundCount = processedData.sources.filter(s => s.Website_Icon_Url).length;
-          console.log(`[Process Sources] Fetched favicons: ${foundCount}/${processedData.sources.length} found`);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`[Process Sources] Fetched favicons: ${foundCount}/${processedData.sources.length} found`);
+          }
         } catch (faviconError) {
-          console.error('[Process Sources] Error fetching favicons:', faviconError);
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('[Process Sources] Error fetching favicons:', faviconError);
+          }
           // Continue without favicons - set all to null
           processedData.sources = processedData.sources.map(source => ({
             ...source,
@@ -242,8 +252,10 @@ Important:
         }
       }
     } catch (parseError) {
-      console.error('Error parsing source processing response:', parseError);
-      console.error('Raw response preview:', text.substring(0, 300));
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Process Sources] Error parsing response:', parseError);
+        console.error('[Process Sources] Raw response preview:', text.substring(0, 300));
+      }
       
       return NextResponse.json(
         { 
@@ -261,7 +273,9 @@ Important:
     });
 
   } catch (error) {
-    console.error('Error in process sources:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Process Sources] Error:', error);
+    }
     return NextResponse.json(
       { 
         error: 'Failed to process source links',

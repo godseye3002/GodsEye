@@ -203,15 +203,19 @@ export async function POST(request: NextRequest) {
       const input = usage?.promptTokenCount ?? usage?.totalTokenCount ?? 0;
       const output = usage?.candidatesTokenCount ?? 0;
       const total = usage?.totalTokenCount ?? input + output;
-      console.log('[Gemini][Strategic Analysis]'+ (analysisId ? ` [analysisId=${analysisId}]` : '') + (pipeline ? ` [pipeline=${pipeline}]` : ''),
-        { inputTokens: input, outputTokens: output, totalTokens: total });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Gemini][Strategic Analysis]' + (analysisId ? ` [analysisId=${analysisId}]` : '') + (pipeline ? ` [pipeline=${pipeline}]` : ''),
+          { inputTokens: input, outputTokens: output, totalTokens: total });
+      }
       addTokens(analysisId, pipeline, 'Strategic Analysis', input, output, total);
       const breakdown = getBreakdown(analysisId);
-      console.log('[Gemini][Totals]' + (analysisId ? ` [analysisId=${analysisId}]` : ''), {
-        totalTokens: breakdown.total,
-        byPurpose: breakdown.byPurpose,
-        byPipeline: breakdown.byPipeline,
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Gemini][Totals]' + (analysisId ? ` [analysisId=${analysisId}]` : ''), {
+          totalTokens: breakdown.total,
+          byPurpose: breakdown.byPurpose,
+          byPipeline: breakdown.byPipeline,
+        });
+      }
     } catch {}
     const text = response.text();
 
@@ -233,11 +237,15 @@ export async function POST(request: NextRequest) {
         throw new Error('Invalid analysis structure: missing required fields');
       }
       
-      console.log('Strategic analysis parsed successfully');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Strategic analysis parsed successfully');
+      }
     } catch (parseError) {
-      console.error('Error parsing strategic analysis response:', parseError);
-      console.error('Raw response (first 500 chars):', text.substring(0, 500));
-      console.error('Cleaned text (first 500 chars):', text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim().substring(0, 500));
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Error parsing strategic analysis response:', parseError);
+        console.error('Raw response (first 500 chars):', text.substring(0, 500));
+        console.error('Cleaned text (first 500 chars):', text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim().substring(0, 500));
+      }
       
       // Return a user-friendly error with partial data if possible
       return NextResponse.json(
@@ -252,7 +260,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(analysisResult);
   } catch (error) {
-    console.error('Error in strategic analysis:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Strategic Analysis] Error:', error);
+    }
     return NextResponse.json(
       { error: 'Failed to perform strategic analysis' },
       { status: 500 }

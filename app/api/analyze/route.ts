@@ -25,7 +25,9 @@ export async function POST(request: Request) {
     const success = Boolean(data);
 
     if (error) {
-      console.error('Error deducting credits:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Analyze] Error deducting credits:', error);
+      }
       return NextResponse.json(
         { error: 'Failed to deduct credits', details: error.message },
         { status: 500 }
@@ -46,7 +48,9 @@ export async function POST(request: Request) {
       message: 'Credits deducted successfully',
     });
   } catch (error: any) {
-    console.error('Analysis API error:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Analyze] API error:', error);
+    }
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

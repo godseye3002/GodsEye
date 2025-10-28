@@ -20,9 +20,11 @@ export default function VisibilityLandingPage() {
     return (latest?.processedSources as any[]) || [];
   }, [hydrated, processedSources, products]);
 
-  // Debug logging
+  // Debug logging (dev only)
   useEffect(() => {
-    console.log('[Visibility] visibleSources:', visibleSources);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Visibility] visibleSources:', visibleSources);
+    }
   }, [visibleSources]);
 
   useEffect(() => {

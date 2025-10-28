@@ -71,8 +71,10 @@ A Python list containing exactly 5 search query strings. For example: ["query on
       const input = usage?.promptTokenCount ?? usage?.totalTokenCount ?? 0;
       const output = usage?.candidatesTokenCount ?? 0;
       const total = usage?.totalTokenCount ?? input + output;
-      console.log('[Gemini][Generate Search Queries]' + (analysisId ? ` [analysisId=${analysisId}]` : '') + (pipeline ? ` [pipeline=${pipeline}]` : ''),
-        { inputTokens: input, outputTokens: output, totalTokens: total });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Gemini][Generate Search Queries]' + (analysisId ? ` [analysisId=${analysisId}]` : '') + (pipeline ? ` [pipeline=${pipeline}]` : ''),
+          { inputTokens: input, outputTokens: output, totalTokens: total });
+      }
       addTokens(analysisId, pipeline, 'Generate Search Queries', input, output, total);
     } catch {}
     const text = response.text();
@@ -89,7 +91,9 @@ A Python list containing exactly 5 search query strings. For example: ["query on
         ).filter(q => q.length > 0);
       }
     } catch (parseError) {
-      console.error('Error parsing Gemini response:', parseError);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Generate Queries] Error parsing response:', parseError);
+      }
       // Fallback: split by newlines and clean up
       queries = text.split('\n')
         .map(line => line.replace(/^["'\-\*\d\.\s]+|["'\,\s]+$/g, '').trim())
@@ -103,7 +107,9 @@ A Python list containing exactly 5 search query strings. For example: ["query on
 
     return NextResponse.json(generatedQuery);
   } catch (error) {
-    console.error('Error generating search queries:', error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Generate Queries] Error:', error);
+    }
     return NextResponse.json(
       { error: 'Failed to generate search queries' },
       { status: 500 }
