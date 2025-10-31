@@ -45,16 +45,16 @@ import { DEFAULT_PIPELINE } from "@/lib/pipelines";
 // Function to call the Perplexity scraper API
 async function callPerplexityScraper(query: string, location: string = 'India') {
   try {
-    const response = await axios.post('http://127.0.0.1:8000/scrape', {
-      query,
-      location,
-      keep_open: false,
-    });
-    // const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
+    // const response = await axios.post('http://127.0.0.1:8000/scrape', {
     //   query,
     //   location,
     //   keep_open: false,
     // });
+    const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
+      query,
+      location,
+      keep_open: false,
+    });
     console.log('Scraper response:', response.data);
     return response.data;
   } catch (error: any) {
