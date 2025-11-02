@@ -1,41 +1,25 @@
 {
   "product": {
-    "product_name": "Recyclaro",
-    "description": "Recyclaro is a B2B marketplace designed for the buying, selling, and management of industrial recyclables. It facilitates transparent, secure, and sustainable trade by connecting verified buyers and suppliers of various recyclable materials including metal, plastic, paper, e-waste, batteries, and textiles.",
-    "general_product_type": "B2B Marketplace",
-    "specific_product_type": "Industrial Recyclables Marketplace",
-    "specifications": {
-      "materials_traded": "Metal, Plastic, Paper, E-waste, Batteries, Textiles"
-    },
+    "product_name": "Virtual Barber Shop",
+    "description": "Virtual Barber Shop is an application that allows users to virtually try on different hairstyles to see which one suits them best before committing to a real haircut.",
+    "general_product_type": "Software",
+    "specific_product_type": "Virtual Try-On Application",
+    "specifications": {},
     "features": [
       {
-        "name": "B2B Marketplace",
-        "description": "A platform specifically designed for business-to-business transactions."
+        "name": "Hairstyle Preview",
+        "description": "Enables users to visualize various hairstyles on themselves."
       },
       {
-        "name": "Verified Buyers and Suppliers",
-        "description": "Connects with a network of pre-vetted participants for secure trading."
-      },
-      {
-        "name": "Transparent Trade",
-        "description": "Ensures clarity and openness in all transactions."
-      },
-      {
-        "name": "Secure Trade",
-        "description": "Provides a safe environment for buying and selling recyclables."
-      },
-      {
-        "name": "Sustainable Trade",
-        "description": "Promotes environmentally responsible practices in the recycling industry."
-      },
-      {
-        "name": "Management Tools",
-        "description": "Offers functionalities for managing industrial recyclables."
+        "name": "Suitability Assessment",
+        "description": "Helps users determine which hairstyles are most flattering."
       }
     ],
-    "targeted_market": "Businesses involved in the recycling industry, including manufacturers generating industrial waste, recycling facilities, waste management companies, and businesses looking to source recycled materials for their operations.",
-    "problem_product_is_solving": "The product addresses challenges in the industrial recyclables market by providing a centralized, trusted platform for efficient buying and selling, improving transparency and security in transactions, and facilitating sustainable trade practices. It aims to streamline the process of connecting buyers and sellers of diverse recyclable materials, which can otherwise be fragmented and opaque."
+    "targeted_market": "Individuals considering a new haircut or hairstyle, particularly those who are unsure about how a new style will look on them.",
+    "problem_product_is_solving": "The uncertainty and potential regret associated with choosing a new hairstyle, saving users time and money by allowing them to make informed decisions before visiting a barber or stylist."
   },
   "extraction_method": "selectors-fallback",
-  "missing_fields": []
+  "missing_fields": [
+    "specifications"
+  ]
 }

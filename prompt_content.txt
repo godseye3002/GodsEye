@@ -13,7 +13,7 @@ The JSON should include the following keys:
 
 Here is the text content:
 ---
-One-Stop B2B Platform For Buying, Selling, And Managing Industrial Recyclables.
+Welcome to Virtual Barber Shop. Find out which hairstyle suits you before getting a real haircut
 
-Recyclaro is a trusted B2B marketplace for buying and selling recyclables. Connect verified buyers and suppliers of metal, plastic, paper, e-waste, batteries, and textiles for transparent, secure, and sustainable trade.
+Welcome to Virtual Barber Shop. Find out which hairstyle suits you before getting a real haircut
 ---

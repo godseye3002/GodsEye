@@ -23,6 +23,7 @@ interface ProductStoreState {
   originalScrapedData: ProductFormData | null;
   missingFields: string[];
   showMissingFieldsWarning: boolean;
+  ignoredMissingFields: string[];
   lastExtractionMethod: string | null;
   generatedQuery: string | null;
   queryGenerationError: string | null;
@@ -38,10 +39,12 @@ interface ProductStoreState {
   userCredits: number | null;
   processedSources: ProcessedSource[];
   sourceLinks: any[];
+  currentProductId: string | null;
   setFormData: (updater: FormUpdater) => void;
   setOriginalScrapedData: (data: ProductFormData | null) => void;
   setMissingFields: (fields: string[]) => void;
   setShowMissingFieldsWarning: (value: boolean) => void;
+  setIgnoredMissingFields: (fields: string[] | ((prev: string[]) => string[])) => void;
   setLastExtractionMethod: (method: string | null) => void;
   setGeneratedQuery: (query: string | null) => void;
   setQueryGenerationError: (error: string | null) => void;
@@ -59,11 +62,14 @@ interface ProductStoreState {
   loadProductsFromSupabase: (userId: string) => Promise<void>;
   saveProductToSupabase: (product: OptimizedProduct, userId: string, generatedQuery?: string | null) => Promise<string | null>;
   deleteProductFromSupabase: (productId: string, userId: string) => Promise<void>;
+  updateProductInSupabase: (productId: string, userId: string) => Promise<void>;
+  saveCurrentFormToSupabase: (userId: string) => Promise<string>;
   setUserInfo: (info: UserInfoState | null) => void;
   setUserCredits: (credits: number | null) => void;
   adjustUserCredits: (delta: number) => void;
   setProcessedSources: (sources: ProcessedSource[]) => void;
   setSourceLinks: (links: any[]) => void;
+  setCurrentProductId: (id: string | null) => void;
 }
 
 export const useProductStore = create<ProductStoreState>()(
@@ -73,6 +79,7 @@ export const useProductStore = create<ProductStoreState>()(
       originalScrapedData: null,
       missingFields: [],
       showMissingFieldsWarning: false,
+      ignoredMissingFields: [],
       lastExtractionMethod: null,
       generatedQuery: null,
       queryGenerationError: null,
@@ -88,6 +95,7 @@ export const useProductStore = create<ProductStoreState>()(
       userCredits: null,
       processedSources: [],
       sourceLinks: [],
+      currentProductId: null,
       setFormData: (updater) =>
         set((state) => ({
           formData:
@@ -98,6 +106,13 @@ export const useProductStore = create<ProductStoreState>()(
       setOriginalScrapedData: (data) => set({ originalScrapedData: data }),
       setMissingFields: (fields) => set({ missingFields: fields }),
       setShowMissingFieldsWarning: (value) => set({ showMissingFieldsWarning: value }),
+      setIgnoredMissingFields: (updater) =>
+        set((state) => ({
+          ignoredMissingFields:
+            typeof updater === 'function'
+              ? (updater as (prev: string[]) => string[])(state.ignoredMissingFields)
+              : updater,
+        })),
       setLastExtractionMethod: (method) => set({ lastExtractionMethod: method }),
       setGeneratedQuery: (query) => set({ generatedQuery: query }),
       setQueryGenerationError: (error) => set({ queryGenerationError: error }),
@@ -225,6 +240,7 @@ export const useProductStore = create<ProductStoreState>()(
               },
               ...state.products.filter((p) => p.id !== savedProduct.id),
             ].slice(0, 10),
+            currentProductId: savedProduct.id,
           }));
           
           return savedProduct.id; // Return product ID for analysis_history
@@ -232,6 +248,131 @@ export const useProductStore = create<ProductStoreState>()(
           console.error('Error saving product to Supabase:', error);
           throw error;
         }
+      },
+      updateProductInSupabase: async (productId: string, userId: string) => {
+        try {
+          const state = get();
+          const specs = state.formData.specifications || {};
+          const generalType = state.formData.general_product_type || specs.general_product_type || '';
+          const specificType = state.formData.specific_product_type || specs.specific_product_type || '';
+
+        const response = await fetch('/api/products', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_id: productId,
+              user_id: userId,
+              product_name: state.formData.product_name || 'Untitled Product',
+              product_url: state.formData.url || '',
+              description: state.formData.description || '',
+              specifications: specs,
+              features: state.formData.features || [],
+              targeted_market: state.formData.targeted_market || '',
+              problem_product_is_solving: state.formData.problem_product_is_solving || '',
+              general_product_type: generalType,
+              specific_product_type: specificType,
+              generated_query: state.generatedQuery || null,
+              optimization_analysis: state.optimizationAnalysis || null,
+              source_links: state.sourceLinks || [],
+              processed_sources: state.processedSources || [],
+            }),
+          });
+
+          if (!response.ok) throw new Error('Failed to update product');
+          const { product: updated } = await response.json();
+
+          set((state) => ({
+            products: [
+              {
+                id: updated.id,
+                name: updated.product_name || 'Untitled Product',
+                description: updated.description || 'No description',
+                createdAt: updated.created_at,
+                formData: {
+                  product_name: updated.product_name || '',
+                  url: updated.product_url || '',
+                  description: updated.description || '',
+                  specifications: updated.specifications || {},
+                  features: updated.features || [],
+                  targeted_market: updated.targeted_market || '',
+                  problem_product_is_solving: updated.problem_product_is_solving || '',
+                  general_product_type: updated.general_product_type || (updated.specifications?.general_product_type ?? ''),
+                  specific_product_type: updated.specific_product_type || (updated.specifications?.specific_product_type ?? ''),
+                },
+                analysis: updated.optimization_analysis || null,
+                sourceLinks: updated.source_links || [],
+                processedSources: updated.processed_sources || [],
+              },
+              ...state.products.filter((p) => p.id !== updated.id),
+            ].slice(0, 10),
+            currentProductId: updated.id,
+          }));
+        } catch (error) {
+          console.error('Error updating product in Supabase:', error);
+          throw error;
+        }
+      },
+      saveCurrentFormToSupabase: async (userId: string) => {
+        const state = get();
+        const specs = state.formData.specifications || {};
+        const generalType = state.formData.general_product_type || specs.general_product_type || '';
+        const specificType = state.formData.specific_product_type || specs.specific_product_type || '';
+
+        // If we already have a persisted product, perform update
+        if (state.currentProductId) {
+          await get().updateProductInSupabase(state.currentProductId, userId);
+          return state.currentProductId;
+        }
+
+        // Else create a new product
+        const tempProduct: OptimizedProduct = {
+          id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2),
+          name: state.formData.product_name || 'Untitled Product',
+          description: state.formData.description || 'No description',
+          createdAt: new Date().toISOString(),
+          formData: state.formData,
+          analysis: state.optimizationAnalysis || null,
+          sourceLinks: state.sourceLinks || [],
+          processedSources: state.processedSources || [],
+        };
+
+        const response = await fetch('/api/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            product_name: tempProduct.formData.product_name || 'Untitled Product',
+            product_url: tempProduct.formData.url || '',
+            description: tempProduct.formData.description || '',
+            specifications: specs,
+            features: tempProduct.formData.features || [],
+            targeted_market: tempProduct.formData.targeted_market || '',
+            problem_product_is_solving: tempProduct.formData.problem_product_is_solving || '',
+            general_product_type: generalType,
+            specific_product_type: specificType,
+            generated_query: state.generatedQuery || null,
+            optimization_analysis: tempProduct.analysis || null,
+            source_links: tempProduct.sourceLinks || [],
+            processed_sources: tempProduct.processedSources || [],
+          }),
+        });
+
+        if (!response.ok) throw new Error('Failed to save product');
+        const { product: saved } = await response.json();
+
+        set((state) => ({
+          products: [
+            {
+              ...tempProduct,
+              id: saved.id,
+              createdAt: saved.created_at,
+            },
+            ...state.products.filter((p) => p.id !== saved.id),
+          ].slice(0, 10),
+          currentProductId: saved.id,
+        }));
+
+        return saved.id;
       },
       deleteProductFromSupabase: async (productId: string, userId: string) => {
         try {
@@ -260,6 +401,7 @@ export const useProductStore = create<ProductStoreState>()(
         }),
       setProcessedSources: (sources) => set({ processedSources: sources }),
       setSourceLinks: (links) => set({ sourceLinks: links }),
+      setCurrentProductId: (id) => set({ currentProductId: id }),
     }),
     {
       name: "godseye-product-store",
@@ -276,6 +418,9 @@ export const useProductStore = create<ProductStoreState>()(
         originalScrapedData: state.originalScrapedData,
         optimizationAnalysis: state.optimizationAnalysis,
         generatedQuery: state.generatedQuery,
+        currentProductId: state.currentProductId,
+        missingFields: state.missingFields,
+        ignoredMissingFields: state.ignoredMissingFields,
       }),
     }
   )

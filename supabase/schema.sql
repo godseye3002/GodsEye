@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   user_name TEXT,
   email TEXT UNIQUE NOT NULL,
-  credits INTEGER DEFAULT 3 NOT NULL,
+  credits INTEGER DEFAULT 2 NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
   last_login TIMESTAMP WITH TIME ZONE,
@@ -105,7 +105,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'user_name', NEW.raw_user_meta_data->>'name', SPLIT_PART(NEW.email, '@', 1)),
-    3
+    2
   );
   RETURN NEW;
 END;

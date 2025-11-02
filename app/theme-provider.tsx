@@ -4,8 +4,9 @@ import { CssVarsProvider, extendTheme } from "@mui/joy/styles";
 import { CssBaseline } from "@mui/joy";
 import type { ReactNode } from "react";
 import { CacheProvider } from "@emotion/react";
+import createCache from "@emotion/cache";
 import { useState } from "react";
-import { createEmotionCache } from "@/lib/create-emotion-cache";
+import { useServerInsertedHTML } from "next/navigation";
 
 const accentColor = '#2ED47A';
 const accentHover = '#36E08A';
@@ -302,14 +303,49 @@ const theme = extendTheme({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [emotionCache] = useState(createEmotionCache);
+  const [{ cache, flush }] = useState(() => {
+    const cache = createCache({ key: "css", prepend: true });
+    (cache as any).compat = true;
+
+    const prevInsert = cache.insert;
+    let inserted: string[] = [];
+
+    cache.insert = (...args: any[]) => {
+      // args: selector, serialized, sheet, shouldCache, isStringTag
+      // track which names are newly inserted this render
+      const serialized = args[1];
+      if (!(cache as any).inserted[serialized.name]) {
+        inserted.push(serialized.name);
+      }
+      // @ts-ignore
+      return prevInsert(...args);
+    };
+
+    const flush = () => {
+      const prev = inserted;
+      inserted = [];
+      return prev;
+    };
+
+    return { cache, flush } as const;
+  });
+
+  useServerInsertedHTML(() => {
+    const names = flush();
+    if (names.length === 0) return null;
+    return (
+      <style
+        data-emotion={`css ${names.join(" ")}`}
+        dangerouslySetInnerHTML={{
+          __html: names.map((name) => (cache.inserted as any)[name]).join(" "),
+        }}
+      />
+    );
+  });
+
   return (
-    <CacheProvider value={emotionCache}>
-      <CssVarsProvider
-        defaultMode="dark"
-        defaultColorScheme="dark"
-        theme={theme}
-      >
+    <CacheProvider value={cache}>
+      <CssVarsProvider defaultMode="dark" defaultColorScheme="dark" theme={theme}>
         <CssBaseline />
         {children}
       </CssVarsProvider>

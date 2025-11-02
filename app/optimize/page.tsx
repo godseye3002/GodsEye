@@ -1,46 +1,45 @@
 "use client";
 
-import { useState, useEffect, useCallback, type MouseEvent, type KeyboardEvent } from "react";
 import {
   Box,
-  Typography,
-  Input,
   Button,
   Card,
-  Sheet,
-  Textarea,
-  Stack,
-  FormLabel,
-  Divider,
   Chip,
-  Modal,
-  ModalDialog,
-  ModalClose,
-  Tooltip,
+  Divider,
+  FormLabel,
+  IconButton,
+  Input,
   List,
   ListItem,
-  IconButton,
-  Select,
+  Modal,
+  ModalClose,
+  ModalDialog,
   Option,
+  Select,
+  Sheet,
+  Stack,
+  Textarea,
+  Tooltip,
+  Typography,
 } from "@mui/joy";
 import { keyframes } from "@mui/system";
+import { useCallback, useEffect, useState, type KeyboardEvent, type MouseEvent } from "react";
 // API route handles query generation now
+import { ProtectedRoute } from "@/components/protected-route";
+import { useAuth } from "@/lib/auth-context";
+import { DEFAULT_PIPELINE } from "@/lib/pipelines";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import axios from 'axios';
-import AnalysisDisplay from "./analysis-display";
 import { useRouter } from "next/navigation";
+import { useProductStore } from "./store";
 import {
-  ProductContext,
-  ProductFormData,
   Feature,
   OptimizationAnalysis,
   OptimizedProduct,
+  ProductContext,
+  ProductFormData,
   createEmptyProductFormData,
 } from "./types";
-import { useProductStore } from "./store";
-import { ProtectedRoute } from "@/components/protected-route";
-import { useAuth } from "@/lib/auth-context";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import { DEFAULT_PIPELINE } from "@/lib/pipelines";
 
 // Function to call the Perplexity scraper API
 async function callPerplexityScraper(query: string, location: string = 'India') {
@@ -142,6 +141,7 @@ function OptimizePageContent() {
     setIsAnalyzing,
     addProduct,
     saveProductToSupabase,
+    saveCurrentFormToSupabase,
     setUserInfo,
     setUserCredits,
     adjustUserCredits,
@@ -656,15 +656,94 @@ function OptimizePageContent() {
       .join(' ');
   };
 
+  const { ignoredMissingFields, setIgnoredMissingFields } = useProductStore();
+  const ignoredNormalized = Array.isArray(ignoredMissingFields) ? ignoredMissingFields : [];
+  const pendingMissingFields = missingFields.filter((f) => {
+    const l = String(f).toLowerCase();
+    const ignoredLower = ignoredNormalized.map((x) => String(x).toLowerCase());
+    if (ignoredLower.includes(l)) return false;
+    if (l.startsWith('specifications') && ignoredLower.includes('specifications')) return false;
+    return true;
+  });
+
   const specificationMissingLabels = Array.from(new Set(
-    missingFields
-      .filter(field => field.startsWith('specifications'))
+    pendingMissingFields
+      .filter(field => field.toLowerCase().startsWith('specifications'))
       .map(field => formatMissingFieldName(field))
   ));
   const hasSpecificationMissing = specificationMissingLabels.length > 0;
   const featuresCount = formData.features.filter(f => f.name && f.name.trim()).length;
-  const hasFeaturesMissing = missingFields.includes('features') && featuresCount === 0;
+  const hasFeaturesMissing = pendingMissingFields.some(f => {
+    const l = f.toLowerCase();
+    return l === 'features' || l.startsWith('features');
+  });
   const hasFormBlockingMissing = hasSpecificationMissing || hasFeaturesMissing;
+
+  // Track if user has dismissed the warning in this session using sessionStorage
+  const [hasDismissedWarning, setHasDismissedWarning] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return sessionStorage.getItem('godseye-missing-fields-warning-dismissed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Professional warning modal logic: Only show when there are actual missing fields
+  // and user hasn't dismissed it in this session
+  useEffect(() => {
+    const hasMissingFields = pendingMissingFields.length > 0;
+    
+    // Always ensure warning state matches reality
+    if (!hasMissingFields) {
+      // No missing fields - ensure warning is hidden and reset dismissal state
+      if (showMissingFieldsWarning) {
+        setShowMissingFieldsWarning(false);
+      }
+      // Reset dismissal state when all fields are fixed
+      if (hasDismissedWarning) {
+        setHasDismissedWarning(false);
+        try {
+          sessionStorage.removeItem('godseye-missing-fields-warning-dismissed');
+        } catch (e) {
+          console.warn('Failed to clear sessionStorage:', e);
+        }
+      }
+      return;
+    }
+
+    // We have missing fields - check if we should show warning
+    if (hasMissingFields && !hasDismissedWarning && !showMissingFieldsWarning) {
+      // Only auto-show once when missing fields are detected
+      setShowMissingFieldsWarning(true);
+    } else if (hasMissingFields && hasDismissedWarning && showMissingFieldsWarning) {
+      // User dismissed it, so hide it
+      setShowMissingFieldsWarning(false);
+    }
+  }, [pendingMissingFields.length, hasDismissedWarning, showMissingFieldsWarning, setShowMissingFieldsWarning]);
+
+  // Handle manual show warning (when clicking the warning button)
+  const handleShowWarning = useCallback(() => {
+    // Clear dismissal state when manually showing
+    setHasDismissedWarning(false);
+    try {
+      sessionStorage.removeItem('godseye-missing-fields-warning-dismissed');
+    } catch (e) {
+      console.warn('Failed to clear sessionStorage:', e);
+    }
+    setShowMissingFieldsWarning(true);
+  }, [setShowMissingFieldsWarning]);
+
+  // Handle dismissing the warning
+  const handleDismissWarning = useCallback(() => {
+    setShowMissingFieldsWarning(false);
+    setHasDismissedWarning(true);
+    try {
+      sessionStorage.setItem('godseye-missing-fields-warning-dismissed', 'true');
+    } catch (e) {
+      console.warn('Failed to save to sessionStorage:', e);
+    }
+  }, [setShowMissingFieldsWarning]);
 
   const scrapeProductData = async (retryCount = 0) => {
     const MAX_RETRIES = 2;
@@ -685,6 +764,7 @@ function OptimizePageContent() {
     setIsScraping(true);
     setScrapingError(null);
     setMissingFields([]);
+    setIgnoredMissingFields([]);
     setShowMissingFieldsWarning(false);
     setLastExtractionMethod(null);
     
@@ -738,15 +818,10 @@ function OptimizePageContent() {
         console.log("Scraped data:", scrapedData);
         console.log("Token usage:", result.tokenUsage);
 
-        const specHasValues = enhancedData.specifications && Object.keys(enhancedData.specifications).length > 0;
-        const featuresCountNow = (enhancedData.features || []).filter((f: any) => f?.name && f.name.trim()).length;
-        const filteredMissing = missing.filter((m: string) => {
-          if (m === 'specifications' && specHasValues) return false;
-          if (m === 'features' && featuresCountNow > 0) return false;
-          return true;
-        });
+        const filteredMissing = Array.isArray(missing) ? missing : [];
         setMissingFields(filteredMissing);
-        setShowMissingFieldsWarning(filteredMissing.length > 0);
+        // Don't set warning directly here - let the useEffect handle it based on pendingMissingFields
+        // This ensures ignored fields are properly accounted for
         setLastExtractionMethod(result.extractionMethod ?? null);
       } else {
         throw new Error('No data received from scraping service');
@@ -867,15 +942,10 @@ function OptimizePageContent() {
                 setOriginalScrapedData(enhancedData);
 
                 const missing = Array.isArray(scrapeResult.missingFields) ? scrapeResult.missingFields : [];
-                const specHasValues = mergedSpecs && Object.keys(mergedSpecs).length > 0;
-                const featuresCountNow = (enhancedData.features || []).filter((f: any) => f?.name && f.name.trim()).length;
-                const filteredMissing = missing.filter((m: string) => {
-                  if (m === 'specifications' && specHasValues) return false;
-                  if (m === 'features' && featuresCountNow > 0) return false;
-                  return true;
-                });
+                const filteredMissing = Array.isArray(missing) ? missing : [];
                 setMissingFields(filteredMissing);
-                setShowMissingFieldsWarning(filteredMissing.length > 0);
+                // Don't set warning directly here - let the useEffect handle it based on pendingMissingFields
+                // This ensures ignored fields are properly accounted for
                 setLastExtractionMethod(scrapeResult.extractionMethod ?? null);
 
                 return enhancedData;
@@ -1404,11 +1474,11 @@ function OptimizePageContent() {
             <Typography level="h2" sx={{ color: textPrimary }}>
               Optimize Your Product for AI Search Engines
             </Typography>
-            {missingFields.length > 0 && (
+            {pendingMissingFields.length > 0 && (
               <Button
                 size="sm"
                 variant="outlined"
-                onClick={() => setShowMissingFieldsWarning(true)}
+                onClick={handleShowWarning}
                 sx={{
                   borderColor: "rgba(255, 193, 7, 0.45)",
                   color: "#FFD166",
@@ -1617,19 +1687,19 @@ function OptimizePageContent() {
                       transition: "all 0.2s",
                       background: "linear-gradient(135deg, rgba(167, 139, 250, 0.03), rgba(139, 92, 246, 0.02))",
                       backdropFilter: "blur(8px)",
-                      border: hasFormBlockingMissing ? "1px solid rgba(243, 91, 100, 0.55)" : "1px solid rgba(216, 180, 254, 0.06)",
+                      border: hasSpecificationMissing ? "1px solid rgba(243, 91, 100, 0.55)" : "1px solid rgba(216, 180, 254, 0.06)",
                       position: "relative",
                       boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
                       "&:hover": { 
                         transform: "translateY(-2px)", 
                         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
-                        border: hasFormBlockingMissing ? "1px solid rgba(243, 91, 100, 0.65)" : "1px solid rgba(216, 180, 254, 0.1)",
+                        border: hasSpecificationMissing ? "1px solid rgba(243, 91, 100, 0.65)" : "1px solid rgba(216, 180, 254, 0.1)",
                         background: "linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(139, 92, 246, 0.03))",
                       }
                     }}
                     onClick={() => openEditModal("specifications")}
                   >
-                    {hasFormBlockingMissing && (
+                    {hasSpecificationMissing && (
                       <Tooltip title="Missing specification details. Click to add them.">
                         <IconButton
                           size="sm"
@@ -1662,7 +1732,7 @@ function OptimizePageContent() {
                         </Typography>
                       ))
                     }
-                    {hasFormBlockingMissing && (
+                    {hasSpecificationMissing && (
                       <Typography level="body-xs" sx={{ color: "#F35B64", mt: 1.5 }}>
                         Missing: {specificationMissingLabels.join(', ')}
                       </Typography>
@@ -1677,17 +1747,33 @@ function OptimizePageContent() {
                       transition: "all 0.2s",
                       background: "linear-gradient(135deg, rgba(167, 139, 250, 0.03), rgba(139, 92, 246, 0.02))",
                       backdropFilter: "blur(8px)",
-                      border: "1px solid rgba(216, 180, 254, 0.06)",
+                      border: hasFeaturesMissing ? "1px solid rgba(243, 91, 100, 0.55)" : "1px solid rgba(216, 180, 254, 0.06)",
                       boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
                       "&:hover": { 
                         transform: "translateY(-2px)", 
                         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
-                        border: "1px solid rgba(216, 180, 254, 0.1)",
+                        border: hasFeaturesMissing ? "1px solid rgba(243, 91, 100, 0.65)" : "1px solid rgba(216, 180, 254, 0.1)",
                         background: "linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(139, 92, 246, 0.03))",
                       }
                     }}
                     onClick={() => openEditModal("features")}
                   >
+                    {hasFeaturesMissing && (
+                      <Tooltip title="Missing features. Click to add them.">
+                        <IconButton
+                          size="sm"
+                          variant="soft"
+                          color="danger"
+                          sx={{ position: "absolute", top: 12, right: 12, borderRadius: "50%" }}
+                          onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                            event.stopPropagation();
+                            openEditModal("features");
+                          }}
+                        >
+                          <EditOutlinedIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                     <Typography level="title-md" sx={{ mb: 1, color: "#ffffff" }}>
                       Features
                     </Typography>
@@ -1794,17 +1880,17 @@ function OptimizePageContent() {
                     </Button>
                   </Tooltip>
                   <Tooltip
-                    title={missingFields.length > 0 ? "Please review the highlighted fields before running optimization." : undefined}
+                    title={pendingMissingFields.length > 0 ? "Please review the highlighted fields before running optimization." : undefined}
                     arrow
                     placement="top"
-                    variant={missingFields.length > 0 ? "outlined" : "plain"}
+                    variant={pendingMissingFields.length > 0 ? "outlined" : "plain"}
                   >
                     <span>
                       <Button
                         type="submit"
                         variant="solid"
                         size="lg"
-                        disabled={isGeneratingQuery || isAnalyzing || missingFields.length > 0}
+                        disabled={isGeneratingQuery || isAnalyzing || pendingMissingFields.length > 0}
                         sx={{
                           flex: 1,
                           width: { xs: "100%", sm: "auto" },
@@ -1899,10 +1985,10 @@ function OptimizePageContent() {
           {/* Analysis results now shown on /results page */}
 
 
-          {/* Missing Fields Warning */}
+          {/* Missing Fields Warning - Only show when there are actual pending missing fields */}
           <Modal
-            open={showMissingFieldsWarning}
-            onClose={() => setShowMissingFieldsWarning(false)}
+            open={showMissingFieldsWarning && pendingMissingFields.length > 0}
+            onClose={handleDismissWarning}
             slotProps={{ backdrop: { sx: modalBackdropSx } }}
           >
             <ModalDialog
@@ -1916,7 +2002,7 @@ function OptimizePageContent() {
                 gap: 2.5,
               }}
             >
-              <ModalClose onClick={() => setShowMissingFieldsWarning(false)} />
+              <ModalClose onClick={handleDismissWarning} />
               <Stack spacing={2.5}>
                 <Typography level="h4" sx={{ color: "#FFD166", fontWeight: 700 }}>
                   Some fields need your attention
@@ -1929,24 +2015,26 @@ function OptimizePageContent() {
                     Extraction method used: {lastExtractionMethod}
                   </Typography>
                 )}
-                <List size="sm" sx={{
-                  border: "1px solid rgba(255, 193, 7, 0.38)",
-                  borderRadius: "md",
-                  background: "rgba(255, 193, 7, 0.14)",
-                  px: 2,
-                  backdropFilter: "blur(8px)",
-                }}>
-                  {missingFields.map(field => {
-                    const formattedName = formatMissingFieldName(field);
-                    return (
-                      <ListItem key={field} sx={{ color: textPrimary, fontWeight: 500 }}>
-                        {formattedName}
-                      </ListItem>
-                    );
-                  })}
-                </List>
+                {pendingMissingFields.length > 0 ? (
+                  <List size="sm" sx={{
+                    border: "1px solid rgba(255, 193, 7, 0.38)",
+                    borderRadius: "md",
+                    background: "rgba(255, 193, 7, 0.14)",
+                    px: 2,
+                    backdropFilter: "blur(8px)",
+                  }}>
+                    {pendingMissingFields.map(field => {
+                      const formattedName = formatMissingFieldName(field);
+                      return (
+                        <ListItem key={field} sx={{ color: textPrimary, fontWeight: 500 }}>
+                          {formattedName}
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                ) : null}
                 <Button
-                  onClick={() => setShowMissingFieldsWarning(false)}
+                  onClick={handleDismissWarning}
                   sx={{
                     backgroundColor: accentColor,
                     color: "#0D0F14",
@@ -1957,7 +2045,7 @@ function OptimizePageContent() {
                     },
                   }}
                 >
-                  Review form
+                  Got it, I'll review the form
                 </Button>
               </Stack>
             </ModalDialog>
@@ -1997,34 +2085,37 @@ function OptimizePageContent() {
                   }}
                 />
               </Box>
-              <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", mt: 2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={closeEditModal}
-                  sx={{
-                    borderColor: "rgba(46, 212, 122, 0.28)",
-                    color: textPrimary,
-                    "&:hover": {
-                      borderColor: "rgba(46, 212, 122, 0.45)",
-                    },
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={closeEditModal}
-                  sx={{
-                    backgroundColor: accentColor,
-                    color: "#0D0F14",
-                    fontWeight: 600,
-                    px: 3,
-                    "&:hover": {
-                      backgroundColor: "#26B869",
-                    },
-                  }}
-                >
-                  Save
-                </Button>
+              <Stack direction="row" spacing={1} sx={{ mt: 2, alignItems: 'center' }}>
+                <Box sx={{ flex: 1 }} />
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={closeEditModal}
+                    sx={{
+                      borderColor: "rgba(46, 212, 122, 0.28)",
+                      color: textPrimary,
+                      "&:hover": {
+                        borderColor: "rgba(46, 212, 122, 0.45)",
+                      },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                    sx={{
+                      backgroundColor: accentColor,
+                      color: "#0D0F14",
+                      fontWeight: 600,
+                      px: 3,
+                      "&:hover": {
+                        backgroundColor: "#26B869",
+                      },
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Box>
               </Stack>
             </ModalDialog>
           </Modal>
@@ -2062,34 +2153,38 @@ function OptimizePageContent() {
                   }}
                 />
               </Box>
-              <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", mt: 2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={closeEditModal}
-                  sx={{
-                    borderColor: "rgba(46, 212, 122, 0.28)",
-                    color: textPrimary,
-                    "&:hover": {
-                      borderColor: "rgba(46, 212, 122, 0.45)",
-                    },
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={closeEditModal}
-                  sx={{
-                    backgroundColor: accentColor,
-                    color: "#0D0F14",
-                    fontWeight: 600,
-                    px: 3,
-                    "&:hover": {
-                      backgroundColor: "#26B869",
-                    },
-                  }}
-                >
-                  Save
-                </Button>
+              <Stack direction="row" spacing={1} sx={{ mt: 2, alignItems: 'center' }}>
+                <Box />
+                <Box sx={{ flex: 1 }} />
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={closeEditModal}
+                    sx={{
+                      borderColor: "rgba(46, 212, 122, 0.28)",
+                      color: textPrimary,
+                      "&:hover": {
+                        borderColor: "rgba(46, 212, 122, 0.45)",
+                      },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                    sx={{
+                      backgroundColor: accentColor,
+                      color: "#0D0F14",
+                      fontWeight: 600,
+                      px: 3,
+                      "&:hover": {
+                        backgroundColor: "#26B869",
+                      },
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Box>
               </Stack>
             </ModalDialog>
           </Modal>
@@ -2270,15 +2365,17 @@ function OptimizePageContent() {
                   </Typography>
                 </Box>
               )}
-              <Stack direction="row" spacing={2} sx={{ justifyContent: "space-between", mt: 2 }}>
+              <Stack direction="row" spacing={1} sx={{ mt: 2, alignItems: 'center' }}>
                 <Box>
-                  {hasFormBlockingMissing && (
+                  {hasSpecificationMissing && (
                     <Button
                       variant="outlined"
                       color="danger"
                       onClick={() => {
-                        setMissingFields([]);
-                        setShowMissingFieldsWarning(false);
+                        const latest = useProductStore.getState().ignoredMissingFields;
+                        const base = Array.isArray(latest) ? latest : [];
+                        const next = Array.from(new Set([...base, 'specifications']));
+                        setIgnoredMissingFields(next);
                         closeEditModal();
                       }}
                       sx={{
@@ -2294,7 +2391,8 @@ function OptimizePageContent() {
                     </Button>
                   )}
                 </Box>
-                <Stack direction="row" spacing={2}>
+                <Box sx={{ flex: 1 }} />
+                <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
                     variant="outlined"
                     onClick={closeEditModal}
@@ -2309,7 +2407,7 @@ function OptimizePageContent() {
                     Cancel
                   </Button>
                   <Button
-                    onClick={closeEditModal}
+                    onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
                     sx={{
                       backgroundColor: accentColor,
                       color: "#0D0F14",
@@ -2322,7 +2420,7 @@ function OptimizePageContent() {
                   >
                     Save
                   </Button>
-                </Stack>
+                </Box>
               </Stack>
             </ModalDialog>
           </Modal>
@@ -2392,34 +2490,63 @@ function OptimizePageContent() {
                 </Button>
                 </Stack>
               </Box>
-              <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", mt: 2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={closeEditModal}
-                  sx={{
-                    borderColor: "rgba(46, 212, 122, 0.28)",
-                    color: textPrimary,
-                    "&:hover": {
-                      borderColor: "rgba(46, 212, 122, 0.45)",
-                    },
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={closeEditModal}
-                  sx={{
-                    backgroundColor: accentColor,
-                    color: "#0D0F14",
-                    fontWeight: 600,
-                    px: 3,
-                    "&:hover": {
-                      backgroundColor: "#26B869",
-                    },
-                  }}
-                >
-                  Save
-                </Button>
+              <Stack direction="row" spacing={1} sx={{ mt: 2, alignItems: 'center' }}>
+                <Box>
+                  {hasFeaturesMissing && (
+                    <Button
+                      variant="outlined"
+                      color="danger"
+                      onClick={() => {
+                        setIgnoredMissingFields((prev) => {
+                          const next = Array.from(new Set([...prev, 'features']));
+                          // Don't set warning directly - let useEffect handle it based on pendingMissingFields
+                          return next;
+                        });
+                        closeEditModal();
+                      }}
+                      sx={{
+                        borderColor: "rgba(243, 91, 100, 0.4)",
+                        color: "#F35B64",
+                        "&:hover": {
+                          borderColor: "rgba(243, 91, 100, 0.6)",
+                          backgroundColor: "rgba(243, 91, 100, 0.08)",
+                        },
+                      }}
+                    >
+                      Ignore & Continue
+                    </Button>
+                  )}
+                </Box>
+                <Box sx={{ flex: 1 }} />
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={closeEditModal}
+                    sx={{
+                      borderColor: "rgba(46, 212, 122, 0.28)",
+                      color: textPrimary,
+                      "&:hover": {
+                        borderColor: "rgba(46, 212, 122, 0.45)",
+                      },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                    sx={{
+                      backgroundColor: accentColor,
+                      color: "#0D0F14",
+                      fontWeight: 600,
+                      px: 3,
+                      "&:hover": {
+                        backgroundColor: "#26B869",
+                      },
+                    }}
+                  >
+                    Save
+                  </Button>
+                </Box>
               </Stack>
             </ModalDialog>
           </Modal>
@@ -2509,7 +2636,7 @@ function OptimizePageContent() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={closeEditModal}
+                  onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
                   sx={{
                     backgroundColor: accentColor,
                     color: "#0D0F14",
@@ -2575,7 +2702,7 @@ function OptimizePageContent() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={closeEditModal}
+                  onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
                   sx={{
                     backgroundColor: accentColor,
                     color: "#0D0F14",
