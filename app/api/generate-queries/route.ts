@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { addTokens } from "@/lib/token-usage";
 import type { PipelineId } from "@/lib/pipelines";
+import { addTokens } from "@/lib/token-usage";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { NextRequest, NextResponse } from 'next/server';
 
 export interface ProductContext {
   general_product_type: string;
@@ -53,6 +53,7 @@ Objective: Generate a list of the most common, high-intent search queries that a
 Product Context:
 ${JSON.stringify(productContext, null, 2)}
 
+STRICT NOTE: the minimum number of words in the query should be 6.
 
 Instructions:
 1. Simulate Real Search Queries: The output must be natural language questions or complex phrases.
