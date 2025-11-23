@@ -1204,7 +1204,14 @@ function OptimizePageContent() {
       }
       
       console.log("Generated query for optimization:", primaryQuery);
-      setGeneratedQuery(primaryQuery);
+
+      // Persist both queries in a structured JSON string for Supabase and results pages
+      const generatedQueriesPayload = JSON.stringify({
+        perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
+        googleQuery: googleQuery ? [googleQuery] : [],
+      });
+
+      setGeneratedQuery(generatedQueriesPayload);
       
       // Part 2.1: Call the selected scraper APIs
       setIsAnalyzing(true);
@@ -1429,7 +1436,7 @@ function OptimizePageContent() {
           // Save to Supabase if user is authenticated
           if (user) {
             try {
-              const savedProductId = await saveProductToSupabase(productRecord, user.id, primaryQuery);
+              const savedProductId = await saveProductToSupabase(productRecord, user.id, generatedQueriesPayload);
               console.log('Product saved to Supabase successfully with ID:', savedProductId);
               
               // Update analysis_history with product_id

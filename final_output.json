@@ -1,36 +1,32 @@
 {
   "product": {
-    "product_name": "Rest up patches",
-    "description": "Rest up patches are designed to promote deep, restful sleep and stress relief using a blend of clinically proven, science-backed ingredients. Applied transdermally, they deliver Melatonin, Valerian Root, and Magnesium directly into the bloodstream for a natural and rejuvenating sleep experience.",
-    "general_product_type": "Sleep Aid",
-    "specific_product_type": "Transdermal Sleep Patch",
+    "product_name": "D up transdermal patches",
+    "description": "D Up transdermal patches deliver scientifically and clinically proven ingredients including Vitamin D3, Vitamin K2, Calcium, and Magnesium. These essential nutrients are formulated to support overall health, enhance immunity, strengthen bones, boost energy levels, uplift mood, and reduce nutrient deficiencies.",
+    "general_product_type": "Health Supplement",
+    "specific_product_type": "Transdermal Patch",
     "specifications": {
-      "delivery_method": "Transdermal Patch"
+      "key_nutrients": "Vitamin D3, Vitamin K2, Calcium, Magnesium"
     },
     "features": [
       {
-        "name": "Clinically Proven Ingredients",
-        "description": "Contains science-backed ingredients for effective results."
+        "name": "Transdermal Delivery",
+        "description": "Delivers key nutrients directly through the skin for efficient absorption."
       },
       {
-        "name": "Natural Ingredients",
-        "description": "Utilizes Melatonin, Valerian Root, and Magnesium for sleep and stress relief."
+        "name": "Scientifically Proven Ingredients",
+        "description": "Formulated with ingredients that have been scientifically and clinically verified for efficacy."
       },
       {
-        "name": "Direct Bloodstream Delivery",
-        "description": "Transdermal patch technology ensures direct absorption into the bloodstream."
+        "name": "Comprehensive Health Support",
+        "description": "Supports immunity, bone strength, energy levels, and mood enhancement."
       },
       {
-        "name": "Promotes Deep Sleep",
-        "description": "Aims to achieve a deep and rejuvenating sleeping experience."
-      },
-      {
-        "name": "Stress Relief",
-        "description": "Ingredients are formulated to help relieve stress."
+        "name": "Reduces Deficiencies",
+        "description": "Helps to mitigate common nutrient deficiencies."
       }
     ],
-    "targeted_market": "Individuals struggling with sleep difficulties, stress, and those seeking natural sleep aids. This could include adults of all ages looking for a convenient and effective way to improve their sleep quality and manage stress without oral supplements.",
-    "problem_product_is_solving": "The product addresses issues of poor sleep quality, insomnia, and stress. It offers a solution for individuals who have trouble falling asleep, staying asleep, or experiencing non-restorative sleep. It also aims to alleviate stress which can often contribute to sleep problems. The transdermal delivery method may also appeal to those who prefer not to ingest supplements."
+    "targeted_market": "Individuals seeking a convenient and effective way to supplement their intake of Vitamin D3, Vitamin K2, Calcium, and Magnesium. This includes people concerned about bone health, immune function, energy levels, and mood regulation, especially those who may have difficulty with oral supplements or want to ensure consistent nutrient delivery.",
+    "problem_product_is_solving": "This product addresses issues related to nutrient deficiencies, particularly in Vitamin D3, K2, Calcium, and Magnesium. It aims to solve problems associated with poor immunity, weak bones, low energy levels, and low mood. The transdermal delivery system also offers a solution for individuals who have trouble swallowing pills or prefer a patch format for ease of use and potentially better absorption."
   },
   "extraction_method": "product-json-endpoint",
   "missing_fields": []

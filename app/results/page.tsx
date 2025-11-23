@@ -63,6 +63,23 @@ export default function ResultsPage() {
   const textPrimary = "#F2F5FA";
   const textSecondary = "#A2A7B4";
 
+  let perplexityQueryText: string | null = null;
+  try {
+    const raw = (useProductStore.getState().generatedQuery ?? null) as string | null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { perplexityQuery?: string[]; googleQuery?: string[] };
+        perplexityQueryText = parsed.perplexityQuery && parsed.perplexityQuery.length > 0
+          ? parsed.perplexityQuery[0]
+          : raw;
+      } catch {
+        perplexityQueryText = raw;
+      }
+    }
+  } catch {
+    perplexityQueryText = null;
+  }
+
   const normalizeAnalysisText = (value: unknown): string => {
     if (typeof value === "string") return value;
     if (value == null) return "";
@@ -408,6 +425,11 @@ export default function ResultsPage() {
               <Typography level="body-sm" sx={{ color: textSecondary, textTransform: "uppercase", letterSpacing: "0.12em" }}>
                 Perplexity Search Analysis
               </Typography>
+              {perplexityQueryText && (
+                <Typography level="body-xs" sx={{ color: textSecondary, mt: 0.5 }}>
+                  Search query used: “{perplexityQueryText}”
+                </Typography>
+              )}
             </Box>
             <AnalysisDisplay
               analysis={optimizationAnalysis}

@@ -45,6 +45,23 @@ export default function GoogleResultsPage() {
   const textPrimary = "#F2F5FA";
   const textSecondary = "#A2A7B4";
 
+  let googleQueryText: string | null = null;
+  try {
+    const raw = (useProductStore.getState().generatedQuery ?? null) as string | null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { perplexityQuery?: string[]; googleQuery?: string[] };
+        googleQueryText = parsed.googleQuery && parsed.googleQuery.length > 0
+          ? parsed.googleQuery[0]
+          : raw;
+      } catch {
+        googleQueryText = raw;
+      }
+    }
+  } catch {
+    googleQueryText = null;
+  }
+
   const normalizeAnalysisText = (value: unknown): string => {
     if (typeof value === "string") return value;
     if (value == null) return "";
@@ -258,6 +275,11 @@ export default function GoogleResultsPage() {
               <Typography level="body-sm" sx={{ color: textSecondary, textTransform: "uppercase", letterSpacing: "0.12em" }}>
                 Google AI Overview Analysis
               </Typography>
+              {googleQueryText && (
+                <Typography level="body-xs" sx={{ color: textSecondary, mt: 0.5 }}>
+                  Search query used: “{googleQueryText}”
+                </Typography>
+              )}
             </Box>
             <AnalysisDisplay
               analysis={googleOverviewAnalysis}
