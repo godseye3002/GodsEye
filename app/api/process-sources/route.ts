@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { addTokens } from "@/lib/token-usage";
-import type { PipelineId } from "@/lib/pipelines";
 import { getFaviconsForUrls } from "@/lib/favicon-fetcher";
+import type { PipelineId } from "@/lib/pipelines";
+import { addTokens } from "@/lib/token-usage";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { NextRequest, NextResponse } from 'next/server';
 
 export interface SourceLink {
   text: string;
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     const genAI = new GoogleGenerativeAI(API_KEY);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash-lite",
       generationConfig: {
         temperature: 0.3,
         topP: 0.95,

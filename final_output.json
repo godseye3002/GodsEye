@@ -1,25 +1,27 @@
 {
   "product": {
-    "product_name": "Virtual Barber Shop",
-    "description": "Virtual Barber Shop is an application that allows users to virtually try on different hairstyles to see which one suits them best before committing to a real haircut.",
-    "general_product_type": "Software",
-    "specific_product_type": "Virtual Try-On Application",
-    "specifications": {},
+    "product_name": "Linkrunner",
+    "description": "Linkrunner is an AI-driven Mobile Measurement Partner (MMP) designed to track and analyze top-performing distribution channels, providing insights down to the click, download, and onboarding stages.",
+    "general_product_type": "Marketing Technology",
+    "specific_product_type": "Mobile Attribution Platform",
+    "specifications": {
+      "funding_round": "pre-seed",
+      "funding_amount": "$560k",
+      "technology": "AI-driven"
+    },
     "features": [
       {
-        "name": "Hairstyle Preview",
-        "description": "Enables users to visualize various hairstyles on themselves."
+        "name": "Channel Performance Tracking",
+        "description": "Tracks the performance of distribution channels down to granular levels like clicks, downloads, and onboarding."
       },
       {
-        "name": "Suitability Assessment",
-        "description": "Helps users determine which hairstyles are most flattering."
+        "name": "AI-Driven Analytics",
+        "description": "Utilizes artificial intelligence to provide insights and analytics for mobile marketing."
       }
     ],
-    "targeted_market": "Individuals considering a new haircut or hairstyle, particularly those who are unsure about how a new style will look on them.",
-    "problem_product_is_solving": "The uncertainty and potential regret associated with choosing a new hairstyle, saving users time and money by allowing them to make informed decisions before visiting a barber or stylist."
+    "targeted_market": "Mobile app developers, marketers, and businesses looking to optimize their user acquisition strategies and understand the ROI of their marketing channels. Given the search query context, this product is aimed at companies seeking effective mobile attribution solutions.",
+    "problem_product_is_solving": "The product addresses the challenge of understanding which marketing channels are most effective for acquiring and retaining mobile users. It solves the problem of opaque attribution by providing granular tracking and AI-driven insights, enabling businesses to make data-backed decisions for their user acquisition efforts and avoid wasting marketing spend on underperforming channels."
   },
   "extraction_method": "selectors-fallback",
-  "missing_fields": [
-    "specifications"
-  ]
+  "missing_fields": []
 }

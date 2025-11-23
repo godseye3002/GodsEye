@@ -11,6 +11,12 @@ const formatDateStamp = () => {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
 };
 
+const formatSourceSlug = (sourceLabel: string) =>
+  sourceLabel
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "") || "analysis";
+
 const safeText = (value: unknown): string => {
   if (Array.isArray(value)) {
     return value.join(", ");
@@ -52,12 +58,16 @@ const createBullet = (text: string) =>
     bullet: { level: 0 },
   });
 
-export const exportAnalysisToDocx = async (analysis: OptimizationAnalysis) => {
+export const exportAnalysisToDocx = async (
+  analysis: OptimizationAnalysis,
+  sourceLabel = "Perplexity Search Analysis"
+) => {
   const doc = new Document({
     sections: [
       {
         children: [
           createHeading("GodsEye AI Search Optimization Report", HeadingLevel.TITLE),
+          createHeading(sourceLabel, HeadingLevel.HEADING_1),
           createHeading("Executive Summary", HeadingLevel.HEADING_1),
           createLabelValue("Title", safeText(analysis.executive_summary.title)),
           createLabelValue("Status Overview", safeText(analysis.executive_summary.status_overview)),
@@ -125,10 +135,13 @@ export const exportAnalysisToDocx = async (analysis: OptimizationAnalysis) => {
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `godseye_ai_report_${formatDateStamp()}.docx`);
+  saveAs(blob, `godseye_ai_report_${formatSourceSlug(sourceLabel)}_${formatDateStamp()}.docx`);
 };
 
-export const exportAnalysisToPdf = (analysis: OptimizationAnalysis) => {
+export const exportAnalysisToPdf = (
+  analysis: OptimizationAnalysis,
+  sourceLabel = "Perplexity Search Analysis"
+) => {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const marginX = 40;
   const lineHeight = 18;
@@ -199,6 +212,7 @@ export const exportAnalysisToPdf = (analysis: OptimizationAnalysis) => {
   };
 
   addHeading("GodsEye AI Search Optimization Report", 22, 20);
+  addHeading(sourceLabel, 16, 12);
 
   addHeading("Executive Summary", 16, 6);
   addText("Title", safeText(analysis.executive_summary.title));
@@ -256,5 +270,5 @@ export const exportAnalysisToPdf = (analysis: OptimizationAnalysis) => {
     addText("Action", safeText(item.action));
   });
 
-  doc.save(`godseye_ai_report_${formatDateStamp()}.pdf`);
+  doc.save(`godseye_ai_report_${formatSourceSlug(sourceLabel)}_${formatDateStamp()}.pdf`);
 };

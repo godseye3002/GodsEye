@@ -48,7 +48,12 @@ export interface ProcessedSource {
 
 export interface OptimizedProduct extends OptimizedProductSummary {
   formData: ProductFormData;
+  // Primary analysis (Perplexity) used for optimization_analysis
   analysis?: OptimizationAnalysis | null;
+  // Google AI Overview analysis, stored separately
+  googleOverviewAnalysis?: OptimizationAnalysis | null;
+  // Optional combined view when both Perplexity and Google analyses exist
+  combinedAnalysis?: any | null;
   sourceLinks?: SourceLink[];
   processedSources?: ProcessedSource[];
 }

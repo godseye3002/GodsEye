@@ -28,6 +28,7 @@ import { useCallback, useEffect, useState, type KeyboardEvent, type MouseEvent }
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/auth-context";
 import { DEFAULT_PIPELINE } from "@/lib/pipelines";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import axios from 'axios';
 import { useRouter } from "next/navigation";
@@ -44,12 +45,17 @@ import {
 // Function to call the Perplexity scraper API
 async function callPerplexityScraper(query: string, location: string = 'India') {
   try {
-    // const response = await axios.post('http://127.0.0.1:8000/scrape', {
+    // const response = await axios.post('http://127.0.0.1:8001/scrape', {
     //   query,
     //   location,
     //   keep_open: false,
     // });
-    const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
+    // const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
+    //   query,
+    //   location,
+    //   keep_open: false,
+    // });
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
       query,
       location,
       keep_open: false,
@@ -102,6 +108,66 @@ async function callPerplexityScraper(query: string, location: string = 'India') 
   }
 }
 
+async function callGoogleOverviewScraper(query: string, location: string = 'India') {
+  try {
+    // const response = await axios.post('http://127.0.0.1:8000/scrape', {
+    //   query,
+    //   location,
+    //   max_retries: 3,
+    // });
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
+      query,
+      location,
+      max_retries: 3,
+    });
+    console.log('Google AI Overview scraper response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    let status: number | undefined;
+    let humanMessage = 'We were unable to reach the Google AI Overview scraping service. Please try again in a moment.';
+    let technicalDetails: unknown = error;
+
+    if (axios.isAxiosError(error)) {
+      status = error.response?.status;
+      technicalDetails = error.response?.data ?? error.message;
+
+      const responseData = error.response?.data;
+      if (responseData && typeof responseData === 'object' && 'error' in responseData) {
+        const apiMessage = (responseData as { error?: string }).error;
+        if (apiMessage && apiMessage.trim().length > 0) {
+          humanMessage = apiMessage;
+        }
+      } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
+        humanMessage = responseData.trim();
+      } else if (status === 404) {
+        humanMessage = 'Google AI Overview scraper endpoint was not found. Ensure the scraper service is running.';
+      } else if (status === 429) {
+        humanMessage = 'The Google AI Overview scraping service is receiving too many requests. Please wait a bit before retrying.';
+      } else if (status === 500) {
+        humanMessage = 'The Google AI Overview scraping service encountered an internal error. Please try again shortly.';
+      }
+    } else if (error instanceof Error) {
+      humanMessage = error.message;
+    }
+
+    const logPayload: Record<string, unknown> = {
+      status,
+      message: humanMessage,
+    };
+
+    if (!(technicalDetails && typeof technicalDetails === 'object' && Object.keys(technicalDetails as Record<string, unknown>).length === 0)) {
+      logPayload.details = technicalDetails;
+    }
+
+    console.error('Google AI Overview scraper error:', logPayload);
+
+    const scraperError = new Error(humanMessage);
+    scraperError.name = 'GoogleAIScraperError';
+    (scraperError as any).status = status;
+    throw scraperError;
+  }
+}
+
 const analyzingDotPulse = keyframes`
   0%, 80%, 100% { transform: scale(0.65); opacity: 0.35; }
   40% { transform: scale(1); opacity: 1; }
@@ -141,7 +207,6 @@ function OptimizePageContent() {
     setIsAnalyzing,
     addProduct,
     saveProductToSupabase,
-    saveCurrentFormToSupabase,
     setUserInfo,
     setUserCredits,
     adjustUserCredits,
@@ -151,13 +216,17 @@ function OptimizePageContent() {
     setSourceLinks,
     sourceLinks,
     processedSources,
+    googleOverviewAnalysis,
+    setGoogleOverviewAnalysis,
+    selectedPipeline,
+    setSelectedPipeline,
   } = useProductStore();
 
   const [isClient, setIsClient] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("India");
   const [openModal, setOpenModal] = useState<string | null>(null);
   const [newAttribute, setNewAttribute] = useState("");
-  const [activeSection, setActiveSection] = useState<"product" | "analysis">("product");
+  const [activeSection, setActiveSection] = useState<"product" | "perplexity" | "google">("product");
   const [specKeyEdits, setSpecKeyEdits] = useState<Record<string, string>>({});
   const [specKeyEditing, setSpecKeyEditing] = useState<Record<string, boolean>>({});
 
@@ -245,7 +314,8 @@ function OptimizePageContent() {
   }, [user, setUserCredits]);
 
   const createProductRecord = (
-    analysisData: OptimizationAnalysis | null
+    perplexityAnalysis: OptimizationAnalysis | null,
+    googleAnalysis: OptimizationAnalysis | null
   ): OptimizedProduct => {
     const id =
       typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -253,9 +323,14 @@ function OptimizePageContent() {
         : Math.random().toString(36).slice(2);
 
     const formCopy = JSON.parse(JSON.stringify(formData)) as ProductFormData;
-    const analysisCopy = analysisData
-      ? (JSON.parse(JSON.stringify(analysisData)) as OptimizationAnalysis)
-      : null;
+    const perplexityCopy =
+      perplexityAnalysis && typeof perplexityAnalysis === "object"
+        ? (JSON.parse(JSON.stringify(perplexityAnalysis)) as OptimizationAnalysis)
+        : null;
+    const googleCopy =
+      googleAnalysis && typeof googleAnalysis === "object"
+        ? (JSON.parse(JSON.stringify(googleAnalysis)) as OptimizationAnalysis)
+        : null;
 
     return {
       id,
@@ -263,7 +338,15 @@ function OptimizePageContent() {
       description: formData.description?.trim() || "No description provided.",
       createdAt: new Date().toISOString(),
       formData: formCopy,
-      analysis: analysisCopy,
+      // Primary analysis field used for optimization_analysis: Perplexity only
+      analysis: perplexityCopy,
+      // Separate Google AI Overview analysis for dedicated storage and UI
+      googleOverviewAnalysis: googleCopy,
+      // Optional combined view when both analyses exist
+      combinedAnalysis:
+        perplexityCopy && googleCopy
+          ? { perplexity: perplexityCopy, google: googleCopy }
+          : null,
       sourceLinks: sourceLinks || [],
       processedSources: processedSources || [],
     };
@@ -296,6 +379,12 @@ function OptimizePageContent() {
     "Netherlands",
     "Serbia",
     "Kenya",
+  ];
+
+  const ANALYSIS_PIPELINE_OPTIONS: { label: string; value: "perplexity" | "google_overview" | "all" }[] = [
+    { label: "Perplexity Only", value: "perplexity" },
+    { label: "Google AI Overview Only", value: "google_overview" },
+    { label: "All", value: "all" },
   ];
 
   const modalBackdropSx = {
@@ -383,6 +472,40 @@ function OptimizePageContent() {
       }
 
       return updatedFormData;
+    });
+  };
+
+  const handleRemoveSpecification = (field: string) => {
+    setFormData(prev => {
+      const updatedSpecifications = { ...prev.specifications };
+      delete updatedSpecifications[field];
+
+      const updatedFormData: ProductFormData = {
+        ...prev,
+        specifications: updatedSpecifications,
+      };
+
+      if (field === 'general_product_type') {
+        updatedFormData.general_product_type = '';
+      }
+
+      if (field === 'specific_product_type') {
+        updatedFormData.specific_product_type = '';
+      }
+
+      return updatedFormData;
+    });
+
+    setSpecKeyEdits((prev) => {
+      if (!prev[field]) return prev;
+      const { [field]: _removed, ...rest } = prev;
+      return rest;
+    });
+
+    setSpecKeyEditing((prev) => {
+      if (!prev[field]) return prev;
+      const { [field]: _removed, ...rest } = prev;
+      return rest;
     });
   };
 
@@ -873,7 +996,11 @@ function OptimizePageContent() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...productContext, analysisId, pipeline: DEFAULT_PIPELINE }),
+        body: JSON.stringify({
+          ...productContext,
+          analysisId,
+          pipeline: selectedPipeline === 'all' ? 'perplexity' : selectedPipeline,
+        }),
       });
       
       if (!response.ok) {
@@ -1013,13 +1140,14 @@ function OptimizePageContent() {
     }
     
     // Check credits availability before starting (without deducting)
+    const requiredCredits = selectedPipeline === 'all' ? 2 : 1;
     try {
       const creditCheckResponse = await fetch('/api/analyze/check-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
-          creditsRequired: 1,
+          creditsRequired: requiredCredits,
         }),
       });
 
@@ -1063,15 +1191,34 @@ function OptimizePageContent() {
         console.log("Generated query for optimization:", query);
         setGeneratedQuery(query);
         
-        // Part 2.1: Call Perplexity scraper API
+        // Part 2.1: Call the selected scraper APIs
         setIsAnalyzing(true);
         setAnalysisError(null);
         
         try {
-          const scraperResponse = await callPerplexityScraper(query, selectedLocation);
+          const runPerplexity = selectedPipeline === 'perplexity' || selectedPipeline === 'all';
+          const runGoogle = selectedPipeline === 'google_overview' || selectedPipeline === 'all';
+
+          let perplexityScraperResponse: any | null = null;
+          let googleScraperResponse: any | null = null;
+
+          if (runPerplexity && runGoogle) {
+            const [perplexityResult, googleResult] = await Promise.all([
+              callPerplexityScraper(query, selectedLocation),
+              callGoogleOverviewScraper(query, selectedLocation),
+            ]);
+            perplexityScraperResponse = perplexityResult;
+            googleScraperResponse = googleResult;
+          } else if (runPerplexity) {
+            perplexityScraperResponse = await callPerplexityScraper(query, selectedLocation);
+          } else if (runGoogle) {
+            googleScraperResponse = await callGoogleOverviewScraper(query, selectedLocation);
+          }
+
+          const scraperResponse = perplexityScraperResponse || googleScraperResponse;
           console.log("Scraper response:", scraperResponse);
           
-          // Store raw source links from scraper
+          // Store raw source links from primary scraper (Perplexity preferred)
           if (scraperResponse.source_links && Array.isArray(scraperResponse.source_links)) {
             setSourceLinks(scraperResponse.source_links);
             console.log(`[Source Links] Stored ${scraperResponse.source_links.length} raw source links`);
@@ -1082,7 +1229,7 @@ function OptimizePageContent() {
             throw new Error('Invalid scraper response format');
           }
           
-          // Check if scraper returned success: false
+          // Check if primary scraper returned success: false
           if (scraperResponse.success === false) {
             console.error('Scraper returned success: false', scraperResponse);
             setServerError(
@@ -1095,35 +1242,75 @@ function OptimizePageContent() {
             return;
           }
           
-          // Part 2.2: Run strategic analysis AND process sources in parallel
-          const [analysisResponse, sourcesResponse] = await Promise.all([
-            fetch('/api/strategic-analysis', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                aiSearchJson: scraperResponse,
-                clientProductJson: aiReadyData,
-                analysisId,
-                pipeline: DEFAULT_PIPELINE,
-              }),
-            }),
-            fetch('/api/process-sources', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                sourceLinks: scraperResponse.source_links || [],
-                analysisId,
-                pipeline: DEFAULT_PIPELINE,
-              }),
-            }),
-          ]);
-          
-          // Process sources result
-          if (sourcesResponse.ok) {
+          // Part 2.2: Run strategic analysis for selected engines (and sources for Perplexity)
+          const analysisPromises: Promise<Response | null>[] = [];
+
+          let perplexityAnalysisIndex: number | null = null;
+          let googleAnalysisIndex: number | null = null;
+          let sourcesIndex: number | null = null;
+
+          if (runPerplexity && perplexityScraperResponse) {
+            perplexityAnalysisIndex = analysisPromises.length;
+            analysisPromises.push(
+              fetch('/api/strategic-analysis', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  aiSearchJson: perplexityScraperResponse,
+                  clientProductJson: aiReadyData,
+                  analysisId,
+                  pipeline: 'perplexity',
+                }),
+              })
+            );
+
+            sourcesIndex = analysisPromises.length;
+            analysisPromises.push(
+              fetch('/api/process-sources', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  sourceLinks: perplexityScraperResponse.source_links || [],
+                  analysisId,
+                  pipeline: 'perplexity',
+                }),
+              })
+            );
+          }
+
+          if (runGoogle && googleScraperResponse) {
+            googleAnalysisIndex = analysisPromises.length;
+            analysisPromises.push(
+              fetch('/api/strategic-analysis', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  aiSearchJson: googleScraperResponse,
+                  clientProductJson: aiReadyData,
+                  analysisId,
+                  pipeline: 'google_overview',
+                }),
+              })
+            );
+          }
+
+          const results = await Promise.all(analysisPromises);
+
+          const getResponse = (index: number | null): Response | null =>
+            index !== null ? (results[index] as Response) : null;
+
+          const perplexityAnalysisResponse = getResponse(perplexityAnalysisIndex);
+          const sourcesResponse = getResponse(sourcesIndex);
+          const googleAnalysisResponse = getResponse(googleAnalysisIndex);
+
+          // Process sources result (Perplexity only for now)
+          if (sourcesResponse && sourcesResponse.ok) {
             try {
               const sourcesData = await sourcesResponse.json();
               if (sourcesData.success && sourcesData.sources) {
@@ -1134,36 +1321,58 @@ function OptimizePageContent() {
               console.error('[Process Sources] Failed to parse response:', sourcesError);
               // Don't fail the entire flow if source processing fails
             }
-          } else {
+          } else if (sourcesResponse) {
             console.error('[Process Sources] API call failed:', sourcesResponse.status);
             // Don't fail the entire flow if source processing fails
           }
-          
-          if (!analysisResponse.ok) {
-            const analysisError = await analysisResponse.json();
-            
-            // Provide user-friendly error messages
-            const userMessage = analysisError.error || 'Failed to perform strategic analysis';
-            
-            console.error('Strategic analysis failed:', {
-              status: analysisResponse.status,
-              error: analysisError,
-              technicalDetails: analysisError.technicalDetails,
-              rawPreview: analysisError.rawResponsePreview
-            });
-            
-            throw new Error(userMessage);
+
+          let primaryAnalysis: OptimizationAnalysis | null = null;
+          let perplexityAnalysis: OptimizationAnalysis | null = null;
+          let googleAnalysis: OptimizationAnalysis | null = null;
+
+          if (perplexityAnalysisResponse) {
+            if (!perplexityAnalysisResponse.ok) {
+              const analysisError = await perplexityAnalysisResponse.json();
+              const userMessage = analysisError.error || 'Failed to perform strategic analysis';
+              console.error('Perplexity strategic analysis failed:', analysisError);
+              throw new Error(userMessage);
+            }
+            const perplexityData = await perplexityAnalysisResponse.json();
+            if (!perplexityData || typeof perplexityData !== 'object') {
+              throw new Error('Received invalid Perplexity analysis data from server');
+            }
+            console.log('Perplexity strategic analysis completed:', perplexityData);
+            setOptimizationAnalysis(perplexityData);
+            perplexityAnalysis = perplexityData as OptimizationAnalysis;
+            primaryAnalysis = perplexityAnalysis;
           }
-          
-          const strategicAnalysis = await analysisResponse.json();
-          
-          // Validate analysis structure before proceeding
-          if (!strategicAnalysis || typeof strategicAnalysis !== 'object') {
-            throw new Error('Received invalid analysis data from server');
+
+          if (googleAnalysisResponse) {
+            try {
+              if (googleAnalysisResponse.ok) {
+                const googleData = await googleAnalysisResponse.json();
+                console.log('Google AI Overview strategic analysis completed:', googleData);
+                setGoogleOverviewAnalysis(googleData);
+                googleAnalysis = googleData as OptimizationAnalysis;
+                if (!primaryAnalysis) {
+                  primaryAnalysis = googleAnalysis;
+                }
+              } else {
+                const googleError = await googleAnalysisResponse.json().catch(() => null);
+                console.error('Google AI Overview strategic analysis failed:', {
+                  status: googleAnalysisResponse.status,
+                  error: googleError,
+                });
+              }
+            } catch (googleAnalysisParseError) {
+              console.error('Failed to handle Google AI Overview strategic analysis response:', googleAnalysisParseError);
+            }
           }
-          
-          console.log("Strategic analysis completed:", strategicAnalysis);
-          
+
+          if (!primaryAnalysis) {
+            throw new Error('No successful analysis results were produced');
+          }
+
           // Deduct credits only after successful analysis
           try {
             const creditResponse = await fetch('/api/analyze', {
@@ -1171,7 +1380,7 @@ function OptimizePageContent() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 userId: user.id,
-                creditsRequired: 1,
+                creditsRequired: requiredCredits,
               }),
             });
 
@@ -1182,16 +1391,15 @@ function OptimizePageContent() {
               // Don't block the user from seeing results, just log the error
             } else {
               console.log('Credit deducted successfully after analysis completion');
-              adjustUserCredits(-1);
+              adjustUserCredits(-requiredCredits);
             }
           } catch (creditError) {
             console.error('Credit deduction error after analysis:', creditError);
             // Don't block the user from seeing results
           }
           
-          // Update the optimization analysis state with the real results
-          setOptimizationAnalysis(strategicAnalysis);
-          const productRecord = createProductRecord(strategicAnalysis);
+          // Persist the analysis result as a product, keeping Perplexity and Google separate
+          const productRecord = createProductRecord(perplexityAnalysis, googleAnalysis);
           addProduct(productRecord);
           
           // Save to Supabase if user is authenticated
@@ -1222,7 +1430,9 @@ function OptimizePageContent() {
             }
           }
           
-          router.push("/results");
+          // Route based on which engines ran: Perplexity (including "all") goes to /results; Google-only goes to /results/google
+          const ranPerplexity = selectedPipeline === 'perplexity' || selectedPipeline === 'all';
+          router.push(ranPerplexity ? "/results" : "/results/google");
           
         } catch (error: any) {
           console.error('Analysis error:', error);
@@ -1302,6 +1512,7 @@ function OptimizePageContent() {
           </Typography>
         </Box>
         <Button
+          type="button"
           variant="outlined"
           color="neutral"
           size="sm"
@@ -1341,6 +1552,7 @@ function OptimizePageContent() {
           </Typography>
           <Stack spacing={1.5}>
             <Button
+              type="button"
               variant={activeSection === "product" ? "solid" : "outlined"}
               color="neutral"
               onClick={() => setActiveSection("product")}
@@ -1362,16 +1574,17 @@ function OptimizePageContent() {
               Product Data
             </Button>
             <Button
-              variant={activeSection === "analysis" ? "solid" : "outlined"}
+              type="button"
+              variant={activeSection === "perplexity" ? "solid" : "outlined"}
               color="neutral"
               onClick={() => {
-                setActiveSection("analysis");
+                setActiveSection("perplexity");
                 router.push("/results");
               }}
               sx={{
-                backgroundColor: activeSection === "analysis" ? accentColor : "transparent",
-                color: activeSection === "analysis" ? "#0D0F14" : textPrimary,
-                borderColor: activeSection === "analysis" ? "rgba(46, 212, 122, 0.45)" : borderColor,
+                backgroundColor: activeSection === "perplexity" ? accentColor : "transparent",
+                color: activeSection === "perplexity" ? "#0D0F14" : textPrimary,
+                borderColor: activeSection === "perplexity" ? "rgba(46, 212, 122, 0.45)" : borderColor,
                 fontWeight: 600,
                 minWidth: '220px',
                 textAlign: 'center',
@@ -1380,8 +1593,8 @@ function OptimizePageContent() {
                 transition: "all 0.2s ease",
                 borderRadius: "999px",
                 "&:hover": {
-                  backgroundColor: activeSection === "analysis" ? "#26B869" : accentSoft,
-                  color: activeSection === "analysis" ? "#0D0F14" : textPrimary,
+                  backgroundColor: activeSection === "perplexity" ? "#26B869" : accentSoft,
+                  color: activeSection === "perplexity" ? "#0D0F14" : textPrimary,
                   borderColor: "rgba(46, 212, 122, 0.45)",
                   boxShadow: "0 6px 20px rgba(46, 212, 122, 0.18)",
                 },
@@ -1389,32 +1602,38 @@ function OptimizePageContent() {
             >
               Perplexity Search Analysis
             </Button>
-            {/* Coming Soon buttons */}
+            <Button
+              type="button"
+              variant={activeSection === "google" ? "solid" : "outlined"}
+              color="neutral"
+              onClick={() => {
+                setActiveSection("google");
+                router.push("/results/google");
+              }}
+              sx={{
+                backgroundColor: activeSection === "google" ? accentColor : "transparent",
+                color: activeSection === "google" ? "#0D0F14" : textPrimary,
+                borderColor: activeSection === "google" ? "rgba(46, 212, 122, 0.45)" : borderColor,
+                fontWeight: 600,
+                minWidth: '220px',
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+                px: 3,
+                borderRadius: '999px',
+                "&:hover": {
+                  backgroundColor: activeSection === "google" ? "#26B869" : accentSoft,
+                  color: activeSection === "google" ? "#0D0F14" : textPrimary,
+                  borderColor: "rgba(46, 212, 122, 0.45)",
+                  boxShadow: "0 6px 20px rgba(46, 212, 122, 0.18)",
+                },
+              }}
+            >
+              Google Overview Analysis
+            </Button>
             <Tooltip title="Coming Soon" placement="top" arrow>
               <span>
                 <Button
-                  variant="outlined"
-                  color="neutral"
-                  disabled
-                  sx={{
-                    backgroundColor: "transparent",
-                    color: textSecondary,
-                    borderColor: borderColor,
-                    fontWeight: 600,
-                    minWidth: '220px',
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                    px: 3,
-                    borderRadius: '999px',
-                  }}
-                >
-                  Google Overview Analysis
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip title="Coming Soon" placement="top" arrow>
-              <span>
-                <Button
+                  type="button"
                   variant="outlined"
                   color="neutral"
                   disabled
@@ -1437,6 +1656,7 @@ function OptimizePageContent() {
             <Tooltip title="Coming Soon" placement="top" arrow>
               <span>
                 <Button
+                  type="button"
                   variant="outlined"
                   color="neutral"
                   disabled
@@ -1475,7 +1695,8 @@ function OptimizePageContent() {
               Optimize Your Product for AI Search Engines
             </Typography>
             {pendingMissingFields.length > 0 && (
-              <Button
+          <Button
+            type="button"
                 size="sm"
                 variant="outlined"
                 onClick={handleShowWarning}
@@ -1541,7 +1762,7 @@ function OptimizePageContent() {
                   onChange={(_, v) => v && setSelectedLocation(v)}
                   size="md"
                   sx={{
-                    minWidth: { xs: "100%", md: 200 },
+                    minWidth: { xs: "100%", md: 140 },
                     minHeight: 44,
                     background: "linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(79, 70, 229, 0.01))",
                     border: "1px solid rgba(216, 180, 254, 0.08)",
@@ -1554,6 +1775,27 @@ function OptimizePageContent() {
                 >
                   {LOCATION_OPTIONS.map((loc) => (
                     <Option key={loc} value={loc}>{loc}</Option>
+                  ))}
+                </Select>
+                <Select
+                  aria-label="Analysis Engine"
+                  value={selectedPipeline}
+                  onChange={(_, v) => v && setSelectedPipeline(v)}
+                  size="md"
+                  sx={{
+                    minWidth: { xs: "100%", md: 160 },
+                    minHeight: 44,
+                    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(79, 70, 229, 0.01))",
+                    border: "1px solid rgba(216, 180, 254, 0.08)",
+                    borderRadius: "12px",
+                    color: textPrimary,
+                    '&:hover': {
+                      borderColor: 'rgba(216, 180, 254, 0.15)'
+                    },
+                  }}
+                >
+                  {ANALYSIS_PIPELINE_OPTIONS.map((opt) => (
+                    <Option key={opt.value} value={opt.value}>{opt.label}</Option>
                   ))}
                 </Select>
                 <Button
@@ -2034,6 +2276,7 @@ function OptimizePageContent() {
                   </List>
                 ) : null}
                 <Button
+                  type="button"
                   onClick={handleDismissWarning}
                   sx={{
                     backgroundColor: accentColor,
@@ -2089,6 +2332,7 @@ function OptimizePageContent() {
                 <Box sx={{ flex: 1 }} />
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
+                    type="button"
                     variant="outlined"
                     onClick={closeEditModal}
                     sx={{
@@ -2102,7 +2346,8 @@ function OptimizePageContent() {
                     Cancel
                   </Button>
                   <Button
-                    onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                    type="button"
+                    onClick={closeEditModal}
                     sx={{
                       backgroundColor: accentColor,
                       color: "#0D0F14",
@@ -2158,6 +2403,7 @@ function OptimizePageContent() {
                 <Box sx={{ flex: 1 }} />
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
+                    type="button"
                     variant="outlined"
                     onClick={closeEditModal}
                     sx={{
@@ -2171,7 +2417,8 @@ function OptimizePageContent() {
                     Cancel
                   </Button>
                   <Button
-                    onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                    type="button"
+                    onClick={closeEditModal}
                     sx={{
                       backgroundColor: accentColor,
                       color: "#0D0F14",
@@ -2261,21 +2508,38 @@ function OptimizePageContent() {
                               <Typography level="title-sm" sx={{ color: textPrimary, fontWeight: 600, textTransform: "capitalize" }}>
                                 {displayKey}
                               </Typography>
-                              <Tooltip title="Edit name" placement="top" variant="soft">
-                                <IconButton
-                                  size="sm"
-                                  variant="soft"
-                                  color="primary"
-                                  onClick={() => startSpecKeyEditing(key)}
-                                  sx={{
-                                    backgroundColor: "rgba(46, 212, 122, 0.16)",
-                                    border: "1px solid rgba(46, 212, 122, 0.28)",
-                                    color: accentColor,
-                                  }}
-                                >
-                                  <EditOutlinedIcon sx={{ fontSize: 18 }} />
-                                </IconButton>
-                              </Tooltip>
+                              <Stack direction="row" spacing={0.75}>
+                                <Tooltip title="Edit name" placement="top" variant="soft">
+                                  <IconButton
+                                    size="sm"
+                                    variant="soft"
+                                    color="primary"
+                                    onClick={() => startSpecKeyEditing(key)}
+                                    sx={{
+                                      backgroundColor: "rgba(46, 212, 122, 0.16)",
+                                      border: "1px solid rgba(46, 212, 122, 0.28)",
+                                      color: accentColor,
+                                    }}
+                                  >
+                                    <EditOutlinedIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Remove field" placement="top" variant="soft">
+                                  <IconButton
+                                    size="sm"
+                                    variant="soft"
+                                    color="danger"
+                                    onClick={() => handleRemoveSpecification(key)}
+                                    sx={{
+                                      backgroundColor: "rgba(243, 91, 100, 0.16)",
+                                      border: "1px solid rgba(243, 91, 100, 0.28)",
+                                      color: "#F35B64",
+                                    }}
+                                  >
+                                    <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
                             </Box>
                           )}
                           <Input
@@ -2307,6 +2571,7 @@ function OptimizePageContent() {
                         sx={{ mr: 1, mb: 1 }}
                         endDecorator={
                           <Button
+                            type="button"
                             size="sm"
                             variant="plain"
                             onClick={() => removeAttribute(index)}
@@ -2369,6 +2634,7 @@ function OptimizePageContent() {
                 <Box>
                   {hasSpecificationMissing && (
                     <Button
+                      type="button"
                       variant="outlined"
                       color="danger"
                       onClick={() => {
@@ -2394,6 +2660,7 @@ function OptimizePageContent() {
                 <Box sx={{ flex: 1 }} />
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
+                    type="button"
                     variant="outlined"
                     onClick={closeEditModal}
                     sx={{
@@ -2407,7 +2674,8 @@ function OptimizePageContent() {
                     Cancel
                   </Button>
                   <Button
-                    onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                    type="button"
+                    onClick={closeEditModal}
                     sx={{
                       backgroundColor: accentColor,
                       color: "#0D0F14",
@@ -2473,7 +2741,7 @@ function OptimizePageContent() {
                         }}
                       />
                       <Stack direction="row" spacing={2} justifyContent="flex-end">
-                        <Button variant="outlined" color="danger" onClick={() => removeFeature(index)}>
+                        <Button type="button" variant="outlined" color="danger" onClick={() => removeFeature(index)}>
                           Remove Feature
                         </Button>
                       </Stack>
@@ -2494,6 +2762,7 @@ function OptimizePageContent() {
                 <Box>
                   {hasFeaturesMissing && (
                     <Button
+                      type="button"
                       variant="outlined"
                       color="danger"
                       onClick={() => {
@@ -2520,6 +2789,7 @@ function OptimizePageContent() {
                 <Box sx={{ flex: 1 }} />
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button
+                    type="button"
                     variant="outlined"
                     onClick={closeEditModal}
                     sx={{
@@ -2533,7 +2803,8 @@ function OptimizePageContent() {
                     Cancel
                   </Button>
                   <Button
-                    onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                    type="button"
+                    onClick={closeEditModal}
                     sx={{
                       backgroundColor: accentColor,
                       color: "#0D0F14",
@@ -2623,6 +2894,7 @@ function OptimizePageContent() {
               </Box>
               <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", mt: 2 }}>
                 <Button
+                  type="button"
                   variant="outlined"
                   onClick={closeEditModal}
                   sx={{
@@ -2636,7 +2908,8 @@ function OptimizePageContent() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                  type="button"
+                  onClick={closeEditModal}
                   sx={{
                     backgroundColor: accentColor,
                     color: "#0D0F14",
@@ -2689,6 +2962,7 @@ function OptimizePageContent() {
               </Box>
               <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end", mt: 2 }}>
                 <Button
+                  type="button"
                   variant="outlined"
                   onClick={closeEditModal}
                   sx={{
@@ -2702,7 +2976,8 @@ function OptimizePageContent() {
                   Cancel
                 </Button>
                 <Button
-                  onClick={async () => { if (user) { try { await saveCurrentFormToSupabase(user.id); } catch (_) {} } closeEditModal(); }}
+                  type="button"
+                  onClick={closeEditModal}
                   sx={{
                     backgroundColor: accentColor,
                     color: "#0D0F14",
@@ -2769,6 +3044,7 @@ function OptimizePageContent() {
               </Typography>
               <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
                 <Button
+                  type="button"
                   variant="outlined"
                   onClick={() => setServerError(null)}
                   sx={{
@@ -2783,6 +3059,7 @@ function OptimizePageContent() {
                   Close
                 </Button>
                 <Button
+                  type="button"
                   onClick={() => {
                     setServerError(null);
                     router.push("/");

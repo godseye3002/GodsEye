@@ -63,44 +63,10 @@ export async function POST(request: NextRequest) {
 
     // const prompt = `
     //   Act as a world-class Marketing Strategist, a 'Marketing Genius' who masterfully simplifies complex market data into a structured, machine-readable format.
-
-    //   You will be given two JSON objects:
-
-    //   [AI_SEARCH_JSON]: The output from an AI search engine. This data represents the AI's summarized understanding of a topic or its proposed solution to a problem.
-
-    //   [CLIENT_PRODUCT_JSON]: The detailed description, features, and specifications for our client's product.
-
-    //   Your mission is to perform a strategic gap analysis. Assuming our client's product is NOT featured in the [AI_SEARCH_JSON], you will use both data sets to explain why.
-
-    //   Your entire output must be a single, clean JSON object. Use the following keys for your analysis:
-
-    //   "ai_engine_priorities": Analyze the structure and content of [AI_SEARCH_JSON]. What does this AI engine value most when creating its summary? Deduce its core priorities (e.g., does it prioritize clinical data, a diversity of solutions, natural ingredients, user warnings, or scientific terminology?). Explain this like you're briefing an engineer on the AI's ranking algorithm.
-
-    //   "the_ais_narrative": What is the dominant story or narrative that the AI engine is telling about this problem space? What kind of solution does it seem to be promoting or describing? Describe the narrative in detail.
-
-    //   "the_winning_formula": Based on your analysis, what is the "winning formula" that this AI engine appears to reward? If you wanted to create content or a product that would be featured prominently in this AI's summary, what specific elements, structure, or approach would you need to include?
-
-    //   "compitators": List the compitators to the client's product and why the AI search chose them over the client's product if the clients product is not mentioned and if it is mentioned then explain why the AI search chose the client's product over the compitators and explain what will make the client's product better than the compitators (how to stand out). 
-
-    //   "the_gap_analysis": This is the core of your analysis. Directly compare [CLIENT_PRODUCT_JSON] against the "winning formula" you just identified. Where does the client's product align with the AI's priorities, and where does it fall short? Be specific and detailed about the gaps.
-
-    //   "strategic_analogy": Create a powerful, memorable analogy that summarizes the strategic situation. For example: "It's like bringing a knife to a gunfight" or "It's like showing up to a potluck with a gourmet meal when everyone else brought chips." The analogy should instantly clarify the strategic positioning.
-
-    //   Here is the [AI_SEARCH_JSON]:
-    //   ---
-    //   ${JSON.stringify(aiSearchJson, null, 2)}
-    //   ---
-
-    //   Here is the [CLIENT_PRODUCT_JSON]:
-    //   ---
-    //   ${JSON.stringify(clientProductJson, null, 2)}
-    //   ---
-
-    //   Remember: Your entire output must be a single, valid JSON object with exactly the five keys specified above. Do not include any markdown formatting, explanations, or additional text.
-    //   Note: Write in second person (‘you’, ‘your’), not third person (‘the client’).
+    //   ... (legacy prompt omitted for brevity)
     // `;
 
-    const prompt = `Act as a world-class AEO (Answer Engine Optimization) Strategist and Competitive Analyst who analyzes the response of Perplexity AI (The AI Search Engine). Your expertise is in deconstructing AI-generated search responses to provide clients with a decisive competitive advantage.
+    const basePrompt = `Act as a world-class AEO (Answer Engine Optimization) Strategist and Competitive Analyst who analyzes the response of Perplexity AI (The AI Search Engine). Your expertise is in deconstructing AI-generated search responses to provide clients with a decisive competitive advantage.
 
             You will be provided with two JSON objects:
 
@@ -189,11 +155,19 @@ export async function POST(request: NextRequest) {
                             "action": "Ensure the exact phrases and claims rewarded by the AI (e.g., 'reduces breakage', 'clinically proven', 'sulphate-free') are present and prominent in your product descriptions and marketing copy."
                           },
                           {
-                            "recommendation": "Third-Party Validation Strategy",
-                            "action": "Develop a strategy to get your product listed or reviewed on the types of authoritative domains the AI is citing (e.g., health blogs, online pharmacies, respected e-commerce sites). This builds the external trust the AI is looking for."
+                          "recommendation": "Third-Party Validation Strategy",
+                          "action": "Develop a strategy to get your product listed or reviewed on the types of authoritative domains the AI is citing (e.g., health blogs, online pharmacies, respected e-commerce sites). This builds the external trust the AI is looking for."
                           }
                       ]
-                }`
+                }`;
+
+    const prompt =
+      pipeline === 'google_overview'
+        ? basePrompt.replace(
+            'Perplexity AI (The AI Search Engine)',
+            'Google AI Overview (The AI Search Engine)'
+          )
+        : basePrompt;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;

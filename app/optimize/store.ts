@@ -1,11 +1,11 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import {
-  ProductFormData,
+  createEmptyProductFormData,
   OptimizationAnalysis,
   OptimizedProduct,
-  createEmptyProductFormData,
   ProcessedSource,
+  ProductFormData,
 } from "./types";
 
 export type FormUpdater =
@@ -28,6 +28,7 @@ interface ProductStoreState {
   generatedQuery: string | null;
   queryGenerationError: string | null;
   optimizationAnalysis: OptimizationAnalysis | null;
+  googleOverviewAnalysis: OptimizationAnalysis | null;
   analysisError: string | null;
   scrapingError: string | null;
   serverError: string | null;
@@ -40,6 +41,7 @@ interface ProductStoreState {
   processedSources: ProcessedSource[];
   sourceLinks: any[];
   currentProductId: string | null;
+  selectedPipeline: "perplexity" | "google_overview" | "all";
   setFormData: (updater: FormUpdater) => void;
   setOriginalScrapedData: (data: ProductFormData | null) => void;
   setMissingFields: (fields: string[]) => void;
@@ -49,6 +51,7 @@ interface ProductStoreState {
   setGeneratedQuery: (query: string | null) => void;
   setQueryGenerationError: (error: string | null) => void;
   setOptimizationAnalysis: (analysis: OptimizationAnalysis | null) => void;
+  setGoogleOverviewAnalysis: (analysis: OptimizationAnalysis | null) => void;
   setAnalysisError: (error: string | null) => void;
   setScrapingError: (error: string | null) => void;
   setServerError: (error: string | null) => void;
@@ -63,13 +66,13 @@ interface ProductStoreState {
   saveProductToSupabase: (product: OptimizedProduct, userId: string, generatedQuery?: string | null) => Promise<string | null>;
   deleteProductFromSupabase: (productId: string, userId: string) => Promise<void>;
   updateProductInSupabase: (productId: string, userId: string) => Promise<void>;
-  saveCurrentFormToSupabase: (userId: string) => Promise<string>;
   setUserInfo: (info: UserInfoState | null) => void;
   setUserCredits: (credits: number | null) => void;
   adjustUserCredits: (delta: number) => void;
   setProcessedSources: (sources: ProcessedSource[]) => void;
   setSourceLinks: (links: any[]) => void;
   setCurrentProductId: (id: string | null) => void;
+  setSelectedPipeline: (pipeline: "perplexity" | "google_overview" | "all") => void;
 }
 
 export const useProductStore = create<ProductStoreState>()(
@@ -84,6 +87,7 @@ export const useProductStore = create<ProductStoreState>()(
       generatedQuery: null,
       queryGenerationError: null,
       optimizationAnalysis: null,
+      googleOverviewAnalysis: null,
       analysisError: null,
       scrapingError: null,
       serverError: null,
@@ -96,6 +100,7 @@ export const useProductStore = create<ProductStoreState>()(
       processedSources: [],
       sourceLinks: [],
       currentProductId: null,
+      selectedPipeline: "all",
       setFormData: (updater) =>
         set((state) => ({
           formData:
@@ -117,6 +122,7 @@ export const useProductStore = create<ProductStoreState>()(
       setGeneratedQuery: (query) => set({ generatedQuery: query }),
       setQueryGenerationError: (error) => set({ queryGenerationError: error }),
       setOptimizationAnalysis: (analysis) => set({ optimizationAnalysis: analysis }),
+      setGoogleOverviewAnalysis: (analysis) => set({ googleOverviewAnalysis: analysis }),
       setAnalysisError: (error) => set({ analysisError: error }),
       setScrapingError: (error) => set({ scrapingError: error }),
       setServerError: (error) => set({ serverError: error }),
@@ -135,6 +141,7 @@ export const useProductStore = create<ProductStoreState>()(
             ...state,
             formData: product.formData,
             optimizationAnalysis: product.analysis ?? state.optimizationAnalysis,
+            googleOverviewAnalysis: product.googleOverviewAnalysis ?? state.googleOverviewAnalysis,
           };
         }),
       deleteProduct: (productId) =>
@@ -151,6 +158,7 @@ export const useProductStore = create<ProductStoreState>()(
           generatedQuery: null,
           queryGenerationError: null,
           optimizationAnalysis: null,
+          googleOverviewAnalysis: null,
           analysisError: null,
           scrapingError: null,
           serverError: null,
@@ -189,6 +197,8 @@ export const useProductStore = create<ProductStoreState>()(
                 specific_product_type: specificType,
               },
               analysis: p.optimization_analysis || null,
+              googleOverviewAnalysis: p.google_overview_analysis || null,
+              combinedAnalysis: p.combined_analysis || null,
               sourceLinks: p.source_links || [],
               processedSources: p.processed_sources || [],
             };
@@ -222,6 +232,11 @@ export const useProductStore = create<ProductStoreState>()(
               specific_product_type: specificType,
               generated_query: generatedQuery || null,
               optimization_analysis: product.analysis || null,
+              google_overview_analysis: product.googleOverviewAnalysis || null,
+              combined_analysis:
+                product.analysis && product.googleOverviewAnalysis
+                  ? { perplexity: product.analysis, google: product.googleOverviewAnalysis }
+                  : product.combinedAnalysis || null,
               source_links: product.sourceLinks || [],
               processed_sources: product.processedSources || [],
             }),
@@ -256,7 +271,7 @@ export const useProductStore = create<ProductStoreState>()(
           const generalType = state.formData.general_product_type || specs.general_product_type || '';
           const specificType = state.formData.specific_product_type || specs.specific_product_type || '';
 
-        const response = await fetch('/api/products', {
+          const response = await fetch('/api/products', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -273,12 +288,38 @@ export const useProductStore = create<ProductStoreState>()(
               specific_product_type: specificType,
               generated_query: state.generatedQuery || null,
               optimization_analysis: state.optimizationAnalysis || null,
+              google_overview_analysis: state.googleOverviewAnalysis || null,
+              combined_analysis:
+                state.optimizationAnalysis && state.googleOverviewAnalysis
+                  ? { perplexity: state.optimizationAnalysis, google: state.googleOverviewAnalysis }
+                  : null,
               source_links: state.sourceLinks || [],
               processed_sources: state.processedSources || [],
             }),
           });
 
-          if (!response.ok) throw new Error('Failed to update product');
+          if (!response.ok) {
+            let errorBody: any = null;
+            try {
+              errorBody = await response.json();
+            } catch {
+              // ignore JSON parsing errors
+            }
+
+            if (response.status === 404) {
+              // Signal to callers that the product no longer exists in Supabase
+              const notFoundError = new Error('PRODUCT_NOT_FOUND');
+              (notFoundError as any).status = 404;
+              (notFoundError as any).details = errorBody;
+              throw notFoundError;
+            }
+
+            const updateError = new Error('Failed to update product');
+            (updateError as any).status = response.status;
+            (updateError as any).details = errorBody;
+            throw updateError;
+          }
+
           const { product: updated } = await response.json();
 
           set((state) => ({
@@ -300,6 +341,8 @@ export const useProductStore = create<ProductStoreState>()(
                   specific_product_type: updated.specific_product_type || (updated.specifications?.specific_product_type ?? ''),
                 },
                 analysis: updated.optimization_analysis || null,
+                googleOverviewAnalysis: updated.google_overview_analysis || null,
+                combinedAnalysis: updated.combined_analysis || null,
                 sourceLinks: updated.source_links || [],
                 processedSources: updated.processed_sources || [],
               },
@@ -311,68 +354,6 @@ export const useProductStore = create<ProductStoreState>()(
           console.error('Error updating product in Supabase:', error);
           throw error;
         }
-      },
-      saveCurrentFormToSupabase: async (userId: string) => {
-        const state = get();
-        const specs = state.formData.specifications || {};
-        const generalType = state.formData.general_product_type || specs.general_product_type || '';
-        const specificType = state.formData.specific_product_type || specs.specific_product_type || '';
-
-        // If we already have a persisted product, perform update
-        if (state.currentProductId) {
-          await get().updateProductInSupabase(state.currentProductId, userId);
-          return state.currentProductId;
-        }
-
-        // Else create a new product
-        const tempProduct: OptimizedProduct = {
-          id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2),
-          name: state.formData.product_name || 'Untitled Product',
-          description: state.formData.description || 'No description',
-          createdAt: new Date().toISOString(),
-          formData: state.formData,
-          analysis: state.optimizationAnalysis || null,
-          sourceLinks: state.sourceLinks || [],
-          processedSources: state.processedSources || [],
-        };
-
-        const response = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: userId,
-            product_name: tempProduct.formData.product_name || 'Untitled Product',
-            product_url: tempProduct.formData.url || '',
-            description: tempProduct.formData.description || '',
-            specifications: specs,
-            features: tempProduct.formData.features || [],
-            targeted_market: tempProduct.formData.targeted_market || '',
-            problem_product_is_solving: tempProduct.formData.problem_product_is_solving || '',
-            general_product_type: generalType,
-            specific_product_type: specificType,
-            generated_query: state.generatedQuery || null,
-            optimization_analysis: tempProduct.analysis || null,
-            source_links: tempProduct.sourceLinks || [],
-            processed_sources: tempProduct.processedSources || [],
-          }),
-        });
-
-        if (!response.ok) throw new Error('Failed to save product');
-        const { product: saved } = await response.json();
-
-        set((state) => ({
-          products: [
-            {
-              ...tempProduct,
-              id: saved.id,
-              createdAt: saved.created_at,
-            },
-            ...state.products.filter((p) => p.id !== saved.id),
-          ].slice(0, 10),
-          currentProductId: saved.id,
-        }));
-
-        return saved.id;
       },
       deleteProductFromSupabase: async (productId: string, userId: string) => {
         try {
@@ -402,6 +383,7 @@ export const useProductStore = create<ProductStoreState>()(
       setProcessedSources: (sources) => set({ processedSources: sources }),
       setSourceLinks: (links) => set({ sourceLinks: links }),
       setCurrentProductId: (id) => set({ currentProductId: id }),
+      setSelectedPipeline: (pipeline) => set({ selectedPipeline: pipeline }),
     }),
     {
       name: "godseye-product-store",
@@ -412,15 +394,15 @@ export const useProductStore = create<ProductStoreState>()(
         products: state.products,
         userInfo: state.userInfo,
         userCredits: state.userCredits,
-        processedSources: state.processedSources,
-        sourceLinks: state.sourceLinks,
         formData: state.formData,
         originalScrapedData: state.originalScrapedData,
         optimizationAnalysis: state.optimizationAnalysis,
+        googleOverviewAnalysis: state.googleOverviewAnalysis,
         generatedQuery: state.generatedQuery,
         currentProductId: state.currentProductId,
         missingFields: state.missingFields,
         ignoredMissingFields: state.ignoredMissingFields,
+        selectedPipeline: state.selectedPipeline,
       }),
     }
   )

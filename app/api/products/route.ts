@@ -73,6 +73,8 @@ export async function POST(request: Request) {
         specific_product_type: productData.specific_product_type,
         generated_query: productData.generated_query,
         optimization_analysis: productData.optimization_analysis,
+        google_overview_analysis: productData.google_overview_analysis,
+        combined_analysis: productData.combined_analysis,
         source_links: productData.source_links || [],
         processed_sources: productData.processed_sources || [],
       })
@@ -151,6 +153,8 @@ export async function PUT(request: Request) {
         specific_product_type: updates.specific_product_type,
         generated_query: updates.generated_query,
         optimization_analysis: updates.optimization_analysis,
+        google_overview_analysis: updates.google_overview_analysis,
+        combined_analysis: updates.combined_analysis,
         source_links: updates.source_links ?? [],
         processed_sources: updates.processed_sources ?? [],
       })

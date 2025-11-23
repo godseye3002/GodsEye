@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Box, Button, Tooltip, Typography } from "@mui/joy";
 import { useRouter } from "next/navigation";
-import { Box, Typography, Button, Tooltip } from "@mui/joy";
+import { useEffect, useMemo, useState } from "react";
 import { useProductStore } from "../optimize/store";
 
 export default function VisibilityLandingPage() {
   const router = useRouter();
-  const { processedSources, products } = useProductStore();
+  const { processedSources } = useProductStore();
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => setHydrated(true), []);
@@ -15,10 +15,9 @@ export default function VisibilityLandingPage() {
   // Prefer explicit store slice; if empty (e.g., after reload), fall back to most recent product
   const visibleSources = useMemo(() => {
     if (!hydrated) return [] as any[];
-    if (processedSources && processedSources.length > 0) return processedSources;
-    const latest = products && products.length > 0 ? products[0] : null;
-    return (latest?.processedSources as any[]) || [];
-  }, [hydrated, processedSources, products]);
+    if (!Array.isArray(processedSources)) return [];
+    return processedSources;
+  }, [hydrated, processedSources]);
 
   // Debug logging (dev only)
   useEffect(() => {

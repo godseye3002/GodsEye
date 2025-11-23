@@ -41,7 +41,7 @@ export default function ResultsPage() {
   const handleExportDocx = async () => {
     if (!optimizationAnalysis) return;
     try {
-      await exportAnalysisToDocx(optimizationAnalysis);
+      await exportAnalysisToDocx(optimizationAnalysis, "Perplexity Search Analysis");
     } catch (error) {
       console.error("Failed to export DOCX", error);
     }
@@ -50,7 +50,7 @@ export default function ResultsPage() {
   const handleExportPdf = () => {
     if (!optimizationAnalysis) return;
     try {
-      exportAnalysisToPdf(optimizationAnalysis);
+      exportAnalysisToPdf(optimizationAnalysis, "Perplexity Search Analysis");
     } catch (error) {
       console.error("Failed to export PDF", error);
     }
@@ -403,6 +403,11 @@ export default function ResultsPage() {
                   Export as PDF
                 </Button>
               </Stack>
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <Typography level="body-sm" sx={{ color: textSecondary, textTransform: "uppercase", letterSpacing: "0.12em" }}>
+                Perplexity Search Analysis
+              </Typography>
             </Box>
             <AnalysisDisplay
               analysis={optimizationAnalysis}
