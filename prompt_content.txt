@@ -11,11 +11,9 @@ The JSON should include the following keys:
 - "targeted_market": An inferred analysis of the ideal customer for this product.
 - "problem_product_is_solving": An inferred analysis of the key problems or pain points this product addresses for its target market.
 
-Additional Context: This product was discovered using the search query "best mobile attribution platforms". Use this context to better understand the product's positioning and target market.
-
 Here is the text content:
 ---
-Linkrunner raises $560k pre-seed to build an AI-driven MMP!
+Rest up by Patch up
 
-Track your top-performing distribution channels down to every click, download and onboard
+Rest up patches offer clinically proven, science-backed ingredients for deep, restful sleep and stress relief. Combining Melatonin, Valerian Root, and Magnesium, these transdermal patches deliver natural ingredients directly into the bloodstream, to help you achieve a deep and rejuvenating sleeping experience.
 ---

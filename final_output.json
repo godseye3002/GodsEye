@@ -1,27 +1,37 @@
 {
   "product": {
-    "product_name": "Linkrunner",
-    "description": "Linkrunner is an AI-driven Mobile Measurement Partner (MMP) designed to track and analyze top-performing distribution channels, providing insights down to the click, download, and onboarding stages.",
-    "general_product_type": "Marketing Technology",
-    "specific_product_type": "Mobile Attribution Platform",
+    "product_name": "Rest up patches",
+    "description": "Rest up patches are designed to promote deep, restful sleep and stress relief using a blend of clinically proven, science-backed ingredients. Applied transdermally, they deliver Melatonin, Valerian Root, and Magnesium directly into the bloodstream for a natural and rejuvenating sleep experience.",
+    "general_product_type": "Sleep Aid",
+    "specific_product_type": "Transdermal Sleep Patch",
     "specifications": {
-      "funding_round": "pre-seed",
-      "funding_amount": "$560k",
-      "technology": "AI-driven"
+      "delivery_method": "Transdermal Patch"
     },
     "features": [
       {
-        "name": "Channel Performance Tracking",
-        "description": "Tracks the performance of distribution channels down to granular levels like clicks, downloads, and onboarding."
+        "name": "Clinically Proven Ingredients",
+        "description": "Contains science-backed ingredients for effective results."
       },
       {
-        "name": "AI-Driven Analytics",
-        "description": "Utilizes artificial intelligence to provide insights and analytics for mobile marketing."
+        "name": "Natural Ingredients",
+        "description": "Utilizes Melatonin, Valerian Root, and Magnesium for sleep and stress relief."
+      },
+      {
+        "name": "Direct Bloodstream Delivery",
+        "description": "Transdermal patch technology ensures direct absorption into the bloodstream."
+      },
+      {
+        "name": "Promotes Deep Sleep",
+        "description": "Aims to achieve a deep and rejuvenating sleeping experience."
+      },
+      {
+        "name": "Stress Relief",
+        "description": "Ingredients are formulated to help relieve stress."
       }
     ],
-    "targeted_market": "Mobile app developers, marketers, and businesses looking to optimize their user acquisition strategies and understand the ROI of their marketing channels. Given the search query context, this product is aimed at companies seeking effective mobile attribution solutions.",
-    "problem_product_is_solving": "The product addresses the challenge of understanding which marketing channels are most effective for acquiring and retaining mobile users. It solves the problem of opaque attribution by providing granular tracking and AI-driven insights, enabling businesses to make data-backed decisions for their user acquisition efforts and avoid wasting marketing spend on underperforming channels."
+    "targeted_market": "Individuals struggling with sleep difficulties, stress, and those seeking natural sleep aids. This could include adults of all ages looking for a convenient and effective way to improve their sleep quality and manage stress without oral supplements.",
+    "problem_product_is_solving": "The product addresses issues of poor sleep quality, insomnia, and stress. It offers a solution for individuals who have trouble falling asleep, staying asleep, or experiencing non-restorative sleep. It also aims to alleviate stress which can often contribute to sleep problems. The transdermal delivery method may also appeal to those who prefer not to ingest supplements."
   },
-  "extraction_method": "selectors-fallback",
+  "extraction_method": "product-json-endpoint",
   "missing_fields": []
 }

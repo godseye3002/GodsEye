@@ -27,7 +27,6 @@ import { useCallback, useEffect, useState, type KeyboardEvent, type MouseEvent }
 // API route handles query generation now
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/auth-context";
-import { DEFAULT_PIPELINE } from "@/lib/pipelines";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import axios from 'axios';
@@ -973,6 +972,48 @@ function OptimizePageContent() {
     }
   };
   
+  // Helper function to generate a query for a specific pipeline
+  const generateQueryForPipeline = async (
+    data: ProductFormData,
+    pipeline: 'perplexity' | 'google_overview',
+    analysisId?: string
+  ): Promise<string | null> => {
+    const productContext: ProductContext = {
+      general_product_type: data.general_product_type || data.specifications.general_product_type || "",
+      specific_product_type: data.specific_product_type || data.specifications.specific_product_type || "",
+      targeted_market: data.targeted_market || "",
+      problem_product_is_solving: data.problem_product_is_solving || ""
+    };
+    
+    console.log(`Generating ${pipeline} search query with context:`, productContext);
+    
+    const response = await fetch('/api/generate-queries', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...productContext,
+        analysisId,
+        pipeline,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Failed to generate ${pipeline} search queries`);
+    }
+    
+    const result = await response.json();
+    
+    if (result && result.topQuery) {
+      console.log(`Generated ${pipeline} top query:`, result.topQuery);
+      return result.topQuery;
+    }
+    
+    return null;
+  };
+
   const generateQueryFromData = async (data: ProductFormData, analysisId?: string) => {
     setIsGeneratingQuery(true);
     setQueryGenerationError(null);
@@ -991,102 +1032,54 @@ function OptimizePageContent() {
       
       console.log("Generating search queries with context:", productContext);
       
-      const response = await fetch('/api/generate-queries', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...productContext,
-          analysisId,
-          pipeline: selectedPipeline === 'all' ? 'perplexity' : selectedPipeline,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate search queries');
-      }
-      
-      const result = await response.json();
-      
-      if (result && result.topQuery) {
-        setGeneratedQuery(result.topQuery);
-        console.log("Generated top query:", result.topQuery);
-        console.log("All generated queries:", result.queries);
+      // When "all" is selected, generate separate queries for each pipeline
+      if (selectedPipeline === 'all') {
+        const [perplexityQuery, googleQuery] = await Promise.all([
+          generateQueryForPipeline(data, 'perplexity', analysisId),
+          generateQueryForPipeline(data, 'google_overview', analysisId),
+        ]);
         
-        // Part 2: Send the generated query to the server API for scraping
-        console.log("Starting Part 2: Scraping with generated query...");
-        
-        try {
-          // Call the scraping API with the generated query
-          const scrapeResponse = await fetch('/api/scrape', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-              url: data.url, // Use the original URL for scraping
-              searchQuery: result.topQuery, // Pass the generated query for context
-              location: selectedLocation,
-              analysisId,
-              pipeline: DEFAULT_PIPELINE,
-            }),
-          });
+        // Use Perplexity query as the primary (for display/state)
+        const primaryQuery = perplexityQuery || googleQuery;
+        if (primaryQuery) {
+          setGeneratedQuery(primaryQuery);
+          console.log("Generated queries for both pipelines - Perplexity:", perplexityQuery, "Google:", googleQuery);
           
-          if (!scrapeResponse.ok) {
-            const scrapeError = await scrapeResponse.json();
-            console.error('Scraping failed:', scrapeError.error);
-            // Don't throw here - we still want to return the generated query
-          } else {
-            const scrapeResult = await scrapeResponse.json();
-            console.log('Scraping successful:', scrapeResult);
-            
-            // Update the form data with the scraped information (merge specs safely)
-            if (scrapeResult.success && scrapeResult.data) {
-              setFormData(prevData => {
-                const incoming = scrapeResult.data as any;
-                const incomingSpecs = (incoming.specifications && typeof incoming.specifications === 'object') ? incoming.specifications : {};
-                const hasIncomingSpecs = Object.keys(incomingSpecs).length > 0;
-
-                const mergedSpecs = hasIncomingSpecs
-                  ? {
-                      ...incomingSpecs,
-                      general_product_type: incoming.general_product_type || prevData.general_product_type || '',
-                      specific_product_type: incoming.specific_product_type || prevData.specific_product_type || '',
-                    }
-                  : prevData.specifications;
-
-                const enhancedData = {
-                  ...prevData,
-                  ...incoming,
-                  specifications: mergedSpecs,
-                  // Keep the original URL
-                  url: prevData.url,
-                } as ProductFormData;
-
-                // Store the original scraped data for reset functionality
-                setOriginalScrapedData(enhancedData);
-
-                const missing = Array.isArray(scrapeResult.missingFields) ? scrapeResult.missingFields : [];
-                const filteredMissing = Array.isArray(missing) ? missing : [];
-                setMissingFields(filteredMissing);
-                // Don't set warning directly here - let the useEffect handle it based on pendingMissingFields
-                // This ensures ignored fields are properly accounted for
-                setLastExtractionMethod(scrapeResult.extractionMethod ?? null);
-
-                return enhancedData;
-              });
-            }
-          }
-        } catch (scrapeError) {
-          console.error('Error during scraping phase:', scrapeError);
-          // Don't throw here - we still want to return the generated query
+          // Return both queries for use in scraping
+          return { perplexityQuery, googleQuery };
+        }
+        throw new Error('Failed to generate queries for both pipelines');
+      } else {
+        // Single pipeline - generate one query
+        const response = await fetch('/api/generate-queries', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...productContext,
+            analysisId,
+            pipeline: selectedPipeline,
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to generate search queries');
         }
         
-        return result.topQuery;
-      } else {
-        throw new Error('Failed to generate search queries');
+        const result = await response.json();
+        
+        if (result && result.topQuery) {
+          setGeneratedQuery(result.topQuery);
+          console.log("Generated top query:", result.topQuery);
+          console.log("All generated queries:", result.queries);
+          
+          // Return single query for single pipeline
+          return result.topQuery;
+        } else {
+          throw new Error('Failed to generate search queries');
+        }
       }
     } catch (error) {
       console.error('Query generation error:', error);
@@ -1185,35 +1178,66 @@ function OptimizePageContent() {
     setServerError(null);
     
     try {
-      const query = await generateQueryFromData(aiReadyData, analysisId);
+      const queryResult = await generateQueryFromData(aiReadyData, analysisId);
       
-      if (query) {
-        console.log("Generated query for optimization:", query);
-        setGeneratedQuery(query);
-        
-        // Part 2.1: Call the selected scraper APIs
-        setIsAnalyzing(true);
-        setAnalysisError(null);
-        
-        try {
-          const runPerplexity = selectedPipeline === 'perplexity' || selectedPipeline === 'all';
-          const runGoogle = selectedPipeline === 'google_overview' || selectedPipeline === 'all';
+      if (!queryResult) {
+        // Query generation failed - error already set by generateQueryFromData
+        setIsGeneratingQuery(false);
+        return;
+      }
+      
+      // Handle both single query (string) and dual query (object) cases
+      const isDualQuery = typeof queryResult === 'object' && 'perplexityQuery' in queryResult;
+      const perplexityQuery = isDualQuery 
+        ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).perplexityQuery
+        : (queryResult as string);
+      const googleQuery = isDualQuery
+        ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).googleQuery
+        : (queryResult as string);
+      
+      // Set the primary query for display (prefer Perplexity if available)
+      const primaryQuery = perplexityQuery || googleQuery || '';
+      if (!primaryQuery) {
+        setQueryGenerationError('Failed to generate a valid search query');
+        setIsGeneratingQuery(false);
+        return;
+      }
+      
+      console.log("Generated query for optimization:", primaryQuery);
+      setGeneratedQuery(primaryQuery);
+      
+      // Part 2.1: Call the selected scraper APIs
+      setIsAnalyzing(true);
+      setAnalysisError(null);
+      
+      try {
+        const runPerplexity = selectedPipeline === 'perplexity' || selectedPipeline === 'all';
+        const runGoogle = selectedPipeline === 'google_overview' || selectedPipeline === 'all';
 
-          let perplexityScraperResponse: any | null = null;
-          let googleScraperResponse: any | null = null;
+        let perplexityScraperResponse: any | null = null;
+        let googleScraperResponse: any | null = null;
 
-          if (runPerplexity && runGoogle) {
-            const [perplexityResult, googleResult] = await Promise.all([
-              callPerplexityScraper(query, selectedLocation),
-              callGoogleOverviewScraper(query, selectedLocation),
-            ]);
-            perplexityScraperResponse = perplexityResult;
-            googleScraperResponse = googleResult;
-          } else if (runPerplexity) {
-            perplexityScraperResponse = await callPerplexityScraper(query, selectedLocation);
-          } else if (runGoogle) {
-            googleScraperResponse = await callGoogleOverviewScraper(query, selectedLocation);
-          }
+        if (runPerplexity && runGoogle) {
+          // Use pipeline-specific queries when both are running
+          const perplexityQueryToUse = perplexityQuery || primaryQuery;
+          const googleQueryToUse = googleQuery || primaryQuery;
+          
+          console.log("Using Perplexity-optimized query:", perplexityQueryToUse);
+          console.log("Using Google-optimized query:", googleQueryToUse);
+          
+          const [perplexityResult, googleResult] = await Promise.all([
+            callPerplexityScraper(perplexityQueryToUse, selectedLocation),
+            callGoogleOverviewScraper(googleQueryToUse, selectedLocation),
+          ]);
+          perplexityScraperResponse = perplexityResult;
+          googleScraperResponse = googleResult;
+        } else if (runPerplexity) {
+          const queryToUse = perplexityQuery || primaryQuery;
+          perplexityScraperResponse = await callPerplexityScraper(queryToUse, selectedLocation);
+        } else if (runGoogle) {
+          const queryToUse = googleQuery || primaryQuery;
+          googleScraperResponse = await callGoogleOverviewScraper(queryToUse, selectedLocation);
+        }
 
           const scraperResponse = perplexityScraperResponse || googleScraperResponse;
           console.log("Scraper response:", scraperResponse);
@@ -1405,7 +1429,7 @@ function OptimizePageContent() {
           // Save to Supabase if user is authenticated
           if (user) {
             try {
-              const savedProductId = await saveProductToSupabase(productRecord, user.id, query);
+              const savedProductId = await saveProductToSupabase(productRecord, user.id, primaryQuery);
               console.log('Product saved to Supabase successfully with ID:', savedProductId);
               
               // Update analysis_history with product_id
@@ -1459,12 +1483,12 @@ function OptimizePageContent() {
         } finally {
           setIsAnalyzing(false);
         }
-      }
     } catch (error) {
-      console.error('Query generation error:', error);
-      setQueryGenerationError(error instanceof Error ? error.message : 'Failed to generate search query');
-    } finally {
+      // This catch handles any unexpected errors in handleSubmit
+      console.error('Unexpected error in handleSubmit:', error);
+      setServerError('An unexpected error occurred. Please try again.');
       setIsGeneratingQuery(false);
+      setIsAnalyzing(false);
     }
   };
 
