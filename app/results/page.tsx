@@ -22,21 +22,26 @@ export default function ResultsPage() {
     setGeneratedQuery,
     setServerError,
     products,
+    currentProductId,
   } = useProductStore();
 
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
 
-  // Fallback: if analysis missing after reload, derive from latest saved product
+  // Fallback: if we're viewing results for an existing product (identified by
+  // currentProductId) but optimizationAnalysis is missing (e.g. after reload),
+  // restore it from the matching product instead of using the latest product.
   useEffect(() => {
     if (!hydrated) return;
-    if (!optimizationAnalysis && products && products.length > 0) {
-      const latest = products[0];
-      if (latest?.analysis) {
-        setOptimizationAnalysis(latest.analysis);
-      }
+    if (optimizationAnalysis) return;
+    if (!currentProductId) return;
+    if (!products || products.length === 0) return;
+
+    const matching = products.find((p) => p.id === currentProductId);
+    if (matching?.analysis) {
+      setOptimizationAnalysis(matching.analysis);
     }
-  }, [hydrated, optimizationAnalysis, products, setOptimizationAnalysis]);
+  }, [hydrated, optimizationAnalysis, currentProductId, products, setOptimizationAnalysis]);
 
   const handleExportDocx = async () => {
     if (!optimizationAnalysis) return;
@@ -448,7 +453,27 @@ export default function ResultsPage() {
             <Typography level="body-md" sx={{ mb: 4, color: textSecondary }}>
               Please submit a product for analysis first.
             </Typography>
-            <Button onClick={() => router.push("/optimize")}>Go to Optimize</Button>
+            <Button
+              onClick={() => router.push("/optimize")}
+              sx={{
+                minWidth: 200,
+                borderRadius: "999px",
+                backgroundColor: accentColor,
+                color: "#0D0F14",
+                fontWeight: 600,
+                px: 3,
+                border: "1px solid rgba(46, 212, 122, 0.36)",
+                boxShadow: "0 10px 26px rgba(46, 212, 122, 0.25)",
+                transition: "all 0.25s ease",
+                "&:hover": {
+                  backgroundColor: "#26B869",
+                  borderColor: "rgba(46, 212, 122, 0.48)",
+                  boxShadow: "0 12px 32px rgba(46, 212, 122, 0.3)",
+                },
+              }}
+            >
+              Go to Optimize
+            </Button>
           </Box>
         )}
       </Box>

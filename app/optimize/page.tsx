@@ -217,6 +217,7 @@ function OptimizePageContent() {
     processedSources,
     googleOverviewAnalysis,
     setGoogleOverviewAnalysis,
+    currentProductId,
     selectedPipeline,
     setSelectedPipeline,
   } = useProductStore();
@@ -289,6 +290,18 @@ function OptimizePageContent() {
       setUserCredits(null);
     }
   }, [user, setUserInfo, setUserCredits]);
+
+  // When starting from a brand new product with no associated productId,
+  // make sure we don't carry over any stale analysis or generated queries
+  useEffect(() => {
+    if (!currentProductId && !isAnalyzing && !isScraping && !isGeneratingQuery) {
+      if (optimizationAnalysis || googleOverviewAnalysis || generatedQuery) {
+        setOptimizationAnalysis(null);
+        setGoogleOverviewAnalysis(null);
+        setGeneratedQuery(null);
+      }
+    }
+  }, [currentProductId, isAnalyzing, isScraping, isGeneratingQuery, optimizationAnalysis, googleOverviewAnalysis, generatedQuery, setOptimizationAnalysis, setGoogleOverviewAnalysis, setGeneratedQuery]);
 
   useEffect(() => {
     const fetchCredits = async () => {

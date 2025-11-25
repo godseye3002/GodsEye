@@ -140,8 +140,9 @@ export const useProductStore = create<ProductStoreState>()(
           return {
             ...state,
             formData: product.formData,
-            optimizationAnalysis: product.analysis ?? state.optimizationAnalysis,
-            googleOverviewAnalysis: product.googleOverviewAnalysis ?? state.googleOverviewAnalysis,
+            optimizationAnalysis: product.analysis ?? null,
+            googleOverviewAnalysis: product.googleOverviewAnalysis ?? null,
+            currentProductId: productId,
           };
         }),
       deleteProduct: (productId) =>
@@ -166,6 +167,7 @@ export const useProductStore = create<ProductStoreState>()(
           isGeneratingQuery: false,
           isAnalyzing: false,
           products: state.products,
+          currentProductId: null,
         })),
       loadProductsFromSupabase: async (userId: string) => {
         try {
