@@ -1,33 +1,31 @@
 {
   "product": {
-    "product_name": "D up transdermal patches",
-    "description": "D Up transdermal patches deliver scientifically and clinically proven ingredients including Vitamin D3, Vitamin K2, Calcium, and Magnesium. These essential nutrients are formulated to support overall health, enhance immunity, strengthen bones, boost energy levels, uplift mood, and reduce nutrient deficiencies.",
-    "general_product_type": "Health Supplement",
-    "specific_product_type": "Transdermal Patch",
+    "product_name": "Linkrunner",
+    "description": "Linkrunner is an AI-driven Mobile Measurement Partner (MMP) that allows businesses to meticulously track the performance of their distribution channels, from initial click through to download and user onboarding.",
+    "general_product_type": "Software",
+    "specific_product_type": "Mobile Measurement Partner (MMP)",
     "specifications": {
-      "key_nutrients": "Vitamin D3, Vitamin K2, Calcium, Magnesium"
+      "funding_status": "Pre-seed",
+      "funding_amount": "$560k",
+      "core_technology": "AI-driven"
     },
     "features": [
       {
-        "name": "Transdermal Delivery",
-        "description": "Delivers key nutrients directly through the skin for efficient absorption."
+        "name": "Channel Performance Tracking",
+        "description": "Enables detailed monitoring of top-performing distribution channels."
       },
       {
-        "name": "Scientifically Proven Ingredients",
-        "description": "Formulated with ingredients that have been scientifically and clinically verified for efficacy."
+        "name": "Granular Metrics",
+        "description": "Tracks performance down to every click, download, and onboarding event."
       },
       {
-        "name": "Comprehensive Health Support",
-        "description": "Supports immunity, bone strength, energy levels, and mood enhancement."
-      },
-      {
-        "name": "Reduces Deficiencies",
-        "description": "Helps to mitigate common nutrient deficiencies."
+        "name": "AI-Driven Analysis",
+        "description": "Leverages artificial intelligence for insights into channel effectiveness."
       }
     ],
-    "targeted_market": "Individuals seeking a convenient and effective way to supplement their intake of Vitamin D3, Vitamin K2, Calcium, and Magnesium. This includes people concerned about bone health, immune function, energy levels, and mood regulation, especially those who may have difficulty with oral supplements or want to ensure consistent nutrient delivery.",
-    "problem_product_is_solving": "This product addresses issues related to nutrient deficiencies, particularly in Vitamin D3, K2, Calcium, and Magnesium. It aims to solve problems associated with poor immunity, weak bones, low energy levels, and low mood. The transdermal delivery system also offers a solution for individuals who have trouble swallowing pills or prefer a patch format for ease of use and potentially better absorption."
+    "targeted_market": "Mobile app developers, marketers, and businesses focused on user acquisition and retention through various distribution channels. This includes companies looking to optimize their marketing spend and understand the true ROI of their efforts.",
+    "problem_product_is_solving": "The difficulty in precisely attributing user acquisition and engagement to specific marketing channels. It addresses the lack of granular data on user journey (from click to onboarding) and the inability to identify the most effective distribution strategies, leading to potentially wasted marketing resources."
   },
-  "extraction_method": "product-json-endpoint",
+  "extraction_method": "selectors-fallback",
   "missing_fields": []
 }

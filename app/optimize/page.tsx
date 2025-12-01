@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   Chip,
   Divider,
   FormLabel,
@@ -32,6 +33,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import axios from 'axios';
 import { useRouter } from "next/navigation";
 import { useProductStore } from "./store";
+import type { QueryData } from "./store";
 import {
   Feature,
   OptimizationAnalysis,
@@ -44,21 +46,21 @@ import {
 // Function to call the Perplexity scraper API
 async function callPerplexityScraper(query: string, location: string = 'India') {
   try {
-    // const response = await axios.post('http://127.0.0.1:8001/scrape', {
-    //   query,
-    //   location,
-    //   keep_open: false,
-    // });
+    const response = await axios.post('http://127.0.0.1:8001/scrape', {
+      query,
+      location,
+      keep_open: false,
+    });
     // const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
     //   query,
     //   location,
     //   keep_open: false,
     // });
-    const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
-      query,
-      location,
-      keep_open: false,
-    });
+    // const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
+    //   query,
+    //   location,
+    //   keep_open: false,
+    // });
     console.log('Scraper response:', response.data);
     return response.data;
   } catch (error: any) {
@@ -109,16 +111,16 @@ async function callPerplexityScraper(query: string, location: string = 'India') 
 
 async function callGoogleOverviewScraper(query: string, location: string = 'India') {
   try {
-    // const response = await axios.post('http://127.0.0.1:8000/scrape', {
-    //   query,
-    //   location,
-    //   max_retries: 3,
-    // });
-    const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
+    const response = await axios.post('http://127.0.0.1:8000/scrape', {
       query,
       location,
       max_retries: 3,
     });
+    // const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
+    //   query,
+    //   location,
+    //   max_retries: 3,
+    // });
     console.log('Google AI Overview scraper response:', response.data);
     return response.data;
   } catch (error: any) {
@@ -172,6 +174,17 @@ const analyzingDotPulse = keyframes`
   40% { transform: scale(1); opacity: 1; }
 `;
 
+const pulse = keyframes`
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+`;
+
 function OptimizePageContent() {
   const router = useRouter();
   const { user } = useAuth();
@@ -190,6 +203,23 @@ function OptimizePageContent() {
     setGeneratedQuery,
     queryGenerationError,
     setQueryGenerationError,
+    // New query array states
+    allPerplexityQueries,
+    allGoogleQueries,
+    selectedPerplexityQueries,
+    selectedGoogleQueries,
+    usedPerplexityQueries,
+    usedGoogleQueries,
+    queryData,
+    setAllPerplexityQueries,
+    setAllGoogleQueries,
+    setSelectedPerplexityQueries,
+    setSelectedGoogleQueries,
+    setUsedPerplexityQueries,
+    setUsedGoogleQueries,
+    setQueryData,
+    updateQueryDataInSupabase,
+    loadQueryDataFromSupabase,
     optimizationAnalysis,
     setOptimizationAnalysis,
     analysisError,
@@ -220,15 +250,21 @@ function OptimizePageContent() {
     currentProductId,
     selectedPipeline,
     setSelectedPipeline,
+    setCurrentProductId,
   } = useProductStore();
 
   const [isClient, setIsClient] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("India");
   const [openModal, setOpenModal] = useState<string | null>(null);
   const [newAttribute, setNewAttribute] = useState("");
-  const [activeSection, setActiveSection] = useState<"product" | "perplexity" | "google">("product");
+  const [activeSection, setActiveSection] = useState<"product" | "perplexity" | "google" | "query">("product");
   const [specKeyEdits, setSpecKeyEdits] = useState<Record<string, string>>({});
   const [specKeyEditing, setSpecKeyEditing] = useState<Record<string, boolean>>({});
+  
+  // Loading states for individual scrapers
+  const [isPerplexityScraping, setIsPerplexityScraping] = useState(false);
+  const [isGoogleScraping, setIsGoogleScraping] = useState(false);
+  const [isLoadingQueries, setIsLoadingQueries] = useState(false);
 
   const formatSpecificationKeyForDisplay = useCallback((key: string) =>
     key
@@ -990,7 +1026,7 @@ function OptimizePageContent() {
     data: ProductFormData,
     pipeline: 'perplexity' | 'google_overview',
     analysisId?: string
-  ): Promise<string | null> => {
+  ): Promise<{ queries: string[]; topQuery: string } | null> => {
     const productContext: ProductContext = {
       general_product_type: data.general_product_type || data.specifications.general_product_type || "",
       specific_product_type: data.specific_product_type || data.specifications.specific_product_type || "",
@@ -1021,7 +1057,11 @@ function OptimizePageContent() {
     
     if (result && result.topQuery) {
       console.log(`Generated ${pipeline} top query:`, result.topQuery);
-      return result.topQuery;
+      console.log(`Generated ${pipeline} all queries:`, result.queries);
+      return {
+        queries: result.queries || [result.topQuery],
+        topQuery: result.topQuery
+      };
     }
     
     return null;
@@ -1045,54 +1085,48 @@ function OptimizePageContent() {
       
       console.log("Generating search queries with context:", productContext);
       
-      // When "all" is selected, generate separate queries for each pipeline
-      if (selectedPipeline === 'all') {
-        const [perplexityQuery, googleQuery] = await Promise.all([
-          generateQueryForPipeline(data, 'perplexity', analysisId),
-          generateQueryForPipeline(data, 'google_overview', analysisId),
-        ]);
-        
+      // Always generate queries for both pipelines
+      const [perplexityResult, googleResult] = await Promise.all([
+        generateQueryForPipeline(data, 'perplexity', analysisId),
+        generateQueryForPipeline(data, 'google_overview', analysisId),
+      ]);
+      
+      // Store all queries in the new state fields
+      if (perplexityResult) {
+        setAllPerplexityQueries(perplexityResult.queries || [perplexityResult.topQuery]);
+        setSelectedPerplexityQueries([perplexityResult.topQuery]); // Default select first query
+      }
+      if (googleResult) {
+        setAllGoogleQueries(googleResult.queries || [googleResult.topQuery]);
+        setSelectedGoogleQueries([googleResult.topQuery]); // Default select first query
+      }
+      
+      if (perplexityResult && googleResult) {
         // Use Perplexity query as the primary (for display/state)
-        const primaryQuery = perplexityQuery || googleQuery;
+        const primaryQuery = perplexityResult.topQuery;
         if (primaryQuery) {
           setGeneratedQuery(primaryQuery);
-          console.log("Generated queries for both pipelines - Perplexity:", perplexityQuery, "Google:", googleQuery);
+          console.log("Generated queries for both pipelines - Perplexity:", perplexityResult.topQuery, "Google:", googleResult.topQuery);
+          
+          // Store queries in memory only - they will be saved to Supabase when product is created during analysis
+          const queryData: QueryData = {
+            all: {
+              perplexity: perplexityResult.queries || [perplexityResult.topQuery],
+              google: googleResult.queries || [googleResult.topQuery],
+            },
+            used: {
+              perplexity: [],
+              google: [],
+            },
+          };
+          setQueryData(queryData);
           
           // Return both queries for use in scraping
-          return { perplexityQuery, googleQuery };
+          return { perplexityQuery: perplexityResult.topQuery, googleQuery: googleResult.topQuery };
         }
         throw new Error('Failed to generate queries for both pipelines');
       } else {
-        // Single pipeline - generate one query
-        const response = await fetch('/api/generate-queries', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...productContext,
-            analysisId,
-            pipeline: selectedPipeline,
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to generate search queries');
-        }
-        
-        const result = await response.json();
-        
-        if (result && result.topQuery) {
-          setGeneratedQuery(result.topQuery);
-          console.log("Generated top query:", result.topQuery);
-          console.log("All generated queries:", result.queries);
-          
-          // Return single query for single pipeline
-          return result.topQuery;
-        } else {
-          throw new Error('Failed to generate search queries');
-        }
+        throw new Error('Failed to generate queries');
       }
     } catch (error) {
       console.error('Query generation error:', error);
@@ -1104,6 +1138,960 @@ function OptimizePageContent() {
       return null;
     } finally {
       setIsGeneratingQuery(false);
+    }
+  };
+  
+  const handleUseSelectedQueries = async () => {
+    // Clear any previous errors
+    setQueryGenerationError(null);
+    setServerError(null);
+    
+    // Auto-detect mode based on selected queries
+    const mode = getAnalysisMode();
+    
+    if (!mode) {
+      setQueryGenerationError('Please select at least one query to proceed with analysis.');
+      return;
+    }
+    
+    // Validate that selected queries are not empty
+    const allSelectedQueries = [...selectedPerplexityQueries, ...selectedGoogleQueries];
+    const hasValidQueries = allSelectedQueries.some(query => query && query.trim().length > 0);
+    
+    if (!hasValidQueries) {
+      setQueryGenerationError('Selected queries appear to be empty. Please try generating queries again.');
+      return;
+    }
+    
+    try {
+      // Update the main generatedQuery state with selected queries
+      const selectedQueriesData = {
+        perplexity: selectedPerplexityQueries.filter(q => q && q.trim()),
+        google: selectedGoogleQueries.filter(q => q && q.trim()),
+      };
+      setGeneratedQuery(JSON.stringify(selectedQueriesData));
+      
+      // Start analysis based on detected mode
+      if (mode === 'all') {
+        // Both selected - run both analyses sequentially
+        await startAnalysisWithBothQueries();
+      } else if (mode === 'perplexity') {
+        // Only Perplexity selected
+        await startAnalysisWithSelectedQueries('perplexity');
+      } else if (mode === 'google_overview') {
+        // Only Google selected
+        await startAnalysisWithSelectedQueries('google_overview');
+      }
+    } catch (error) {
+      console.error('Error using selected queries:', error);
+      setServerError('Failed to start analysis with selected queries. Please try again.');
+    }
+  };
+  
+  // Load and restore query data from Supabase on component mount.
+  // We intentionally do NOT trust any locally persisted query arrays; instead,
+  // Supabase is the source of truth for generated queries on reload.
+  useEffect(() => {
+    const loadQueryData = async () => {
+      if (!user || queryData) return;
+
+      setIsLoadingQueries(true);
+      try {
+        const queryDataString = await loadQueryDataFromSupabase(user.id);
+        if (queryDataString) {
+          const parsedData = parseQueryData(queryDataString);
+          if (parsedData) {
+            // Restore all query states from backend data
+            setAllPerplexityQueries(parsedData.all.perplexity);
+            setAllGoogleQueries(parsedData.all.google);
+            
+            // Default selected queries to first available query (for UI compatibility)
+            setSelectedPerplexityQueries(parsedData.all.perplexity.slice(0, 1));
+            setSelectedGoogleQueries(parsedData.all.google.slice(0, 1));
+            
+            setUsedPerplexityQueries(parsedData.used.perplexity);
+            setUsedGoogleQueries(parsedData.used.google);
+            setQueryData(parsedData);
+
+            // Also update the legacy generatedQuery field for compatibility
+            setGeneratedQuery(JSON.stringify({
+              perplexity: parsedData.all.perplexity.slice(0, 1),
+              google: parsedData.all.google.slice(0, 1),
+            }));
+          }
+        }
+        // If queryDataString is null, it means no queries exist - which is fine
+        // The UI will show "No Queries Generated Yet" naturally
+      } catch (error) {
+        // Silently handle any errors - user will see "No Queries Generated Yet"
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Query Data] Error during query loading:', error);
+        }
+      } finally {
+        setIsLoadingQueries(false);
+      }
+    };
+
+    loadQueryData();
+  }, [user, queryData, loadQueryDataFromSupabase, setAllPerplexityQueries, setAllGoogleQueries, setSelectedPerplexityQueries, setSelectedGoogleQueries, setUsedPerplexityQueries, setUsedGoogleQueries, setQueryData, setGeneratedQuery]);
+  
+  // Helper function for backwards compatibility with existing query data format
+  const parseQueryData = (generatedQuery: string | null): QueryData | null => {
+    if (!generatedQuery) return null;
+    
+    try {
+      const parsed = JSON.parse(generatedQuery);
+      
+      // Check if it's the new format (has 'all' and 'used' properties)
+      if (parsed.all && parsed.used) {
+        return parsed as QueryData;
+      }
+      
+      // Handle old format with 'selected': {"all": {...}, "selected": {...}, "used": {...}}
+      if (parsed.all && parsed.selected && parsed.used) {
+        return {
+          all: parsed.all,
+          used: parsed.used,
+        };
+      }
+      
+      // Handle legacy format: {"perplexityQuery":["query"],"googleQuery":["query"]}
+      if (parsed.perplexityQuery || parsed.googleQuery) {
+        const perplexityQueries = parsed.perplexityQuery || [];
+        const googleQueries = parsed.googleQuery || [];
+        
+        return {
+          all: {
+            perplexity: perplexityQueries,
+            google: googleQueries,
+          },
+          used: {
+            perplexity: perplexityQueries, // Assume all were used
+            google: googleQueries,
+          },
+        };
+      }
+      
+      // Handle single query format (string)
+      if (typeof parsed === 'string') {
+        return {
+          all: {
+            perplexity: [parsed],
+            google: [],
+          },
+          used: {
+            perplexity: [parsed],
+            google: [],
+          },
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error parsing query data:', error);
+      return null;
+    }
+  };
+  
+  // Auto-detect analysis mode based on selected queries
+  const getAnalysisMode = () => {
+    const hasPerplexity = selectedPerplexityQueries.length > 0;
+    const hasGoogle = selectedGoogleQueries.length > 0;
+    
+    if (hasPerplexity && hasGoogle) {
+      return 'all';
+    } else if (hasPerplexity) {
+      return 'perplexity';
+    } else if (hasGoogle) {
+      return 'google_overview';
+    } else {
+      return null;
+    }
+  };
+  
+  const getAnalysisModeDisplay = () => {
+    const mode = getAnalysisMode();
+    switch (mode) {
+      case 'all':
+        return { text: 'All Analysis', color: '#2ED47A' };
+      case 'perplexity':
+        return { text: 'Perplexity Analysis', color: '#2ED47A' };
+      case 'google_overview':
+        return { text: 'Google AI Overview Analysis', color: '#2ED47A' };
+      default:
+        return { text: 'No Analysis Mode', color: '#F35B64' };
+    }
+  };
+  const handleQuerySelection = (query: string, pipeline: 'perplexity' | 'google_overview') => {
+    if (pipeline === 'perplexity') {
+      // Toggle selection: if already selected, deselect; otherwise select
+      if (selectedPerplexityQueries.includes(query)) {
+        setSelectedPerplexityQueries([]);
+      } else {
+        setSelectedPerplexityQueries([query]);
+      }
+    } else {
+      // Toggle selection: if already selected, deselect; otherwise select
+      if (selectedGoogleQueries.includes(query)) {
+        setSelectedGoogleQueries([]);
+      } else {
+        setSelectedGoogleQueries([query]);
+      }
+    }
+  };
+  
+  // State for editing queries
+  const [editingQuery, setEditingQuery] = useState<{ pipeline: 'perplexity' | 'google_overview', index: number, value: string } | null>(null);
+  const [editedQueries, setEditedQueries] = useState<{ perplexity: string[], google: string[] }>({
+    perplexity: [],
+    google: []
+  });
+  
+  // Start editing a query
+  const handleEditQuery = (query: string, index: number, pipeline: 'perplexity' | 'google_overview') => {
+    setEditingQuery({ pipeline, index, value: query });
+  };
+  
+  // Save edited query
+  const handleSaveEditedQuery = () => {
+    if (!editingQuery) return;
+    
+    const { pipeline, index, value } = editingQuery;
+    
+    // Validation for Google queries: minimum 6 words
+    if (pipeline === 'google_overview') {
+      const wordCount = value.trim().split(/\s+/).length;
+      if (wordCount < 6) {
+        setServerError(`Google queries must have at least 6 words to effectively invoke AI Overview. Current: ${wordCount} words.`);
+        return;
+      }
+    }
+    
+    // Update the edited queries state
+    if (pipeline === 'perplexity') {
+      const newEditedPerplexity = [...editedQueries.perplexity];
+      newEditedPerplexity[index] = value;
+      setEditedQueries({ ...editedQueries, perplexity: newEditedPerplexity });
+      
+      // Update the actual queries array
+      const newAllPerplexity = [...allPerplexityQueries];
+      newAllPerplexity[index] = value;
+      setAllPerplexityQueries(newAllPerplexity);
+      
+      // Update selection if this query was selected
+      if (selectedPerplexityQueries.includes(allPerplexityQueries[index])) {
+        setSelectedPerplexityQueries([value]);
+      }
+    } else {
+      const newEditedGoogle = [...editedQueries.google];
+      newEditedGoogle[index] = value;
+      setEditedQueries({ ...editedQueries, google: newEditedGoogle });
+      
+      // Update the actual queries array
+      const newAllGoogle = [...allGoogleQueries];
+      newAllGoogle[index] = value;
+      setAllGoogleQueries(newAllGoogle);
+      
+      // Update selection if this query was selected
+      if (selectedGoogleQueries.includes(allGoogleQueries[index])) {
+        setSelectedGoogleQueries([value]);
+      }
+    }
+    
+    // Exit editing mode
+    setEditingQuery(null);
+  };
+  
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingQuery(null);
+  };
+  
+  // Handle keyboard shortcuts
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveEditedQuery();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+  
+  const startAnalysisWithSelectedQueries = async (pipeline: 'perplexity' | 'google_overview') => {
+    if (!user) {
+      setServerError('Please sign in to analyze products');
+      router.push('/auth');
+      return;
+    }
+
+    // 1) Check credits for a single analysis
+    const requiredCredits = 1;
+    try {
+      const creditCheckResponse = await fetch('/api/analyze/check-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          creditsRequired: requiredCredits,
+        }),
+      });
+
+      if (!creditCheckResponse.ok) {
+        throw new Error('Failed to check credits');
+      }
+
+      const creditCheckData = await creditCheckResponse.json();
+
+      if (!creditCheckData.hasEnoughCredits) {
+        setServerError('Insufficient credits. Please purchase more credits to continue.');
+        return;
+      }
+      if (typeof creditCheckData.currentCredits === 'number') {
+        setUserCredits(creditCheckData.currentCredits);
+      }
+    } catch (creditError) {
+      console.error('Credit check error:', creditError);
+      setServerError('Failed to verify credits. Please try again.');
+      return;
+    }
+
+    // 2) Get the selected query for this pipeline
+    const selectedQueries = pipeline === 'perplexity' ? selectedPerplexityQueries : selectedGoogleQueries;
+    const validQueries = selectedQueries.filter(q => q && q.trim().length > 0);
+
+    if (validQueries.length === 0) {
+      setQueryGenerationError(`No valid ${pipeline === 'perplexity' ? 'Perplexity' : 'Google'} queries selected.`);
+      return;
+    }
+
+    const firstQuery = validQueries[0];
+
+    // Update the current query for analysis
+    setGeneratedQuery(firstQuery);
+
+    // 3) Prepare current form data for analysis
+    const aiReadyData = prepareDataForAI(formData);
+
+    let scraperResponse: any = null;
+
+    setIsAnalyzing(true);
+    if (pipeline === 'perplexity') {
+      setIsPerplexityScraping(true);
+    } else {
+      setIsGoogleScraping(true);
+    }
+
+    try {
+      // 4) Run the appropriate scraper
+      if (pipeline === 'perplexity') {
+        scraperResponse = await callPerplexityScraper(firstQuery, selectedLocation);
+      } else {
+        scraperResponse = await callGoogleOverviewScraper(firstQuery, selectedLocation);
+      }
+
+      // 5) Call strategic-analysis (and process-sources for Perplexity) similar to the main pipeline
+      const analysisPromises: Promise<Response>[] = [];
+      let analysisIndex: number | null = null;
+      let sourcesIndex: number | null = null;
+
+      analysisIndex = analysisPromises.length;
+      analysisPromises.push(
+        fetch('/api/strategic-analysis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            aiSearchJson: scraperResponse,
+            clientProductJson: aiReadyData,
+            analysisId: undefined,
+            pipeline,
+          }),
+        })
+      );
+
+      if (pipeline === 'perplexity') {
+        // Also process sources for Perplexity
+        sourcesIndex = analysisPromises.length;
+        analysisPromises.push(
+          fetch('/api/process-sources', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sourceLinks: scraperResponse.source_links || [],
+              analysisId: undefined,
+              pipeline: 'perplexity',
+            }),
+          })
+        );
+      }
+
+      const results = await Promise.all(analysisPromises);
+
+      const getResponse = (index: number | null): Response | null =>
+        index !== null ? (results[index] as Response) : null;
+
+      const analysisResponse = getResponse(analysisIndex);
+      const sourcesResponse = getResponse(sourcesIndex);
+
+      // Handle processed sources (Perplexity only)
+      if (sourcesResponse && sourcesResponse.ok) {
+        try {
+          const sourcesData = await sourcesResponse.json();
+          if (sourcesData.success && sourcesData.sources) {
+            setProcessedSources(sourcesData.sources);
+            console.log(`[Process Sources] Stored ${sourcesData.sources.length} processed sources`);
+          }
+        } catch (sourcesError) {
+          console.error('[Process Sources] Failed to parse response:', sourcesError);
+        }
+      } else if (sourcesResponse) {
+        console.error('[Process Sources] API call failed:', sourcesResponse.status);
+      }
+
+      if (!analysisResponse) {
+        throw new Error('No successful analysis results were produced');
+      }
+
+      // 6) Parse strategic analysis and update state
+      let perplexityAnalysis: OptimizationAnalysis | null = null;
+      let googleAnalysis: OptimizationAnalysis | null = null;
+
+      if (!analysisResponse.ok) {
+        const analysisError = await analysisResponse.json();
+        const userMessage = analysisError.error || 'Failed to perform strategic analysis';
+        console.error('Strategic analysis failed:', analysisError);
+        throw new Error(userMessage);
+      }
+
+      const analysisData = await analysisResponse.json();
+      if (!analysisData || typeof analysisData !== 'object') {
+        throw new Error('Received invalid analysis data from server');
+      }
+
+      if (pipeline === 'perplexity') {
+        console.log('Perplexity strategic analysis completed:', analysisData);
+        setOptimizationAnalysis(analysisData);
+        perplexityAnalysis = analysisData as OptimizationAnalysis;
+      } else {
+        console.log('Google AI Overview strategic analysis completed:', analysisData);
+        setGoogleOverviewAnalysis(analysisData);
+        googleAnalysis = analysisData as OptimizationAnalysis;
+      }
+
+      // Clear any previous analysis error since analysis succeeded
+      setAnalysisError(null);
+
+      // 7) Deduct credits only after successful analysis
+      try {
+        const creditResponse = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            creditsRequired: requiredCredits,
+          }),
+        });
+
+        const creditData = await creditResponse.json();
+
+        if (!creditData.success) {
+          console.error('Failed to deduct credits after successful analysis');
+        } else {
+          console.log('Credit deducted successfully after analysis completion');
+          adjustUserCredits(-requiredCredits);
+        }
+      } catch (creditError) {
+        console.error('Credit deduction error after analysis:', creditError);
+      }
+
+      // 8) Persist the analysis result as a product
+      const productRecord = createProductRecord(
+        pipeline === 'perplexity' ? (analysisData as OptimizationAnalysis) : null,
+        pipeline === 'google_overview' ? (analysisData as OptimizationAnalysis) : null
+      );
+      addProduct(productRecord);
+
+      // Prepare query data for saving
+      let queryDataString = generatedQuery; // fallback to legacy
+      
+      if (queryData) {
+        queryDataString = JSON.stringify(queryData);
+      } else if (allPerplexityQueries.length > 0 || allGoogleQueries.length > 0) {
+        // Create QueryData from current query arrays if queryData is missing
+        const fallbackQueryData: QueryData = {
+          all: {
+            perplexity: allPerplexityQueries,
+            google: allGoogleQueries,
+          },
+          used: {
+            perplexity: usedPerplexityQueries,
+            google: usedGoogleQueries,
+          },
+        };
+        queryDataString = JSON.stringify(fallbackQueryData);
+        setQueryData(fallbackQueryData);
+      }
+
+      try {
+        const savedProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+        console.log('Product saved to Supabase successfully with ID:', savedProductId);
+        if (savedProductId) {
+          setCurrentProductId(savedProductId);
+        }
+      } catch (saveError) {
+        console.error('Failed to save product to Supabase:', saveError);
+      }
+
+      // 9) Mark the used query in Supabase after successful analysis
+      let finalQueryData: QueryData | null = null;
+      if (queryDataString) {
+        // Parse the query data that was just saved to ensure consistency
+        let currentQueryData: QueryData | null = null;
+        try {
+          currentQueryData = JSON.parse(queryDataString) as QueryData;
+        } catch (error) {
+          console.warn('Failed to parse saved query data:', error);
+        }
+        
+        if (currentQueryData) {
+          const updatedQueryData: QueryData = {
+            ...currentQueryData,
+            used: {
+              perplexity:
+                pipeline === 'perplexity'
+                  ? [...new Set([...currentQueryData.used.perplexity, firstQuery])]
+                  : currentQueryData.used.perplexity,
+              google:
+                pipeline === 'google_overview'
+                  ? [...new Set([...currentQueryData.used.google, firstQuery])]
+                  : currentQueryData.used.google,
+            },
+          };
+          await updateQueryDataInSupabase(user.id, updatedQueryData);
+          setQueryData(updatedQueryData);
+          setUsedPerplexityQueries(updatedQueryData.used.perplexity);
+          setUsedGoogleQueries(updatedQueryData.used.google);
+          finalQueryData = updatedQueryData;
+        }
+      }
+
+      // 10) Navigate to appropriate results page
+      // Ensure generatedQuery contains the full QueryData structure for results pages
+      if (finalQueryData) {
+        setGeneratedQuery(JSON.stringify(finalQueryData));
+      }
+      
+      if (pipeline === 'perplexity') {
+        router.push('/results');
+      } else {
+        router.push('/results/google');
+      }
+    } catch (analysisError) {
+      console.error('Analysis error:', analysisError);
+      const friendly = 'A server error occurred while analyzing your product. Please check your internet connection and try again. If the issue persists, please contact the provider.';
+      const msg = (analysisError instanceof Error && analysisError.message && analysisError.message.trim().length > 0)
+        ? `${friendly}\n\nDetails: ${analysisError.message}`
+        : friendly;
+      setAnalysisError(msg);
+    } finally {
+      setIsAnalyzing(false);
+      setIsPerplexityScraping(false);
+      setIsGoogleScraping(false);
+    }
+  };
+
+  const startAnalysisWithBothQueries = async () => {
+    if (!user) {
+      setServerError('Please sign in to analyze products');
+      router.push('/auth');
+      return;
+    }
+    
+    // Get selected queries for both pipelines
+    const perplexityQuery = selectedPerplexityQueries.find(q => q && q.trim());
+    const googleQuery = selectedGoogleQueries.find(q => q && q.trim());
+    
+    if (!perplexityQuery || !googleQuery) {
+      setQueryGenerationError('Both Perplexity and Google queries must be selected for combined analysis.');
+      return;
+    }
+    
+    // 1) Check credits for running both analyses
+    try {
+      const requiredCredits = 2; // One for each analysis
+      const creditCheckResponse = await fetch('/api/analyze/check-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          creditsRequired: requiredCredits,
+        }),
+      });
+
+      if (!creditCheckResponse.ok) {
+        throw new Error('Failed to check credits');
+      }
+
+      const creditCheckData = await creditCheckResponse.json();
+
+      if (!creditCheckData.hasEnoughCredits) {
+        setServerError('Insufficient credits for combined analysis. Please purchase more credits to continue.');
+        return;
+      }
+      if (typeof creditCheckData.currentCredits === 'number') {
+        setUserCredits(creditCheckData.currentCredits);
+      }
+    } catch (creditError) {
+      console.error('Credit check error:', creditError);
+      setServerError('Failed to verify credits. Please try again.');
+      return;
+    }
+
+    // 2) Prepare current form data for analysis
+    const aiReadyData = prepareDataForAI(formData);
+
+    let perplexityScraperResponse: any = null;
+    let googleScraperResponse: any = null;
+
+    setIsAnalyzing(true);
+    setIsPerplexityScraping(true);
+    setIsGoogleScraping(true);
+
+    try {
+      // 3) Run both scrapers concurrently
+      const [perplexityResult, googleResult] = await Promise.all([
+        callPerplexityScraper(perplexityQuery, selectedLocation),
+        callGoogleOverviewScraper(googleQuery, selectedLocation),
+      ]);
+
+      perplexityScraperResponse = perplexityResult;
+      googleScraperResponse = googleResult;
+
+      // 4) Call strategic-analysis and process-sources APIs (same pattern as handleSubmit)
+      const analysisPromises: Promise<Response>[] = [];
+      let perplexityAnalysisIndex: number | null = null;
+      let googleAnalysisIndex: number | null = null;
+      let sourcesIndex: number | null = null;
+
+      if (perplexityScraperResponse) {
+        perplexityAnalysisIndex = analysisPromises.length;
+        analysisPromises.push(
+          fetch('/api/strategic-analysis', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              aiSearchJson: perplexityScraperResponse,
+              clientProductJson: aiReadyData,
+              analysisId: undefined,
+              pipeline: 'perplexity',
+            }),
+          })
+        );
+
+        // Process sources for Perplexity
+        sourcesIndex = analysisPromises.length;
+        analysisPromises.push(
+          fetch('/api/process-sources', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sourceLinks: perplexityScraperResponse.source_links || [],
+              analysisId: undefined,
+              pipeline: 'perplexity',
+            }),
+          })
+        );
+      }
+
+      if (googleScraperResponse) {
+        googleAnalysisIndex = analysisPromises.length;
+        analysisPromises.push(
+          fetch('/api/strategic-analysis', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              aiSearchJson: googleScraperResponse,
+              clientProductJson: aiReadyData,
+              analysisId: undefined,
+              pipeline: 'google_overview',
+            }),
+          })
+        );
+      }
+
+      const results = await Promise.all(analysisPromises);
+
+      const getResponse = (index: number | null): Response | null =>
+        index !== null ? (results[index] as Response) : null;
+
+      const perplexityAnalysisResponse = getResponse(perplexityAnalysisIndex);
+      const sourcesResponse = getResponse(sourcesIndex);
+      const googleAnalysisResponse = getResponse(googleAnalysisIndex);
+
+      // Handle processed sources (Perplexity only)
+      if (sourcesResponse && sourcesResponse.ok) {
+        try {
+          const sourcesData = await sourcesResponse.json();
+          if (sourcesData.success && sourcesData.sources) {
+            setProcessedSources(sourcesData.sources);
+            console.log(`[Process Sources] Stored ${sourcesData.sources.length} processed sources`);
+          }
+        } catch (sourcesError) {
+          console.error('[Process Sources] Failed to parse response:', sourcesError);
+        }
+      } else if (sourcesResponse) {
+        console.error('[Process Sources] API call failed:', sourcesResponse.status);
+      }
+
+      let primaryAnalysis: OptimizationAnalysis | null = null;
+      let perplexityAnalysis: OptimizationAnalysis | null = null;
+      let googleAnalysis: OptimizationAnalysis | null = null;
+
+      // Perplexity strategic analysis
+      if (perplexityAnalysisResponse) {
+        if (!perplexityAnalysisResponse.ok) {
+          const analysisError = await perplexityAnalysisResponse.json();
+          const userMessage = analysisError.error || 'Failed to perform strategic analysis';
+          console.error('Perplexity strategic analysis failed:', analysisError);
+          throw new Error(userMessage);
+        }
+        const perplexityData = await perplexityAnalysisResponse.json();
+        if (!perplexityData || typeof perplexityData !== 'object') {
+          throw new Error('Received invalid Perplexity analysis data from server');
+        }
+        console.log('Perplexity strategic analysis completed:', perplexityData);
+        setOptimizationAnalysis(perplexityData);
+        perplexityAnalysis = perplexityData as OptimizationAnalysis;
+        primaryAnalysis = perplexityAnalysis;
+      }
+
+      // Google strategic analysis
+      if (googleAnalysisResponse) {
+        try {
+          if (googleAnalysisResponse.ok) {
+            const googleData = await googleAnalysisResponse.json();
+            console.log('Google AI Overview strategic analysis completed:', googleData);
+            setGoogleOverviewAnalysis(googleData);
+            googleAnalysis = googleData as OptimizationAnalysis;
+            if (!primaryAnalysis) {
+              primaryAnalysis = googleAnalysis;
+            }
+          } else {
+            const googleError = await googleAnalysisResponse.json().catch(() => null);
+            console.error('Google AI Overview strategic analysis failed:', {
+              status: googleAnalysisResponse.status,
+              error: googleError,
+            });
+          }
+        } catch (googleAnalysisParseError) {
+          console.error('Failed to handle Google AI Overview strategic analysis response:', googleAnalysisParseError);
+        }
+      }
+
+      if (!primaryAnalysis) {
+        throw new Error('No successful analysis results were produced');
+      }
+
+      // Clear any previous analysis error since analysis succeeded
+      setAnalysisError(null);
+
+      // 5) Deduct credits only after successful analysis
+      try {
+        const requiredCredits = 2;
+        const creditResponse = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            creditsRequired: requiredCredits,
+          }),
+        });
+
+        const creditData = await creditResponse.json();
+
+        if (!creditData.success) {
+          console.error('Failed to deduct credits after successful analysis');
+        } else {
+          console.log('Credit deducted successfully after analysis completion');
+          adjustUserCredits(-requiredCredits);
+        }
+      } catch (creditError) {
+        console.error('Credit deduction error after analysis:', creditError);
+      }
+
+      // 6) Persist the analysis result as a product, keeping Perplexity and Google separate
+      const productRecord = createProductRecord(perplexityAnalysis, googleAnalysis);
+      addProduct(productRecord);
+
+      // Prepare query data for saving
+      let queryDataString = generatedQuery; // fallback to legacy
+      
+      if (queryData) {
+        queryDataString = JSON.stringify(queryData);
+      } else if (allPerplexityQueries.length > 0 || allGoogleQueries.length > 0) {
+        // Create QueryData from current query arrays if queryData is missing
+        const fallbackQueryData: QueryData = {
+          all: {
+            perplexity: allPerplexityQueries,
+            google: allGoogleQueries,
+          },
+          used: {
+            perplexity: usedPerplexityQueries,
+            google: usedGoogleQueries,
+          },
+        };
+        queryDataString = JSON.stringify(fallbackQueryData);
+        setQueryData(fallbackQueryData);
+      }
+
+      // Save to Supabase if user is authenticated
+      try {
+        const savedProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+        console.log('Product saved to Supabase successfully with ID:', savedProductId);
+        if (savedProductId) {
+          setCurrentProductId(savedProductId);
+        }
+      } catch (saveError) {
+        console.error('Failed to save product to Supabase:', saveError);
+      }
+
+      // 7) Mark both queries as used in queryData
+      let finalQueryData: QueryData | null = null;
+      if (queryDataString) {
+        // Parse the query data that was just saved to ensure consistency
+        let currentQueryData: QueryData | null = null;
+        try {
+          currentQueryData = JSON.parse(queryDataString) as QueryData;
+        } catch (error) {
+          console.warn('Failed to parse saved query data:', error);
+        }
+        
+        if (currentQueryData) {
+          const updatedQueryData: QueryData = {
+            ...currentQueryData,
+            used: {
+              perplexity: [...new Set([...currentQueryData.used.perplexity, perplexityQuery])],
+              google: [...new Set([...currentQueryData.used.google, googleQuery])],
+            },
+          };
+          await updateQueryDataInSupabase(user.id, updatedQueryData);
+          setQueryData(updatedQueryData);
+          setUsedPerplexityQueries(updatedQueryData.used.perplexity);
+          setUsedGoogleQueries(updatedQueryData.used.google);
+          finalQueryData = updatedQueryData;
+        }
+      }
+
+      // 8) Navigate to combined results (Perplexity page as primary)
+      // Ensure generatedQuery contains the full QueryData structure for results pages
+      if (finalQueryData) {
+        setGeneratedQuery(JSON.stringify(finalQueryData));
+      }
+      router.push('/results');
+    } catch (error) {
+      console.error('Combined analysis error:', error);
+      const friendly = 'A server error occurred while analyzing your product. Please check your internet connection and try again. If the issue persists, please contact the provider.';
+      const msg = (error instanceof Error && error.message && error.message.trim().length > 0)
+        ? `${friendly}\n\nDetails: ${error.message}`
+        : friendly;
+      setAnalysisError(msg);
+    } finally {
+      setIsPerplexityScraping(false);
+      setIsGoogleScraping(false);
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleSubmitWithGeneratedQueries = async (aiReadyData: any) => {
+    // This function uses the already generated queries for analysis
+    // (queries were already generated by handleGenerateQueryOnly)
+    try {
+      // Skip query generation - use existing generated queries
+      const runPerplexity = selectedPipeline === 'all' || selectedPipeline === 'perplexity';
+      const runGoogle = selectedPipeline === 'all' || selectedPipeline === 'google_overview';
+      
+      let perplexityScraperResponse: any = null;
+      let googleScraperResponse: any = null;
+      
+      setIsAnalyzing(true);
+      
+      if (runPerplexity && runGoogle) {
+        console.log("Running both Perplexity and Google analysis with existing queries");
+        const perplexityQuery = allPerplexityQueries[0] || selectedPerplexityQueries[0];
+        const googleQuery = allGoogleQueries[0] || selectedGoogleQueries[0];
+        
+        console.log("Using Perplexity-optimized query:", perplexityQuery);
+        console.log("Using Google-optimized query:", googleQuery);
+        
+        const [perplexityResult, googleResult] = await Promise.all([
+          callPerplexityScraper(perplexityQuery!, selectedLocation),
+          callGoogleOverviewScraper(googleQuery!, selectedLocation),
+        ]);
+        perplexityScraperResponse = perplexityResult;
+        googleScraperResponse = googleResult;
+      } else if (runPerplexity) {
+        const queryToUse = allPerplexityQueries[0] || selectedPerplexityQueries[0];
+        perplexityScraperResponse = await callPerplexityScraper(queryToUse!, selectedLocation);
+      } else if (runGoogle) {
+        const queryToUse = allGoogleQueries[0] || selectedGoogleQueries[0];
+        googleScraperResponse = await callGoogleOverviewScraper(queryToUse!, selectedLocation);
+      }
+
+        const scraperResponse = perplexityScraperResponse || googleScraperResponse;
+        console.log("Scraper response:", scraperResponse);
+        
+        if (!scraperResponse || !scraperResponse.data) {
+          throw new Error('No data received from scraper');
+        }
+
+        const analysisId = scraperResponse.analysisId;
+        console.log("Analysis ID:", analysisId);
+
+        // Save product to Supabase
+        const productToSave: OptimizedProduct = {
+          id: '', // Will be set by Supabase
+          name: aiReadyData.product_name || 'Untitled Product',
+          description: aiReadyData.description || 'No description',
+          createdAt: new Date().toISOString(),
+          formData: aiReadyData,
+          analysis: scraperResponse.data.analysis,
+          googleOverviewAnalysis: googleScraperResponse?.data.analysis,
+        };
+
+        const savedProductId = await saveProductToSupabase(productToSave, user!.id, generatedQuery);
+        
+        if (savedProductId) {
+          setCurrentProductId(savedProductId);
+        }
+
+        // Navigate based on the pipeline
+        if (runPerplexity && runGoogle) {
+          // When both are running, prioritize Perplexity results
+          router.push('/results');
+        } else if (runPerplexity) {
+          router.push('/results');
+        } else if (runGoogle) {
+          router.push('/results/google');
+        }
+
+    } catch (analysisError) {
+      console.error('Analysis error:', analysisError);
+      const friendly = 'A server error occurred while analyzing your product. Please check your internet connection and try again. If the issue persists, please contact the provider.';
+      const msg = (analysisError instanceof Error && analysisError.message && analysisError.message.trim().length > 0)
+        ? `${friendly}\n\nDetails: ${analysisError.message}`
+        : friendly;
+      setAnalysisError(msg);
+    } finally {
+      setIsAnalyzing(false);
     }
   };
   
@@ -1131,10 +2119,41 @@ function OptimizePageContent() {
       specifications: data.specifications,
       features: data.features.filter(feature => feature.name.trim() !== ''),
       targeted_market: data.targeted_market,
-      problem_product_is_solving: data.problem_product_is_solving
+      problem_product_is_solving: data.problem_product_is_solving,
+      general_product_type: data.general_product_type || '',
+      specific_product_type: data.specific_product_type || ''
     };
   };
 
+  const handleGenerateQueryOnly = async () => {
+    // Check authentication
+    if (!user) {
+      setServerError('Please sign in to generate queries');
+      router.push('/auth');
+      return;
+    }
+    
+    // Prepare the current form data for query generation
+    const aiReadyData = prepareDataForAI(formData);
+    
+    try {
+      const queryResult = await generateQueryFromData(aiReadyData);
+      
+      if (!queryResult) {
+        // Query generation failed - error already set by generateQueryFromData
+        return;
+      }
+      
+      // Successfully generated queries, now switch to Generated Query section
+      setActiveSection('query');
+      console.log('Queries generated successfully, switched to Generated Query section');
+      
+    } catch (error) {
+      console.error('Query generation error:', error);
+      setServerError('Failed to generate queries. Please try again.');
+    }
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -1389,6 +2408,7 @@ function OptimizePageContent() {
             setOptimizationAnalysis(perplexityData);
             perplexityAnalysis = perplexityData as OptimizationAnalysis;
             primaryAnalysis = perplexityAnalysis;
+            setAnalysisError(null); // Clear analysisError after successful analysis
           }
 
           if (googleAnalysisResponse) {
@@ -1619,6 +2639,28 @@ function OptimizePageContent() {
             </Button>
             <Button
               type="button"
+              variant={activeSection === "query" ? "solid" : "outlined"}
+              color="neutral"
+              onClick={() => setActiveSection("query")}
+              sx={{
+                backgroundColor: activeSection === "query" ? accentColor : "transparent",
+                color: activeSection === "query" ? "#0D0F14" : textPrimary,
+                borderColor: activeSection === "query" ? "rgba(46, 212, 122, 0.45)" : borderColor,
+                fontWeight: 600,
+                transition: "all 0.2s ease",
+                borderRadius: "999px",
+                "&:hover": {
+                  backgroundColor: activeSection === "query" ? "#26B869" : accentSoft,
+                  color: activeSection === "query" ? "#0D0F14" : textPrimary,
+                  borderColor: "rgba(46, 212, 122, 0.45)",
+                  boxShadow: "0 6px 20px rgba(46, 212, 122, 0.18)",
+                },
+              }}
+            >
+              Generated Query
+            </Button>
+            <Button
+              type="button"
               variant={activeSection === "perplexity" ? "solid" : "outlined"}
               color="neutral"
               onClick={() => {
@@ -1723,17 +2765,19 @@ function OptimizePageContent() {
           </Stack>
         </Card>
 
-        <Card
-          variant="outlined"
-          sx={{
-            flex: 1,
-            p: 4,
-            mb: 4,
-            backgroundColor: surfaceBase,
-            border: `1px solid ${borderColor}`,
-            boxShadow: "0 24px 60px rgba(2, 4, 7, 0.55)",
-          }}
-        >
+        {/* Product Data Section */}
+        {activeSection === "product" && (
+          <Card
+            variant="outlined"
+            sx={{
+              flex: 1,
+              p: 4,
+              mb: 4,
+              backgroundColor: surfaceBase,
+              border: `1px solid ${borderColor}`,
+              boxShadow: "0 24px 60px rgba(2, 4, 7, 0.55)",
+            }}
+          >
           <Box sx={{ mb: 3, display: "flex", alignItems: "center", justifyContent: "center", gap: 1.25 }}>
             <Typography level="h2" sx={{ color: textPrimary }}>
               Optimize Your Product for AI Search Engines
@@ -1764,7 +2808,10 @@ function OptimizePageContent() {
           </Typography>
 
           {isClient && (
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleGenerateQueryOnly();
+            }}>
             {/* URL Input - Always visible */}
             <Box sx={{ mb: 4 }}>
               <FormLabel sx={{ fontWeight: 600, mb: 1, display: "block", color: "#ffffff" }}>
@@ -1819,27 +2866,6 @@ function OptimizePageContent() {
                 >
                   {LOCATION_OPTIONS.map((loc) => (
                     <Option key={loc} value={loc}>{loc}</Option>
-                  ))}
-                </Select>
-                <Select
-                  aria-label="Analysis Engine"
-                  value={selectedPipeline}
-                  onChange={(_, v) => v && setSelectedPipeline(v)}
-                  size="md"
-                  sx={{
-                    minWidth: { xs: "100%", md: 160 },
-                    minHeight: 44,
-                    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(79, 70, 229, 0.01))",
-                    border: "1px solid rgba(216, 180, 254, 0.08)",
-                    borderRadius: "12px",
-                    color: textPrimary,
-                    '&:hover': {
-                      borderColor: 'rgba(216, 180, 254, 0.15)'
-                    },
-                  }}
-                >
-                  {ANALYSIS_PIPELINE_OPTIONS.map((opt) => (
-                    <Option key={opt.value} value={opt.value}>{opt.label}</Option>
                   ))}
                 </Select>
                 <Button
@@ -2205,7 +3231,7 @@ function OptimizePageContent() {
                         }}
                       >
                         {isGeneratingQuery ? 'Generating Query...' : 
-                         isAnalyzing ? 'Analyzing Optimization...' : 'Optimize for AI Search'}
+                         isAnalyzing ? 'Analyzing Optimization...' : 'Generate Query'}
                       </Button>
                     </span>
                   </Tooltip>
@@ -3123,8 +4149,602 @@ function OptimizePageContent() {
               </Stack>
             </ModalDialog>
           </Modal>
-
         </Card>
+        )}
+
+        {/* Generated Query Section */}
+        {activeSection === "query" && (
+          <Card
+            variant="outlined"
+            sx={{
+              flex: 1,
+              p: 4,
+              mb: 4,
+              backgroundColor: surfaceBase,
+              border: `1px solid ${borderColor}`,
+              boxShadow: "0 24px 60px rgba(2, 4, 7, 0.55)",
+            }}
+          >
+            <Typography level="h2" sx={{ mb: 3, color: textPrimary, textAlign: "center" }}>
+              Generated Search Queries
+            </Typography>
+            
+            {/* Analysis Mode Display */}
+            <Box sx={{ mb: 4, textAlign: "center" }}>
+              <Chip
+                size="md"
+                variant="soft"
+                sx={{
+                  backgroundColor: getAnalysisModeDisplay().color === '#2ED47A' 
+                    ? "rgba(46, 212, 122, 0.12)" 
+                    : "rgba(243, 91, 100, 0.12)",
+                  color: getAnalysisModeDisplay().color,
+                  fontWeight: 600,
+                  px: 3,
+                }}
+              >
+                {getAnalysisModeDisplay().text}
+              </Chip>
+            </Box>
+            
+            {/* Perplexity Queries Section */}
+            {allPerplexityQueries.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography level="title-md" sx={{ color: textPrimary }}>
+                    🔍 Perplexity Search Queries
+                  </Typography>
+                  <Chip size="sm" variant="soft" sx={{ backgroundColor: "rgba(46, 212, 122, 0.12)", color: "#2ED47A" }}>
+                    {selectedPerplexityQueries.length} selected
+                  </Chip>
+                </Box>
+                <Stack spacing={2}>
+                  {allPerplexityQueries.map((query, index) => (
+                    <Card
+                      key={`perplexity-${index}`}
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        backgroundColor: "rgba(17, 19, 24, 0.6)",
+                        border: selectedPerplexityQueries.includes(query)
+                          ? "2px solid rgba(46, 212, 122, 0.5)"
+                          : "1px solid rgba(46, 212, 122, 0.2)",
+                        cursor: usedPerplexityQueries.includes(query) ? "not-allowed" : "pointer",
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          backgroundColor: usedPerplexityQueries.includes(query) ? "transparent" : "rgba(46, 212, 122, 0.08)",
+                          borderColor: usedPerplexityQueries.includes(query) ? "1px solid rgba(46, 212, 122, 0.2)" : "rgba(46, 212, 122, 0.4)",
+                        },
+                      }}
+                      onClick={() => !usedPerplexityQueries.includes(query) && handleQuerySelection(query, 'perplexity')}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Checkbox
+                          checked={selectedPerplexityQueries.includes(query) || usedPerplexityQueries.includes(query)}
+                          disabled={usedPerplexityQueries.includes(query)}
+                          sx={{
+                            "& .MuiCheckbox-root": {
+                              color: usedPerplexityQueries.includes(query) ? "#6c757d" : "#2ED47A",
+                            },
+                            "& .MuiCheckbox-disabled": {
+                              color: "#6c757d",
+                            },
+                          }}
+                        />
+                        <Box sx={{ flex: 1 }}>
+                          {editingQuery?.pipeline === 'perplexity' && editingQuery?.index === index ? (
+                            <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                              <Input
+                                value={editingQuery.value}
+                                onChange={(e) => setEditingQuery({ ...editingQuery, value: e.target.value })}
+                                onKeyDown={handleEditKeyDown}
+                                sx={{
+                                  flex: 1,
+                                  '&::before': {
+                                    display: 'none',
+                                  },
+                                  '&::after': {
+                                    display: 'none',
+                                  },
+                                  '&.Mui-focused': {
+                                    backgroundColor: 'rgba(46, 212, 122, 0.05)',
+                                  },
+                                }}
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                onClick={handleSaveEditedQuery}
+                                sx={{
+                                  minWidth: 60,
+                                  backgroundColor: "#2ED47A",
+                                  color: "#0D0F14",
+                                  fontWeight: 600,
+                                  "&:hover": {
+                                    backgroundColor: "#26B869",
+                                  },
+                                }}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outlined"
+                                onClick={handleCancelEdit}
+                                sx={{
+                                  minWidth: 60,
+                                  borderColor: "rgba(243, 91, 100, 0.4)",
+                                  color: "#F35B64",
+                                  "&:hover": {
+                                    backgroundColor: "rgba(243, 91, 100, 0.1)",
+                                  },
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            </Box>
+                          ) : (
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Typography level="body-md" sx={{ color: textSecondary, flex: 1 }}>
+                                "{query}"
+                              </Typography>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                {usedPerplexityQueries.includes(query) && (
+                                  <Chip
+                                    size="sm"
+                                    variant="soft"
+                                    sx={{
+                                      backgroundColor: "rgba(108, 117, 125, 0.12)",
+                                      color: "#6c757d",
+                                      fontSize: "0.75rem",
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    Used
+                                  </Chip>
+                                )}
+                                <IconButton
+                                  size="sm"
+                                  variant="outlined"
+                                  onClick={() => handleEditQuery(query, index, 'perplexity')}
+                                  sx={{
+                                    borderColor: "rgba(46, 212, 122, 0.3)",
+                                    color: "#2ED47A",
+                                    "&:hover": {
+                                      backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                      borderColor: "rgba(46, 212, 122, 0.5)",
+                                    },
+                                  }}
+                                >
+                                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
+                    </Card>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            
+            {/* Google Queries Section */}
+            {allGoogleQueries.length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography level="title-md" sx={{ color: textPrimary }}>
+                    🌐 Google AI Overview Queries
+                  </Typography>
+                  <Chip size="sm" variant="soft" sx={{ backgroundColor: "rgba(46, 212, 122, 0.12)", color: "#2ED47A" }}>
+                    {selectedGoogleQueries.length} selected
+                  </Chip>
+                </Box>
+                <Stack spacing={2}>
+                  {allGoogleQueries.map((query, index) => (
+                    <Card
+                      key={`google-${index}`}
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        backgroundColor: "rgba(17, 19, 24, 0.6)",
+                        border: selectedGoogleQueries.includes(query)
+                          ? "2px solid rgba(46, 212, 122, 0.5)"
+                          : "1px solid rgba(46, 212, 122, 0.2)",
+                        cursor: usedGoogleQueries.includes(query) ? "not-allowed" : "pointer",
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          backgroundColor: usedGoogleQueries.includes(query) ? "transparent" : "rgba(46, 212, 122, 0.08)",
+                          borderColor: usedGoogleQueries.includes(query) ? "1px solid rgba(46, 212, 122, 0.2)" : "rgba(46, 212, 122, 0.4)",
+                        },
+                      }}
+                      onClick={() => !usedGoogleQueries.includes(query) && handleQuerySelection(query, 'google_overview')}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Checkbox
+                          checked={selectedGoogleQueries.includes(query) || usedGoogleQueries.includes(query)}
+                          disabled={usedGoogleQueries.includes(query)}
+                          sx={{
+                            "& .MuiCheckbox-root": {
+                              color: usedGoogleQueries.includes(query) ? "#6c757d" : "#2ED47A",
+                            },
+                            "& .MuiCheckbox-disabled": {
+                              color: "#6c757d",
+                            },
+                          }}
+                        />
+                        <Box sx={{ flex: 1 }}>
+                          {editingQuery?.pipeline === 'google_overview' && editingQuery?.index === index ? (
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                              <Typography level="body-xs" sx={{ 
+                                color: "#94a3b8",
+                                px: 1,
+                                fontStyle: 'italic',
+                                mb: 0.5
+                              }}>
+                                💡 These queries are designed to invoke AI Overview. Please maintain the consistency and structure of the query.
+                              </Typography>
+                              <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                                <Input
+                                  value={editingQuery.value}
+                                  onChange={(e) => setEditingQuery({ ...editingQuery, value: e.target.value })}
+                                  onKeyDown={handleEditKeyDown}
+                                  sx={{
+                                    flex: 1,
+                                    '&::before': {
+                                      display: 'none',
+                                    },
+                                    '&::after': {
+                                      display: 'none',
+                                    },
+                                    '&.Mui-focused': {
+                                      backgroundColor: 'rgba(46, 212, 122, 0.05)',
+                                    },
+                                  }}
+                                  autoFocus
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={handleSaveEditedQuery}
+                                  disabled={editingQuery.value.trim().split(/\s+/).length < 6}
+                                  sx={{
+                                    minWidth: 60,
+                                    backgroundColor: editingQuery.value.trim().split(/\s+/).length >= 6 ? "#2ED47A" : "transparent",
+                                    color: editingQuery.value.trim().split(/\s+/).length >= 6 ? "#0D0F14" : "#6c757d",
+                                    fontWeight: 600,
+                                    border: editingQuery.value.trim().split(/\s+/).length >= 6 ? "none" : "1px solid rgba(108, 117, 125, 0.3)",
+                                    "&:hover": {
+                                      backgroundColor: editingQuery.value.trim().split(/\s+/).length >= 6 ? "#26B869" : "rgba(108, 117, 125, 0.1)",
+                                    },
+                                    "&:disabled": {
+                                      backgroundColor: "transparent",
+                                      color: "#6c757d",
+                                      border: "1px solid rgba(108, 117, 125, 0.2)",
+                                    },
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outlined"
+                                  onClick={handleCancelEdit}
+                                  sx={{
+                                    minWidth: 60,
+                                    borderColor: "rgba(243, 91, 100, 0.4)",
+                                    color: "#F35B64",
+                                    "&:hover": {
+                                      backgroundColor: "rgba(243, 91, 100, 0.1)",
+                                    },
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </Box>
+                              <Typography level="body-xs" sx={{ 
+                                color: editingQuery.value.trim().split(/\s+/).length >= 6 ? "#2ED47A" : "#F35B64",
+                                px: 1,
+                                fontStyle: 'italic'
+                              }}>
+                                Word count: {editingQuery.value.trim().split(/\s+/).length} / 6 (minimum for AI Overview)
+                              </Typography>
+                            </Box>
+                          ) : (
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Typography level="body-md" sx={{ color: textSecondary, flex: 1 }}>
+                                "{query}"
+                              </Typography>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                {usedGoogleQueries.includes(query) && (
+                                  <Chip
+                                    size="sm"
+                                    variant="soft"
+                                    sx={{
+                                      backgroundColor: "rgba(108, 117, 125, 0.12)",
+                                      color: "#6c757d",
+                                      fontSize: "0.75rem",
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    Used
+                                  </Chip>
+                                )}
+                                <Tooltip title="Edit query (minimum 6 words for AI Overview)" placement="top">
+                                  <IconButton
+                                    size="sm"
+                                    variant="outlined"
+                                    onClick={() => handleEditQuery(query, index, 'google_overview')}
+                                    sx={{
+                                      borderColor: "rgba(46, 212, 122, 0.3)",
+                                      color: "#2ED47A",
+                                      "&:hover": {
+                                        backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                        borderColor: "rgba(46, 212, 122, 0.5)",
+                                      },
+                                    }}
+                                  >
+                                    <EditOutlinedIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
+                    </Card>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            
+            {/* Query Generation Error State */}
+            {queryGenerationError && (
+              <Box sx={{ mb: 4 }}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    p: 3,
+                    backgroundColor: "rgba(243, 91, 100, 0.1)",
+                    border: "1px solid rgba(243, 91, 100, 0.3)",
+                  }}
+                >
+                  <Typography level="body-md" sx={{ color: "#F35B64", mb: 2 }}>
+                    ⚠️ Query Generation Error
+                  </Typography>
+                  <Typography level="body-sm" sx={{ color: textSecondary }}>
+                    {queryGenerationError}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => setQueryGenerationError(null)}
+                    sx={{
+                      mt: 2,
+                      borderColor: "rgba(243, 91, 100, 0.4)",
+                      color: "#F35B64",
+                      "&:hover": {
+                        backgroundColor: "rgba(243, 91, 100, 0.1)",
+                      },
+                    }}
+                  >
+                    Dismiss
+                  </Button>
+                </Card>
+              </Box>
+            )}
+            
+            {/* Loading State - Generating Queries */}
+            {isGeneratingQuery && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
+              <Box sx={{ textAlign: "center", py: 8 }}>
+                <Typography level="h3" sx={{ mb: 2, color: textPrimary }}>
+                  Generating Queries...
+                </Typography>
+                <Typography level="body-md" sx={{ mb: 4, color: textSecondary }}>
+                  Please wait while we generate optimized search queries for your product.
+                </Typography>
+                <Box sx={{ display: "flex", justifyContent: "center", gap: 1 }}>
+                  {[0, 1, 2].map((i) => (
+                    <Box
+                      key={i}
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: accentColor,
+                        animation: `pulse 1.4s ease-in-out ${i * 0.16}s infinite both`,
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+            
+            {/* Loading State - Loading Queries from Database */}
+            {isLoadingQueries && !isGeneratingQuery && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
+              <Box sx={{ textAlign: "center", py: 8 }}>
+                <Typography level="h3" sx={{ mb: 2, color: textPrimary }}>
+                  Loading Queries...
+                </Typography>
+                <Typography level="body-md" sx={{ mb: 4, color: textSecondary }}>
+                  Please wait while we load your saved queries.
+                </Typography>
+                <Box sx={{ display: "flex", justifyContent: "center", gap: 1 }}>
+                  {[0, 1, 2].map((i) => (
+                    <Box
+                      key={`loading-${i}`}
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        backgroundColor: accentColor,
+                        animation: `pulse 1.4s ease-in-out ${i * 0.16}s infinite both`,
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+            {!isLoadingQueries && !isGeneratingQuery && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
+              <Box sx={{ textAlign: "center", py: 8 }}>
+                <Typography level="h3" sx={{ mb: 2, color: textPrimary }}>
+                  No Queries Generated Yet
+                </Typography>
+                <Typography level="body-md" sx={{ mb: 4, color: textSecondary }}>
+                  Please fill in the product data and click "Optimize for AI Search" to generate queries.
+                </Typography>
+                <Button
+                  onClick={() => setActiveSection("product")}
+                  sx={{
+                    minWidth: 200,
+                    borderRadius: "999px",
+                    backgroundColor: accentColor,
+                    color: "#0D0F14",
+                    fontWeight: 600,
+                    px: 3,
+                    border: "1px solid rgba(46, 212, 122, 0.36)",
+                    boxShadow: "0 10px 26px rgba(46, 212, 122, 0.25)",
+                    transition: "all 0.25s ease",
+                    "&:hover": {
+                      backgroundColor: "#26B869",
+                      borderColor: "rgba(46, 212, 122, 0.48)",
+                      boxShadow: "0 12px 32px rgba(46, 212, 122, 0.3)",
+                    },
+                  }}
+                >
+                  Go to Product Data
+                </Button>
+              </Box>
+            )}
+            
+            {/* Optimize for AI Search Button - Single unified button */}
+            {(allPerplexityQueries.length > 0 || allGoogleQueries.length > 0) && (
+              <Box sx={{ mt: 6, textAlign: "center" }}>
+                {/* Loading Indicators */}
+                {(isPerplexityScraping || isGoogleScraping) && (
+                  <Box sx={{ mb: 4 }}>
+                    <Card
+                      variant="outlined"
+                      sx={{
+                        p: 3,
+                        backgroundColor: "rgba(46, 212, 122, 0.05)",
+                        border: "1px solid rgba(46, 212, 122, 0.2)",
+                      }}
+                    >
+                      <Typography level="body-md" sx={{ color: "#2ED47A", mb: 2, fontWeight: 600 }}>
+                        🔄 Analysis in Progress
+                      </Typography>
+                      <Stack spacing={2}>
+                        {isPerplexityScraping && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <Box sx={{ 
+                              width: 8, 
+                              height: 8, 
+                              borderRadius: "50%", 
+                              backgroundColor: "#2ED47A",
+                              animation: "pulse 1.5s infinite"
+                            }} />
+                            <Typography level="body-sm" sx={{ color: textSecondary }}>
+                              Running Perplexity analysis...
+                            </Typography>
+                          </Box>
+                        )}
+                        {isGoogleScraping && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <Box sx={{ 
+                              width: 8, 
+                              height: 8, 
+                              borderRadius: "50%", 
+                              backgroundColor: "#2ED47A",
+                              animation: "pulse 1.5s infinite"
+                            }} />
+                            <Typography level="body-sm" sx={{ color: textSecondary }}>
+                              Running Google AI Overview analysis...
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Card>
+                  </Box>
+                )}
+                
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 3, maxWidth: "100%" }}>
+                  {/* Mode Chip - Left aligned */}
+                  <Chip
+                    size="md"
+                    variant="soft"
+                    sx={{
+                      backgroundColor: getAnalysisModeDisplay().color === '#2ED47A' 
+                        ? "rgba(46, 212, 122, 0.12)" 
+                        : "rgba(243, 91, 100, 0.12)",
+                      color: getAnalysisModeDisplay().color,
+                      fontWeight: 600,
+                      px: 3,
+                      py: 1,
+                      height: "auto",
+                      minHeight: 40,
+                    }}
+                  >
+                    {getAnalysisModeDisplay().text}
+                  </Chip>
+                  
+                  {/* Optimize for AI Search Button - Right aligned */}
+                  <Button
+                    type="button"
+                    disabled={isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)}
+                    onClick={async () => {
+                    if (!user) {
+                      setServerError('Please sign in to analyze products');
+                      router.push('/auth');
+                      return;
+                    }
+                    
+                    // Check if any queries are selected
+                    if (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0) {
+                      setQueryGenerationError('Please select at least one query to proceed with analysis.');
+                      return;
+                    }
+                    
+                    // Use selected queries for analysis
+                    await handleUseSelectedQueries();
+                  }}
+                    sx={{
+                      minWidth: 280,
+                      borderRadius: "999px",
+                      backgroundColor: (isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping) || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)
+                        ? "rgba(46, 212, 122, 0.3)"
+                        : accentColor,
+                      color: (isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping) || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)
+                        ? "rgba(13, 15, 20, 0.6)"
+                        : "#0D0F14",
+                      fontWeight: 600,
+                      px: 4,
+                      py: 1.8,
+                      border: "1px solid rgba(46, 212, 122, 0.36)",
+                      boxShadow: (isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping) || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)
+                        ? "none"
+                        : "0 10px 26px rgba(46, 212, 122, 0.25)",
+                      transition: "all 0.25s ease",
+                      "&:hover:not(:disabled)": {
+                        backgroundColor: "#26B869",
+                        borderColor: "rgba(46, 212, 122, 0.48)",
+                        boxShadow: "0 12px 32px rgba(46, 212, 122, 0.3)",
+                      },
+                      "&:disabled": {
+                        cursor: "not-allowed",
+                      },
+                    }}
+                  >
+                    {isGeneratingQuery ? 'Generating Query...' : 
+                     isAnalyzing ? 'Analyzing Optimization...' :
+                     isPerplexityScraping ? 'Running Perplexity Analysis...' :
+                     isGoogleScraping ? 'Running Google Analysis...' :
+                     `Optimize for AI Search (${selectedPerplexityQueries.length + selectedGoogleQueries.length})`}
+                  </Button>
+                </Box>
+              </Box>
+            )}
+          </Card>
+        )}
       </Box>
     </Box>
   );

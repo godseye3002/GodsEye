@@ -18,6 +18,18 @@ interface UserInfoState {
   avatarUrl?: string | null;
 }
 
+// New query data structure for comprehensive tracking
+export interface QueryData {
+  all: {
+    perplexity: string[];
+    google: string[];
+  };
+  used: {
+    perplexity: string[];
+    google: string[];
+  };
+}
+
 interface ProductStoreState {
   formData: ProductFormData;
   originalScrapedData: ProductFormData | null;
@@ -27,6 +39,14 @@ interface ProductStoreState {
   lastExtractionMethod: string | null;
   generatedQuery: string | null;
   queryGenerationError: string | null;
+  // New fields for all generated queries
+  allPerplexityQueries: string[];
+  allGoogleQueries: string[];
+  selectedPerplexityQueries: string[];
+  selectedGoogleQueries: string[];
+  usedPerplexityQueries: string[];
+  usedGoogleQueries: string[];
+  queryData: QueryData | null;
   optimizationAnalysis: OptimizationAnalysis | null;
   googleOverviewAnalysis: OptimizationAnalysis | null;
   analysisError: string | null;
@@ -50,6 +70,17 @@ interface ProductStoreState {
   setLastExtractionMethod: (method: string | null) => void;
   setGeneratedQuery: (query: string | null) => void;
   setQueryGenerationError: (error: string | null) => void;
+  // New setters for query arrays
+  setAllPerplexityQueries: (queries: string[]) => void;
+  setAllGoogleQueries: (queries: string[]) => void;
+  setSelectedPerplexityQueries: (queries: string[]) => void;
+  setSelectedGoogleQueries: (queries: string[]) => void;
+  setUsedPerplexityQueries: (queries: string[]) => void;
+  setUsedGoogleQueries: (queries: string[]) => void;
+  setQueryData: (queryData: QueryData | null) => void;
+  saveQueriesToSupabase: (userId: string) => Promise<void>;
+  updateQueryDataInSupabase: (userId: string, queryData: QueryData) => Promise<void>;
+  loadQueryDataFromSupabase: (userId: string) => Promise<string | null>;
   setOptimizationAnalysis: (analysis: OptimizationAnalysis | null) => void;
   setGoogleOverviewAnalysis: (analysis: OptimizationAnalysis | null) => void;
   setAnalysisError: (error: string | null) => void;
@@ -86,6 +117,14 @@ export const useProductStore = create<ProductStoreState>()(
       lastExtractionMethod: null,
       generatedQuery: null,
       queryGenerationError: null,
+      // New fields for all generated queries
+      allPerplexityQueries: [],
+      allGoogleQueries: [],
+      selectedPerplexityQueries: [],
+      selectedGoogleQueries: [],
+      usedPerplexityQueries: [],
+      usedGoogleQueries: [],
+      queryData: null,
       optimizationAnalysis: null,
       googleOverviewAnalysis: null,
       analysisError: null,
@@ -121,6 +160,14 @@ export const useProductStore = create<ProductStoreState>()(
       setLastExtractionMethod: (method) => set({ lastExtractionMethod: method }),
       setGeneratedQuery: (query) => set({ generatedQuery: query }),
       setQueryGenerationError: (error) => set({ queryGenerationError: error }),
+      // New setters for query arrays
+      setAllPerplexityQueries: (queries) => set({ allPerplexityQueries: queries }),
+      setAllGoogleQueries: (queries) => set({ allGoogleQueries: queries }),
+      setSelectedPerplexityQueries: (queries) => set({ selectedPerplexityQueries: queries }),
+      setSelectedGoogleQueries: (queries) => set({ selectedGoogleQueries: queries }),
+      setUsedPerplexityQueries: (queries) => set({ usedPerplexityQueries: queries }),
+      setUsedGoogleQueries: (queries) => set({ usedGoogleQueries: queries }),
+      setQueryData: (queryData) => set({ queryData }),
       setOptimizationAnalysis: (analysis) => set({ optimizationAnalysis: analysis }),
       setGoogleOverviewAnalysis: (analysis) => set({ googleOverviewAnalysis: analysis }),
       setAnalysisError: (error) => set({ analysisError: error }),
@@ -168,6 +215,11 @@ export const useProductStore = create<ProductStoreState>()(
           isAnalyzing: false,
           products: state.products,
           currentProductId: null,
+          // Reset query arrays
+          allPerplexityQueries: [],
+          allGoogleQueries: [],
+          selectedPerplexityQueries: [],
+          selectedGoogleQueries: [],
         })),
       loadProductsFromSupabase: async (userId: string) => {
         try {
@@ -386,6 +438,85 @@ export const useProductStore = create<ProductStoreState>()(
       setSourceLinks: (links) => set({ sourceLinks: links }),
       setCurrentProductId: (id) => set({ currentProductId: id }),
       setSelectedPipeline: (pipeline) => set({ selectedPipeline: pipeline }),
+      
+      // Helper functions for query data management
+      saveQueriesToSupabase: async (userId: string) => {
+        const state = get();
+        const queryData: QueryData = {
+          all: {
+            perplexity: state.allPerplexityQueries,
+            google: state.allGoogleQueries,
+          },
+          used: {
+            perplexity: state.usedPerplexityQueries,
+            google: state.usedGoogleQueries,
+          },
+        };
+        
+        try {
+          const response = await fetch('/api/products/update-queries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              queryData: JSON.stringify(queryData),
+            }),
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to save queries to Supabase');
+          }
+        } catch (error) {
+          console.error('Error saving queries to Supabase:', error);
+        }
+      },
+      
+      updateQueryDataInSupabase: async (userId: string, queryData: QueryData) => {
+        try {
+          const response = await fetch('/api/products/update-queries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              queryData: JSON.stringify(queryData),
+            }),
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to update query data in Supabase');
+          }
+        } catch (error) {
+          console.error('Error updating query data in Supabase:', error);
+        }
+      },
+      
+      loadQueryDataFromSupabase: async (userId: string) => {
+        try {
+          const response = await fetch(`/api/products/get-queries?userId=${userId}`);
+          
+          // Handle 404 (no products found) as normal case, not error
+          if (response.status === 404) {
+            return null; // No products found, which is expected for new users
+          }
+          
+          if (!response.ok) {
+            // Silently handle server errors - don't expose to users
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[Query Data] Server error during fetch:', response.status, response.statusText);
+            }
+            return null;
+          }
+          
+          const data = await response.json();
+          return data.queryData || null;
+        } catch (error) {
+          // Silently handle network errors - don't expose to users
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[Query Data] Network error during fetch:', error);
+          }
+          return null;
+        }
+      },
     }),
     {
       name: "godseye-product-store",
@@ -405,6 +536,8 @@ export const useProductStore = create<ProductStoreState>()(
         missingFields: state.missingFields,
         ignoredMissingFields: state.ignoredMissingFields,
         selectedPipeline: state.selectedPipeline,
+        // Do NOT persist query arrays; they should be loaded from Supabase so
+        // the backend remains the source of truth for generated queries.
       }),
     }
   )

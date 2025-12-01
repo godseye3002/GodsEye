@@ -78,6 +78,11 @@ export interface OptimizationAnalysis {
     reason_for_inclusion: string;
     source_of_mention: string;
   }>;
+  sources_ai_used?: Array<{
+    source_snippet: string;
+    reason_for_inclusion: string;
+    source_of_mention: string;
+  }>;
   strategic_gap_and_opportunity_analysis: {
     analysis_summary: string;
     if_featured?: {

@@ -160,6 +160,80 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
         </Box>
       </Card>
 
+      {/* Sources AI Used (all sources from source_links) */}
+      {analysis.sources_ai_used && analysis.sources_ai_used.length > 0 && (
+        <Card
+          variant="outlined"
+          sx={{
+            p: 4,
+            mb: 4,
+            background: "linear-gradient(135deg, rgba(56, 189, 248, 0.04), rgba(37, 99, 235, 0.02))",
+            border: "1px solid rgba(56, 189, 248, 0.15)",
+          }}
+        >
+          <Typography level="h3" sx={{ mb: 3, color: "#38bdf8" }}>
+            Sources AI Used
+          </Typography>
+
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {analysis.sources_ai_used.map((source, index) => (
+              <Card
+                key={index}
+                variant="outlined"
+                sx={{
+                  p: 3,
+                  background: "rgba(56, 189, 248, 0.05)",
+                  border: "1px solid rgba(56, 189, 248, 0.2)",
+                }}
+              >
+                {/* Source snippet */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography level="title-sm" sx={{ mb: 1, color: "#7dd3fc" }}>
+                    Source Snippet
+                  </Typography>
+                  <div
+                    style={{ color: "rgba(255, 255, 255, 0.9)", lineHeight: 1.6, fontSize: "0.95rem" }}
+                    dangerouslySetInnerHTML={{
+                      __html: formatMarkdownToHtml(source.source_snippet),
+                    }}
+                  />
+                </Box>
+
+                {/* Reason for inclusion */}
+                <Box sx={{ mb: 2 }}>
+                  <Typography level="title-sm" sx={{ mb: 1, color: "#7dd3fc" }}>
+                    Why This Source Matters
+                  </Typography>
+                  <div
+                    style={{ color: "rgba(255, 255, 255, 0.9)", lineHeight: 1.6, fontSize: "0.95rem" }}
+                    dangerouslySetInnerHTML={{
+                      __html: formatMarkdownToHtml(source.reason_for_inclusion),
+                    }}
+                  />
+                </Box>
+
+                {/* URL */}
+                <Box>
+                  <Typography level="body-sm" sx={{ color: "#bae6fd", mb: 0.5 }}>
+                    Source URL
+                  </Typography>
+                  <Typography
+                    level="body-sm"
+                    sx={{
+                      color: "#60a5fa",
+                      fontFamily: "monospace",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {source.source_of_mention}
+                  </Typography>
+                </Box>
+              </Card>
+            ))}
+          </Box>
+        </Card>
+      )}
+
       {/* Competitive Landscape */}
       <Card
         variant="outlined"

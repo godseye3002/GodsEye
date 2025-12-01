@@ -60,7 +60,8 @@ const createBullet = (text: string) =>
 
 export const exportAnalysisToDocx = async (
   analysis: OptimizationAnalysis,
-  sourceLabel = "Perplexity Search Analysis"
+  sourceLabel = "Perplexity Search Analysis",
+  usedQuery?: string | null
 ) => {
   const doc = new Document({
     sections: [
@@ -68,6 +69,13 @@ export const exportAnalysisToDocx = async (
         children: [
           createHeading("GodsEye AI Search Optimization Report", HeadingLevel.TITLE),
           createHeading(sourceLabel, HeadingLevel.HEADING_1),
+          
+          // Add used query section if provided
+          ...(usedQuery ? [
+            createHeading("Search Query Used", HeadingLevel.HEADING_2),
+            createLabelValue("Query", safeText(usedQuery)),
+          ] : []),
+          
           createHeading("Executive Summary", HeadingLevel.HEADING_1),
           createLabelValue("Title", safeText(analysis.executive_summary.title)),
           createLabelValue("Status Overview", safeText(analysis.executive_summary.status_overview)),
@@ -140,7 +148,8 @@ export const exportAnalysisToDocx = async (
 
 export const exportAnalysisToPdf = (
   analysis: OptimizationAnalysis,
-  sourceLabel = "Perplexity Search Analysis"
+  sourceLabel = "Perplexity Search Analysis",
+  usedQuery?: string | null
 ) => {
   const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
   const marginX = 40;
@@ -213,6 +222,12 @@ export const exportAnalysisToPdf = (
 
   addHeading("GodsEye AI Search Optimization Report", 22, 20);
   addHeading(sourceLabel, 16, 12);
+
+  // Add used query section if provided
+  if (usedQuery) {
+    addHeading("Search Query Used", 13, 4);
+    addText("Query", safeText(usedQuery));
+  }
 
   addHeading("Executive Summary", 16, 6);
   addText("Title", safeText(analysis.executive_summary.title));

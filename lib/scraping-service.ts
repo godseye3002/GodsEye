@@ -329,6 +329,8 @@ The JSON should include the following keys:
 - "targeted_market": An inferred analysis of the ideal customer for this product.
 - "problem_product_is_solving": An inferred analysis of the key problems or pain points this product addresses for its target market.${searchContext}
 
+Note: The price or any data related to price should not be included in the JSON output, even if it is present in the text content. Dont Force the data to be in the JSON output, add it only if it is present.
+
 Here is the text content:
 ---
 ${promptText}

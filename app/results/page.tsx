@@ -44,20 +44,14 @@ export default function ResultsPage() {
   }, [hydrated, optimizationAnalysis, currentProductId, products, setOptimizationAnalysis]);
 
   const handleExportDocx = async () => {
-    if (!optimizationAnalysis) return;
-    try {
-      await exportAnalysisToDocx(optimizationAnalysis, "Perplexity Search Analysis");
-    } catch (error) {
-      console.error("Failed to export DOCX", error);
+    if (optimizationAnalysis) {
+      await exportAnalysisToDocx(optimizationAnalysis, "Perplexity Search Analysis", perplexityQueryText);
     }
   };
 
   const handleExportPdf = () => {
-    if (!optimizationAnalysis) return;
-    try {
-      exportAnalysisToPdf(optimizationAnalysis, "Perplexity Search Analysis");
-    } catch (error) {
-      console.error("Failed to export PDF", error);
+    if (optimizationAnalysis) {
+      exportAnalysisToPdf(optimizationAnalysis, "Perplexity Search Analysis", perplexityQueryText);
     }
   };
 
@@ -73,10 +67,32 @@ export default function ResultsPage() {
     const raw = (useProductStore.getState().generatedQuery ?? null) as string | null;
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as { perplexityQuery?: string[]; googleQuery?: string[] };
-        perplexityQueryText = parsed.perplexityQuery && parsed.perplexityQuery.length > 0
-          ? parsed.perplexityQuery[0]
-          : raw;
+        const parsed = JSON.parse(raw);
+        
+        // Handle new QueryData format
+        if (parsed.all && parsed.all.perplexity) {
+          perplexityQueryText = parsed.all.perplexity.length > 0 
+            ? parsed.all.perplexity[0] 
+            : null;
+        }
+        // Handle old format for backward compatibility
+        else if (parsed.perplexityQuery && parsed.perplexityQuery.length > 0) {
+          perplexityQueryText = parsed.perplexityQuery[0];
+        }
+        // Handle case where perplexity is directly an array (like the current issue)
+        else if (parsed.perplexity && Array.isArray(parsed.perplexity)) {
+          perplexityQueryText = parsed.perplexity.length > 0 
+            ? parsed.perplexity[0] 
+            : null;
+        }
+        // Handle single string format
+        else if (typeof parsed === 'string') {
+          perplexityQueryText = parsed;
+        }
+        // Fallback to raw string if parsing fails
+        else {
+          perplexityQueryText = raw;
+        }
       } catch {
         perplexityQueryText = raw;
       }

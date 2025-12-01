@@ -20,6 +20,11 @@ export interface StrategicAnalysisResult {
   };
   ai_answer_deconstruction?: any;
   competitive_landscape_analysis?: any[];
+  sources_ai_used?: Array<{
+    source_snippet: string;
+    reason_for_inclusion: string;
+    source_of_mention: string;
+  }>;
   strategic_gap_and_opportunity_analysis?: any;
   actionable_recommendations?: any[];
   // Legacy fields for backward compatibility
@@ -94,6 +99,17 @@ export async function POST(request: NextRequest) {
 
             Your entire output must be a **single, clean JSON object**. Use the detailed structure provided below.
 
+            6. **Source Links:** You MUST represent all source_links from the [AI_SEARCH_JSON] in the structured output, without inventing new URLs or sources.
+
+   - **competitive_landscape_analysis**: Summarizes competitors that appear in the AI answer, and links them to the MOST relevant source URL from source_links.
+   - **sources_ai_used**: A complete list where there is EXACTLY ONE entry for EACH item in source_links.
+
+   For sources_ai_used:
+   - The number of items in sources_ai_used MUST equal the number of items in source_links.
+   - Each item must correspond directly to one source_links entry.
+   - Use only information that actually appears in ai_overview_text or source_links. If you cannot find enough detail for a snippet or reason, say so explicitly (e.g., 'Snippet not clearly available in provided text.').
+   - Do NOT invent URLs, brands, or claims that are not grounded in the provided JSON.
+
             Here is the [AI_SEARCH_JSON]:
 
             ${JSON.stringify(aiSearchJson, null, 2)}
@@ -125,9 +141,16 @@ export async function POST(request: NextRequest) {
               },
               "competitive_landscape_analysis": [
                 {
-                  "competitor_name": "Example: Mamaearth Onion Shampoo",
-                  "reason_for_inclusion": "Explain precisely why this competitor was chosen, based on the AI's extracted text. (e.g., 'The AI specifically highlighted its key natural ingredients (onion, plant keratin) and a clear benefit (reducing hair fall), which aligns with its value for specific, named ingredients.')",
-                  "source_of_mention": "Provide the URL from the source_links that the AI associated with this competitor. (e.g., '[https://mamaearth.in/product-category/hair-shampoo](https://mamaearth.in/product-category/hair-shampoo)')"
+                  "competitor_name": "Name of the competitor product or brand as mentioned in the AI's answer.",
+                  "reason_for_inclusion": "Explain, using only evidence from the AI's overview text and source_links, why this competitor appears in the answer.",
+                  "source_of_mention": "Provide the URL from source_links that this competitor is most directly associated with. If multiple could apply, pick the single best matching URL. Do not invent or modify URLs."
+                }
+              ],
+              "sources_ai_used": [
+                {
+                  "source_snippet": "Extract a short snippet from this source or from the AI overview that reflects how this source was used. If no clear snippet is available, state 'Snippet not clearly available in provided text.'",
+                  "reason_for_inclusion": "In one or two sentences, explain why this source matters for the AI's reasoning, based only on information actually present in ai_overview_text or source_links.",
+                  "source_of_mention": "Provide the exact URL from source_links. Do not invent or alter URLs."
                 }
               ],
 
@@ -159,7 +182,14 @@ export async function POST(request: NextRequest) {
                           "action": "Develop a strategy to get your product listed or reviewed on the types of authoritative domains the AI is citing (e.g., health blogs, online pharmacies, respected e-commerce sites). This builds the external trust the AI is looking for."
                           }
                       ]
-                }`;
+                }
+                
+                CRITICAL REQUIREMENTS:
+                1. You MUST populate the other_sources_ai_used array with ALL non-competitor sources from source_links
+                2. Every source from source_links must appear in either competitive_landscape_analysis OR other_sources_ai_used
+                3. Do not leave other_sources_ai_used empty unless there are truly no other sources
+                4. Ensure all URLs are valid and accessible
+                `;
 
     const prompt =
       pipeline === 'google_overview'
@@ -200,25 +230,65 @@ export async function POST(request: NextRequest) {
       let cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
       // Additional cleaning for common formatting issues
-      cleanText = cleanText.replace(/^[^{]*/, ''); // Remove any text before first {
-      cleanText = cleanText.replace(/[^}]*$/, ''); // Remove any text after last }
-      
-      // Attempt to parse
-      analysisResult = JSON.parse(cleanText);
+      // 1) Remove any text before the first opening brace
+      const firstBraceIndex = cleanText.indexOf('{');
+      if (firstBraceIndex > 0) {
+        cleanText = cleanText.slice(firstBraceIndex);
+      }
+
+      // 2) Remove any trailing junk after the last closing brace OR bracket.
+      //    Using only '}' here can accidentally cut off a final ']' and break arrays.
+      const lastBraceIndex = cleanText.lastIndexOf('}');
+      const lastBracketIndex = cleanText.lastIndexOf(']');
+      const lastCloseIndex = Math.max(lastBraceIndex, lastBracketIndex);
+      if (lastCloseIndex !== -1 && lastCloseIndex < cleanText.length - 1) {
+        cleanText = cleanText.slice(0, lastCloseIndex + 1);
+      }
+
+      // First parse attempt
+      try {
+        analysisResult = JSON.parse(cleanText);
+      } catch (innerError) {
+        // Repair common JSON issues such as trailing commas before } or ]
+        let repairedText = cleanText
+          // Remove trailing commas before closing object/array
+          .replace(/,\s*([}\]])/g, '$1');
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('Initial JSON.parse failed, attempting repair:', innerError);
+        }
+
+        analysisResult = JSON.parse(repairedText);
+        cleanText = repairedText;
+      }
       
       // Validate required structure
       if (!analysisResult.executive_summary || !analysisResult.client_product_visibility) {
         throw new Error('Invalid analysis structure: missing required fields');
       }
       
+      // DEBUG: Log the final parsed result to verify sources_ai_used presence
       if (process.env.NODE_ENV !== 'production') {
         console.log('Strategic analysis parsed successfully');
+        console.log(`[DEBUG] Final analysis result for ${pipeline || 'unknown'}:`, {
+          hasExecutiveSummary: !!analysisResult.executive_summary,
+          hasClientProductVisibility: !!analysisResult.client_product_visibility,
+          hasCompetitiveLandscape: !!analysisResult.competitive_landscape_analysis,
+          competitiveLandscapeCount: Array.isArray(analysisResult.competitive_landscape_analysis) ? analysisResult.competitive_landscape_analysis.length : 0,
+          hasSourcesUsed: !!analysisResult.sources_ai_used,
+          sourcesUsedCount: Array.isArray(analysisResult.sources_ai_used) ? analysisResult.sources_ai_used.length : 0,
+          sourcesUsedPreview: Array.isArray(analysisResult.sources_ai_used) ? analysisResult.sources_ai_used.slice(0, 2) : null,
+          fullAnalysisKeys: Object.keys(analysisResult),
+          // Log the full object in development for deep inspection
+          fullAnalysisResult: analysisResult
+        });
       }
     } catch (parseError) {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Error parsing strategic analysis response:', parseError);
         console.error('Raw response (first 500 chars):', text.substring(0, 500));
-        console.error('Cleaned text (first 500 chars):', text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim().substring(0, 500));
+        const cleanedPreview = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        console.error('Cleaned text (first 500 chars):', cleanedPreview.substring(0, 500));
       }
       
       // Return a user-friendly error with partial data if possible

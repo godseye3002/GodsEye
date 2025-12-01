@@ -16,23 +16,16 @@ export default function GoogleResultsPage() {
     setOptimizationAnalysis,
   } = useProductStore();
   const handleExportDocx = async () => {
-    if (!googleOverviewAnalysis) return;
-    try {
-      await exportAnalysisToDocx(googleOverviewAnalysis, "Google AI Overview Analysis");
-    } catch (error) {
-      console.error("Failed to export DOCX", error);
+    if (googleOverviewAnalysis) {
+      await exportAnalysisToDocx(googleOverviewAnalysis, "Google AI Overview Analysis", googleQueryText);
     }
   };
 
   const handleExportPdf = () => {
-    if (!googleOverviewAnalysis) return;
-    try {
-      exportAnalysisToPdf(googleOverviewAnalysis, "Google AI Overview Analysis");
-    } catch (error) {
-      console.error("Failed to export PDF", error);
+    if (googleOverviewAnalysis) {
+      exportAnalysisToPdf(googleOverviewAnalysis, "Google AI Overview Analysis", googleQueryText);
     }
   };
-
 
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
@@ -50,10 +43,32 @@ export default function GoogleResultsPage() {
     const raw = (useProductStore.getState().generatedQuery ?? null) as string | null;
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as { perplexityQuery?: string[]; googleQuery?: string[] };
-        googleQueryText = parsed.googleQuery && parsed.googleQuery.length > 0
-          ? parsed.googleQuery[0]
-          : raw;
+        const parsed = JSON.parse(raw);
+        
+        // Handle new QueryData format
+        if (parsed.all && parsed.all.google) {
+          googleQueryText = parsed.all.google.length > 0 
+            ? parsed.all.google[0] 
+            : null;
+        }
+        // Handle old format for backward compatibility
+        else if (parsed.googleQuery && parsed.googleQuery.length > 0) {
+          googleQueryText = parsed.googleQuery[0];
+        }
+        // Handle case where google is directly an array (like the current issue)
+        else if (parsed.google && Array.isArray(parsed.google)) {
+          googleQueryText = parsed.google.length > 0 
+            ? parsed.google[0] 
+            : null;
+        }
+        // Handle single string format
+        else if (typeof parsed === 'string') {
+          googleQueryText = parsed;
+        }
+        // Fallback to raw string if parsing fails
+        else {
+          googleQueryText = raw;
+        }
       } catch {
         googleQueryText = raw;
       }
