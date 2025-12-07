@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
-    const { userId, productId } = await request.json();
+    const { userId, productId, googleAnalysisId, perplexityAnalysisId } = await request.json();
 
     if (!userId || !productId) {
       return NextResponse.json(
@@ -15,9 +15,20 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     // Update the most recent analysis_history entry for this user with the product_id
+    // and any available analysis IDs from the new split tables
+    const updateData: any = { product_id: productId };
+
+    if (googleAnalysisId) {
+      updateData.google_analysis_id = googleAnalysisId;
+    }
+
+    if (perplexityAnalysisId) {
+      updateData.perplexity_analysis_id = perplexityAnalysisId;
+    }
+
     const { error } = await (supabaseAdmin as any)
       .from('analysis_history')
-      .update({ product_id: productId })
+      .update(updateData)
       .eq('user_id', userId)
       .is('product_id', null)
       .order('created_at', { ascending: false })

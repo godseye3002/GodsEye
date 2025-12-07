@@ -18,7 +18,8 @@ export async function GET(request: Request) {
 
     const { data, error } = await (supabaseAdmin as any)
       .from('products')
-      .select('*')
+      // Also fetch related analyses from the new split tables
+      .select('*, product_analysis_google(*), product_analysis_perplexity(*)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 

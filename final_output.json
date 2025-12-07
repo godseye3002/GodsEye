@@ -1,31 +1,25 @@
 {
   "product": {
     "product_name": "Linkrunner",
-    "description": "Linkrunner is an AI-driven Mobile Measurement Partner (MMP) that allows businesses to meticulously track the performance of their distribution channels, from initial click through to download and user onboarding.",
+    "description": "Linkrunner is an AI-driven Mobile Measurement Partner (MMP) designed to help businesses track their top-performing distribution channels with granular detail, from every click to download and onboarding.",
     "general_product_type": "Software",
     "specific_product_type": "Mobile Measurement Partner (MMP)",
-    "specifications": {
-      "funding_status": "Pre-seed",
-      "funding_amount": "$560k",
-      "core_technology": "AI-driven"
-    },
+    "specifications": {},
     "features": [
       {
-        "name": "Channel Performance Tracking",
-        "description": "Enables detailed monitoring of top-performing distribution channels."
+        "name": "AI-driven tracking",
+        "description": "Utilizes artificial intelligence to provide insights into distribution channel performance."
       },
       {
-        "name": "Granular Metrics",
-        "description": "Tracks performance down to every click, download, and onboarding event."
-      },
-      {
-        "name": "AI-Driven Analysis",
-        "description": "Leverages artificial intelligence for insights into channel effectiveness."
+        "name": "Granular channel performance tracking",
+        "description": "Monitors key metrics such as clicks, downloads, and onboarding for distribution channels."
       }
     ],
-    "targeted_market": "Mobile app developers, marketers, and businesses focused on user acquisition and retention through various distribution channels. This includes companies looking to optimize their marketing spend and understand the true ROI of their efforts.",
-    "problem_product_is_solving": "The difficulty in precisely attributing user acquisition and engagement to specific marketing channels. It addresses the lack of granular data on user journey (from click to onboarding) and the inability to identify the most effective distribution strategies, leading to potentially wasted marketing resources."
+    "targeted_market": "Businesses that rely on multiple distribution channels to acquire users for their mobile applications and need to understand the effectiveness of each channel.",
+    "problem_product_is_solving": "Lack of clear visibility into the performance of various distribution channels for mobile apps, making it difficult to optimize marketing spend and user acquisition strategies."
   },
   "extraction_method": "selectors-fallback",
-  "missing_fields": []
+  "missing_fields": [
+    "specifications"
+  ]
 }

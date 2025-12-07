@@ -233,7 +233,70 @@ export const useProductStore = create<ProductStoreState>()(
             // Check both top-level fields and specifications object for product types
             const generalType = p.general_product_type || specs.general_product_type || '';
             const specificType = p.specific_product_type || specs.specific_product_type || '';
-            
+
+            // New split analysis tables
+            const googleAnalyses = Array.isArray(p.product_analysis_google) ? p.product_analysis_google : [];
+            const perplexityAnalyses = Array.isArray(p.product_analysis_perplexity) ? p.product_analysis_perplexity : [];
+
+            // Compute latest Perplexity analysis (if any)
+            const latestPerplexity = perplexityAnalyses.length > 0
+              ? perplexityAnalyses.reduce((latest: any, curr: any) => {
+                  if (!latest) return curr;
+                  const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
+                  const currTime = curr.created_at ? new Date(curr.created_at).getTime() : 0;
+                  return currTime > latestTime ? curr : latest;
+                }, perplexityAnalyses[0])
+              : null;
+
+            // Compute latest Google analysis (if any)
+            const latestGoogle = googleAnalyses.length > 0
+              ? googleAnalyses.reduce((latest: any, curr: any) => {
+                  if (!latest) return curr;
+                  const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
+                  const currTime = curr.created_at ? new Date(curr.created_at).getTime() : 0;
+                  return currTime > latestTime ? curr : latest;
+                }, googleAnalyses[0])
+              : null;
+
+            // Maintain existing top-level fallbacks for backward compatibility
+            const optimizationAnalysis = latestPerplexity?.optimization_analysis ?? p.optimization_analysis ?? null;
+            const googleOverviewAnalysis = latestGoogle?.google_overview_analysis ?? p.google_overview_analysis ?? null;
+
+            // We no longer maintain a combined_analysis column in the new tables; keep any legacy value
+            const combinedAnalysis = p.combined_analysis ?? null;
+
+            // Source links: prefer citations from latest Perplexity analysis, then legacy product field
+            const sourceLinks = latestPerplexity?.citations ?? p.source_links ?? [];
+            const processedSources = p.processed_sources ?? [];
+
+            // Synthesize a unified analyses array for backward compatibility (used by history / view result logic)
+            const analyses = [
+              // Perplexity entries
+              ...perplexityAnalyses.map((pa: any) => ({
+                id: pa.id,
+                optimization_query: pa.optimization_prompt,
+                optimization_analysis: pa.optimization_analysis,
+                google_search_query: null,
+                google_overview_analysis: null,
+                combined_analysis: null,
+                source_links: pa.citations ?? [],
+                processed_sources: [],
+                created_at: pa.created_at,
+              })),
+              // Google entries
+              ...googleAnalyses.map((ga: any) => ({
+                id: ga.id,
+                optimization_query: null,
+                optimization_analysis: null,
+                google_search_query: ga.search_query,
+                google_overview_analysis: ga.google_overview_analysis,
+                combined_analysis: null,
+                source_links: [],
+                processed_sources: [],
+                created_at: ga.created_at,
+              })),
+            ];
+
             return {
               id: p.id,
               name: p.product_name || 'Untitled Product',
@@ -250,15 +313,102 @@ export const useProductStore = create<ProductStoreState>()(
                 general_product_type: generalType,
                 specific_product_type: specificType,
               },
-              analysis: p.optimization_analysis || null,
-              googleOverviewAnalysis: p.google_overview_analysis || null,
-              combinedAnalysis: p.combined_analysis || null,
-              sourceLinks: p.source_links || [],
-              processedSources: p.processed_sources || [],
+              analysis: optimizationAnalysis,
+              googleOverviewAnalysis,
+              combinedAnalysis,
+              sourceLinks,
+              processedSources,
+              analyses,
             };
           });
           
           set({ products: transformedProducts });
+          
+          // Load query data from the first available product (or create empty state)
+          if (products.length > 0) {
+            const firstProduct = products[0];
+            const queryText = firstProduct.query_text;
+            
+            if (queryText && typeof queryText === 'object') {
+              // Parse query_text from products table
+              const allPerplexity = Array.isArray(queryText.all?.perplexity) ? queryText.all.perplexity : [];
+              const allGoogle = Array.isArray(queryText.all?.google) ? queryText.all.google : [];
+              const usedPerplexity = Array.isArray(queryText.used?.perplexity) ? queryText.used.perplexity : [];
+              const usedGoogle = Array.isArray(queryText.used?.google) ? queryText.used.google : [];
+              
+              // Validate that used queries exist in all queries (professional error handling for orphaned records)
+              const validUsedPerplexity = usedPerplexity.filter((query: string) => allPerplexity.includes(query));
+              const validUsedGoogle = usedGoogle.filter((query: string) => allGoogle.includes(query));
+              
+              // Log warnings for orphaned queries (in development only)
+              if (process.env.NODE_ENV !== 'production') {
+                const orphanedPerplexity = usedPerplexity.filter((query: string) => !allPerplexity.includes(query));
+                const orphanedGoogle = usedGoogle.filter((query: string) => !allGoogle.includes(query));
+                
+                if (orphanedPerplexity.length > 0) {
+                  console.warn('[Query Data] Found orphaned Perplexity queries:', orphanedPerplexity);
+                }
+                if (orphanedGoogle.length > 0) {
+                  console.warn('[Query Data] Found orphaned Google queries:', orphanedGoogle);
+                }
+              }
+              
+              // Update store with validated query data
+              set({
+                allPerplexityQueries: allPerplexity,
+                allGoogleQueries: allGoogle,
+                usedPerplexityQueries: validUsedPerplexity,
+                usedGoogleQueries: validUsedGoogle,
+                selectedPerplexityQueries: [],
+                selectedGoogleQueries: [],
+              });
+              
+              // Update queryData state for consistency
+              const queryData: QueryData = {
+                all: {
+                  perplexity: allPerplexity,
+                  google: allGoogle,
+                },
+                used: {
+                  perplexity: validUsedPerplexity,
+                  google: validUsedGoogle,
+                },
+              };
+              set({ queryData });
+              
+              // If we found orphaned queries, update the database to clean them up
+              if (validUsedPerplexity.length !== usedPerplexity.length || validUsedGoogle.length !== usedGoogle.length) {
+                console.log('[Query Data] Cleaning up orphaned query references...');
+                try {
+                  await get().updateQueryDataInSupabase(userId, queryData);
+                } catch (cleanupError) {
+                  console.error('[Query Data] Failed to cleanup orphaned queries:', cleanupError);
+                }
+              }
+            } else {
+              // Reset query state if no query_text found
+              set({
+                allPerplexityQueries: [],
+                allGoogleQueries: [],
+                usedPerplexityQueries: [],
+                usedGoogleQueries: [],
+                selectedPerplexityQueries: [],
+                selectedGoogleQueries: [],
+                queryData: null,
+              });
+            }
+          } else {
+            // Reset query state if no products
+            set({
+              allPerplexityQueries: [],
+              allGoogleQueries: [],
+              usedPerplexityQueries: [],
+              usedGoogleQueries: [],
+              selectedPerplexityQueries: [],
+              selectedGoogleQueries: [],
+              queryData: null,
+            });
+          }
         } catch (error) {
           console.error('Error loading products from Supabase:', error);
         }

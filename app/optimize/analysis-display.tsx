@@ -116,7 +116,7 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
           <div
             style={{ color: "rgba(255, 255, 255, 0.9)", lineHeight: 1.7 }}
             dangerouslySetInnerHTML={{
-              __html: formatMarkdownToHtml(analysis.ai_answer_deconstruction.dominant_narrative)
+              __html: formatMarkdownToHtml(analysis.ai_answer_deconstruction?.dominant_narrative || 'Dominant narrative analysis not available due to incomplete AI response.')
             }}
           />
         </Box>
@@ -126,7 +126,7 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
             Key Decision Factors
           </Typography>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            {analysis.ai_answer_deconstruction.key_decision_factors.map((factor, index) => (
+            {analysis.ai_answer_deconstruction?.key_decision_factors?.map((factor, index) => (
               <Box
                 key={index}
                 sx={{
@@ -143,7 +143,22 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
                   }}
                 />
               </Box>
-            ))}
+            )) || (
+              <Box
+                sx={{
+                  p: 2,
+                  backgroundColor: "rgba(59, 130, 246, 0.08)",
+                  borderRadius: "8px",
+                  borderLeft: "3px solid #60a5fa"
+                }}
+              >
+                <div
+                  style={{ color: "rgba(255, 255, 255, 0.7)", fontSize: "0.95rem", fontStyle: "italic" }}
+                >
+                  Key decision factors analysis not available due to incomplete AI response.
+                </div>
+              </Box>
+            )}
           </Box>
         </Box>
 
@@ -154,7 +169,7 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
           <div
             style={{ color: "rgba(255, 255, 255, 0.9)", lineHeight: 1.7 }}
             dangerouslySetInnerHTML={{
-              __html: formatMarkdownToHtml(analysis.ai_answer_deconstruction.trusted_source_analysis)
+              __html: formatMarkdownToHtml(analysis.ai_answer_deconstruction?.trusted_source_analysis || 'Trusted source analysis not available due to incomplete AI response.')
             }}
           />
         </Box>
@@ -176,7 +191,7 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
           </Typography>
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {analysis.sources_ai_used.map((source, index) => (
+            {(analysis.sources_ai_used || []).map((source, index) => (
               <Card
                 key={index}
                 variant="outlined"
@@ -249,7 +264,7 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
         </Typography>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {analysis.competitive_landscape_analysis.map((competitor, index) => (
+          {(analysis.competitive_landscape_analysis || []).map((competitor, index) => (
             <Card
               key={index}
               variant="outlined"
@@ -393,7 +408,7 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
         </Typography>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {analysis.actionable_recommendations.map((rec, index) => (
+          {(analysis.actionable_recommendations || []).map((rec, index) => (
             <Card
               key={index}
               variant="outlined"

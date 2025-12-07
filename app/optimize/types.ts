@@ -56,6 +56,8 @@ export interface OptimizedProduct extends OptimizedProductSummary {
   combinedAnalysis?: any | null;
   sourceLinks?: SourceLink[];
   processedSources?: ProcessedSource[];
+  // Optional list of all related analysis records from product_analyses for history
+  analyses?: any[];
 }
 
 export interface OptimizationAnalysis {

@@ -1,0 +1,14 @@
+-- 1. Move Google Data
+insert into public.product_analysis_google (product_id, search_query, google_overview_analysis, created_at)
+select product_id, google_search_query, google_overview_analysis, created_at 
+from public.product_analyses
+where google_search_query is not null;
+
+-- 2. Move Perplexity Data
+insert into public.product_analysis_perplexity (product_id, optimization_prompt, optimization_analysis, citations, created_at)
+select product_id, optimization_query, optimization_analysis, source_links, created_at 
+from public.product_analyses
+where optimization_query is not null;
+
+-- 3. (Optional) Once verified, drop the old table
+-- drop table public.product_analyses;

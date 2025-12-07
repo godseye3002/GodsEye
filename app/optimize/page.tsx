@@ -251,6 +251,7 @@ function OptimizePageContent() {
     selectedPipeline,
     setSelectedPipeline,
     setCurrentProductId,
+    products,
   } = useProductStore();
 
   const [isClient, setIsClient] = useState(false);
@@ -1413,7 +1414,64 @@ function OptimizePageContent() {
       e.preventDefault();
       handleSaveEditedQuery();
     } else if (e.key === 'Escape') {
+      e.preventDefault();
       handleCancelEdit();
+    }
+  };
+  
+  // View analysis result for a used query
+  const handleViewAnalysisResult = async (query: string, pipeline: 'perplexity' | 'google_overview') => {
+    console.log('handleViewAnalysisResult called', { query, pipeline, currentProductId });
+    
+    if (!currentProductId) {
+      setServerError('No product selected. Please select a product first.');
+      return;
+    }
+    
+    const currentProduct = products.find(p => p.id === currentProductId);
+    console.log('Current product:', currentProduct);
+    
+    if (!currentProduct || !currentProduct.analyses) {
+      setServerError('Analysis history not found for this product.');
+      return;
+    }
+    
+    console.log('Available analyses:', currentProduct.analyses);
+    console.log('Looking for query:', query, 'in pipeline:', pipeline);
+    
+    // Find the analysis record that matches this query and pipeline
+    const matchingAnalysis = currentProduct.analyses.find((analysis: any) => {
+      console.log('Checking analysis:', {
+        id: analysis.id,
+        optimization_query: analysis.optimization_query,
+        google_search_query: analysis.google_search_query,
+        has_optimization: !!analysis.optimization_analysis,
+        has_google: !!analysis.google_overview_analysis,
+      });
+
+      if (pipeline === 'perplexity') {
+        return analysis.optimization_query === query;
+      }
+      return analysis.google_search_query === query;
+    });
+    
+    console.log('Matching analysis:', matchingAnalysis);
+    
+    if (!matchingAnalysis) {
+      setServerError(`Analysis result not found for this ${pipeline} query.`);
+      return;
+    }
+    
+    console.log('Navigating to:', {
+      perplexity: `/results/perplexity/${matchingAnalysis.id}`,
+      google: `/results/google/${matchingAnalysis.id}`
+    });
+    
+    // Navigate to the appropriate historical results page with analysis ID
+    if (pipeline === 'perplexity') {
+      router.push(`/results/perplexity/${matchingAnalysis.id}`);
+    } else {
+      router.push(`/results/google/${matchingAnalysis.id}`);
     }
   };
   
@@ -1859,12 +1917,18 @@ function OptimizePageContent() {
       // Perplexity strategic analysis
       if (perplexityAnalysisResponse) {
         if (!perplexityAnalysisResponse.ok) {
-          const analysisError = await perplexityAnalysisResponse.json();
+          const analysisError = await perplexityAnalysisResponse.json().catch((e) => {
+            console.error('Failed to parse Perplexity error response:', e);
+            return { error: 'Failed to perform strategic analysis' };
+          });
           const userMessage = analysisError.error || 'Failed to perform strategic analysis';
           console.error('Perplexity strategic analysis failed:', analysisError);
           throw new Error(userMessage);
         }
-        const perplexityData = await perplexityAnalysisResponse.json();
+        const perplexityData = await perplexityAnalysisResponse.json().catch((e) => {
+          console.error('Failed to parse Perplexity analysis JSON:', e);
+          return null;
+        });
         if (!perplexityData || typeof perplexityData !== 'object') {
           throw new Error('Received invalid Perplexity analysis data from server');
         }
@@ -1878,15 +1942,25 @@ function OptimizePageContent() {
       if (googleAnalysisResponse) {
         try {
           if (googleAnalysisResponse.ok) {
-            const googleData = await googleAnalysisResponse.json();
-            console.log('Google AI Overview strategic analysis completed:', googleData);
-            setGoogleOverviewAnalysis(googleData);
-            googleAnalysis = googleData as OptimizationAnalysis;
-            if (!primaryAnalysis) {
-              primaryAnalysis = googleAnalysis;
+            const googleData = await googleAnalysisResponse.json().catch((e) => {
+              console.error('Failed to parse Google analysis JSON:', e);
+              return null;
+            });
+            if (!googleData || typeof googleData !== 'object') {
+              console.error('Received invalid Google analysis data from server');
+            } else {
+              console.log('Google AI Overview strategic analysis completed:', googleData);
+              setGoogleOverviewAnalysis(googleData);
+              googleAnalysis = googleData as OptimizationAnalysis;
+              if (!primaryAnalysis) {
+                primaryAnalysis = googleAnalysis;
+              }
             }
           } else {
-            const googleError = await googleAnalysisResponse.json().catch(() => null);
+            const googleError = await googleAnalysisResponse.json().catch((e) => {
+              console.error('Failed to parse Google error response:', e);
+              return null;
+            });
             console.error('Google AI Overview strategic analysis failed:', {
               status: googleAnalysisResponse.status,
               error: googleError,
@@ -1954,8 +2028,9 @@ function OptimizePageContent() {
       }
 
       // Save to Supabase if user is authenticated
+      let savedProductId: string | null = null;
       try {
-        const savedProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+        savedProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
         console.log('Product saved to Supabase successfully with ID:', savedProductId);
         if (savedProductId) {
           setCurrentProductId(savedProductId);
@@ -1964,7 +2039,45 @@ function OptimizePageContent() {
         console.error('Failed to save product to Supabase:', saveError);
       }
 
-      // 7) Mark both queries as used in queryData
+      // Also persist this specific analysis run into the split analysis tables for history
+      let savedGoogleAnalysisId: string | null = null;
+      let savedPerplexityAnalysisId: string | null = null;
+      if (savedProductId) {
+        try {
+          const analysisResponse = await fetch('/api/product-analyses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_id: savedProductId,
+              optimization_query: perplexityQuery || null,
+              google_search_query: googleQuery || null,
+              optimization_analysis: perplexityAnalysis || null,
+              google_overview_analysis: googleAnalysis || null,
+              combined_analysis:
+                perplexityAnalysis && googleAnalysis
+                  ? { perplexity: perplexityAnalysis, google: googleAnalysis }
+                  : null,
+              source_links: productRecord.sourceLinks || [],
+              processed_sources: productRecord.processedSources || [],
+            }),
+          });
+          
+          if (analysisResponse.ok) {
+            const analysisData = await analysisResponse.json();
+            savedGoogleAnalysisId = analysisData.googleAnalysis?.id || analysisData.analysis?.google_analysis_id || null;
+            savedPerplexityAnalysisId = analysisData.perplexityAnalysis?.id || analysisData.analysis?.perplexity_analysis_id || null;
+            console.log('Analysis saved to product_analysis tables with IDs:', {
+              google: savedGoogleAnalysisId,
+              perplexity: savedPerplexityAnalysisId,
+            });
+          }
+        } catch (analysisSaveError) {
+          console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
+          // Do not block user from seeing results if history save fails
+        }
+      }
+
+      // 7) Mark both queries as used in queryData and persist to products table
       let finalQueryData: QueryData | null = null;
       if (queryDataString) {
         // Parse the query data that was just saved to ensure consistency
@@ -1974,7 +2087,7 @@ function OptimizePageContent() {
         } catch (error) {
           console.warn('Failed to parse saved query data:', error);
         }
-        
+
         if (currentQueryData) {
           const updatedQueryData: QueryData = {
             ...currentQueryData,
@@ -2467,12 +2580,50 @@ function OptimizePageContent() {
           addProduct(productRecord);
           
           // Save to Supabase if user is authenticated
+          let savedGoogleAnalysisId: string | null = null;
+          let savedPerplexityAnalysisId: string | null = null;
           if (user) {
             try {
               const savedProductId = await saveProductToSupabase(productRecord, user.id, generatedQueriesPayload);
               console.log('Product saved to Supabase successfully with ID:', savedProductId);
-              
-              // Update analysis_history with product_id
+
+              // Also persist this specific analysis run into the split analysis tables for history
+              if (savedProductId) {
+                try {
+                  const analysisResponse = await fetch('/api/product-analyses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      product_id: savedProductId,
+                      optimization_query: selectedPerplexityQueries.length > 0 ? selectedPerplexityQueries[0] : null,
+                      google_search_query: selectedGoogleQueries.length > 0 ? selectedGoogleQueries[0] : null,
+                      optimization_analysis: perplexityAnalysis || null,
+                      google_overview_analysis: googleAnalysis || null,
+                      combined_analysis:
+                        perplexityAnalysis && googleAnalysis
+                          ? { perplexity: perplexityAnalysis, google: googleAnalysis }
+                          : null,
+                      source_links: productRecord.sourceLinks || [],
+                      processed_sources: productRecord.processedSources || [],
+                    }),
+                  });
+
+                  if (analysisResponse.ok) {
+                    const analysisData = await analysisResponse.json();
+                    savedGoogleAnalysisId = analysisData.googleAnalysis?.id || analysisData.analysis?.google_analysis_id || null;
+                    savedPerplexityAnalysisId = analysisData.perplexityAnalysis?.id || analysisData.analysis?.perplexity_analysis_id || null;
+                    console.log('Analysis saved to product_analysis tables with IDs:', {
+                      google: savedGoogleAnalysisId,
+                      perplexity: savedPerplexityAnalysisId,
+                    });
+                  }
+                } catch (analysisSaveError) {
+                  console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
+                  // Do not block user from seeing results if history save fails
+                }
+              }
+
+              // Update analysis_history with product_id and available analysis IDs from the split tables
               if (savedProductId) {
                 try {
                   await fetch('/api/analyze/update-history', {
@@ -2481,9 +2632,11 @@ function OptimizePageContent() {
                     body: JSON.stringify({
                       userId: user.id,
                       productId: savedProductId,
+                      googleAnalysisId: savedGoogleAnalysisId,
+                      perplexityAnalysisId: savedPerplexityAnalysisId,
                     }),
                   });
-                  console.log('Analysis history updated with product_id');
+                  console.log('Analysis history updated with product_id and split analysis IDs');
                 } catch (historyError) {
                   console.error('Failed to update analysis history:', historyError);
                 }
@@ -4303,21 +4456,46 @@ function OptimizePageContent() {
                                     Used
                                   </Chip>
                                 )}
-                                <IconButton
-                                  size="sm"
-                                  variant="outlined"
-                                  onClick={() => handleEditQuery(query, index, 'perplexity')}
-                                  sx={{
-                                    borderColor: "rgba(46, 212, 122, 0.3)",
-                                    color: "#2ED47A",
-                                    "&:hover": {
-                                      backgroundColor: "rgba(46, 212, 122, 0.1)",
-                                      borderColor: "rgba(46, 212, 122, 0.5)",
-                                    },
-                                  }}
-                                >
-                                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
-                                </IconButton>
+                                {usedPerplexityQueries.includes(query) ? (
+                                  <Tooltip title="View Perplexity analysis result" placement="top">
+                                    <Button
+                                      size="sm"
+                                      variant="outlined"
+                                      onClick={() => handleViewAnalysisResult(query, 'perplexity')}
+                                      sx={{
+                                        minWidth: 90,
+                                        borderColor: "rgba(46, 212, 122, 0.3)",
+                                        color: "#2ED47A",
+                                        fontWeight: 600,
+                                        fontSize: "0.75rem",
+                                        "&:hover": {
+                                          backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                          borderColor: "rgba(46, 212, 122, 0.5)",
+                                        },
+                                      }}
+                                    >
+                                      🔍 Result
+                                    </Button>
+                                  </Tooltip>
+                                ) : (
+                                  <Tooltip title="Edit query" placement="top">
+                                    <IconButton
+                                      size="sm"
+                                      variant="outlined"
+                                      onClick={() => handleEditQuery(query, index, 'perplexity')}
+                                      sx={{
+                                        borderColor: "rgba(46, 212, 122, 0.3)",
+                                        color: "#2ED47A",
+                                        "&:hover": {
+                                          backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                          borderColor: "rgba(46, 212, 122, 0.5)",
+                                        },
+                                      }}
+                                    >
+                                      <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
                               </Box>
                             </Box>
                           )}
@@ -4469,23 +4647,46 @@ function OptimizePageContent() {
                                     Used
                                   </Chip>
                                 )}
-                                <Tooltip title="Edit query (minimum 6 words for AI Overview)" placement="top">
-                                  <IconButton
-                                    size="sm"
-                                    variant="outlined"
-                                    onClick={() => handleEditQuery(query, index, 'google_overview')}
-                                    sx={{
-                                      borderColor: "rgba(46, 212, 122, 0.3)",
-                                      color: "#2ED47A",
-                                      "&:hover": {
-                                        backgroundColor: "rgba(46, 212, 122, 0.1)",
-                                        borderColor: "rgba(46, 212, 122, 0.5)",
-                                      },
-                                    }}
-                                  >
-                                    <EditOutlinedIcon />
-                                  </IconButton>
-                                </Tooltip>
+                                {usedGoogleQueries.includes(query) ? (
+                                  <Tooltip title="View Google AI Overview analysis result" placement="top">
+                                    <Button
+                                      size="sm"
+                                      variant="outlined"
+                                      onClick={() => handleViewAnalysisResult(query, 'google_overview')}
+                                      sx={{
+                                        minWidth: 90,
+                                        borderColor: "rgba(66, 133, 244, 0.3)",
+                                        color: "#4285F4",
+                                        fontWeight: 600,
+                                        fontSize: "0.75rem",
+                                        "&:hover": {
+                                          backgroundColor: "rgba(66, 133, 244, 0.1)",
+                                          borderColor: "rgba(66, 133, 244, 0.5)",
+                                        },
+                                      }}
+                                    >
+                                      🌐 Result
+                                    </Button>
+                                  </Tooltip>
+                                ) : (
+                                  <Tooltip title="Edit query (minimum 6 words for AI Overview)" placement="top">
+                                    <IconButton
+                                      size="sm"
+                                      variant="outlined"
+                                      onClick={() => handleEditQuery(query, index, 'google_overview')}
+                                      sx={{
+                                        borderColor: "rgba(46, 212, 122, 0.3)",
+                                        color: "#2ED47A",
+                                        "&:hover": {
+                                          backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                          borderColor: "rgba(46, 212, 122, 0.5)",
+                                        },
+                                      }}
+                                    >
+                                      <EditOutlinedIcon />
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
                               </Box>
                             </Box>
                           )}

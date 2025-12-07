@@ -290,16 +290,56 @@ export async function POST(request: NextRequest) {
         const cleanedPreview = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         console.error('Cleaned text (first 500 chars):', cleanedPreview.substring(0, 500));
       }
-      
-      // Return a user-friendly error with partial data if possible
-      return NextResponse.json(
-        { 
-          error: 'The AI analysis service returned an unexpected format. Our team has been notified and is working on a fix. Please try again in a few moments.',
-          technicalDetails: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
-          rawResponsePreview: text.substring(0, 200)
+
+      // Fallback: construct a minimal but valid StrategicAnalysisResult
+      const aiSearchAny = aiSearchJson as any;
+      const fallbackSources: StrategicAnalysisResult["sources_ai_used"] =
+        Array.isArray(aiSearchAny?.source_links)
+          ? aiSearchAny.source_links.map((src: any) => ({
+              source_snippet:
+                typeof src === 'string'
+                  ? src.slice(0, 200)
+                  : 'Snippet not clearly available in provided text.',
+              reason_for_inclusion:
+                'Source was included in the AI search JSON but the structured analysis could not be fully parsed.',
+              source_of_mention:
+                (typeof src === 'string' ? src : src.url) || 'Unknown source',
+            }))
+          : [];
+
+      const fallback: StrategicAnalysisResult = {
+        executive_summary: {
+          title: 'AEO Competitive Analysis (Fallback)',
+          status_overview:
+            'The AI analysis service returned an unexpected format. This is an automatically generated fallback summary.',
+          strategic_analogy:
+            'Think of this as receiving raw research notes without a clean report. The data is there, but the structure had to be approximated.',
         },
-        { status: 500 }
-      );
+        client_product_visibility: {
+          status: 'Not Featured',
+          details:
+            'The detailed structured visibility analysis could not be parsed from the AI response. Please rerun the analysis later or contact support if this persists.',
+        },
+        ai_answer_deconstruction: {
+          dominant_narrative: 'The AI response could not be properly parsed to extract the dominant narrative. This may be due to formatting issues in the AI output.',
+          key_decision_factors: [
+            'AI response parsing failed - unable to extract decision factors',
+            'Consider rerunning the analysis for complete results',
+            'Raw response data has been preserved for reference'
+          ],
+          trusted_source_analysis: 'Due to parsing difficulties, trusted source analysis could not be extracted. Please refer to the source links provided below for raw information.',
+          raw_response_preview: text.substring(0, 500),
+        },
+        competitive_landscape_analysis: [],
+        sources_ai_used: fallbackSources,
+        strategic_gap_and_opportunity_analysis: {
+          analysis_summary:
+            'Due to a formatting issue in the AI output, a full gap and opportunity analysis could not be generated. However, the source links have been preserved for manual review.',
+        },
+        actionable_recommendations: [],
+      } as any;
+
+      return NextResponse.json(fallback);
     }
 
     return NextResponse.json(analysisResult);
