@@ -62,7 +62,19 @@ async function callPerplexityScraper(query: string, location: string = 'India') 
     //   keep_open: false,
     // });
     console.log('Scraper response:', response.data);
-    return response.data;
+    
+    // Validate Perplexity response
+    const data = response.data;
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid Perplexity scraper response format');
+    }
+    
+    // Check if ai_overview_text is empty or too short
+    if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
+      throw new Error('Perplexity scraper returned empty or insufficient content');
+    }
+    
+    return data;
   } catch (error: any) {
     let status: number | undefined;
     let humanMessage = 'We were unable to reach the AI-powered scraping service. Please try again in a moment.';
@@ -122,7 +134,24 @@ async function callGoogleOverviewScraper(query: string, location: string = 'Indi
     //   max_retries: 3,
     // });
     console.log('Google AI Overview scraper response:', response.data);
-    return response.data;
+    
+    // Validate Google scraper response
+    const data = response.data;
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid Google scraper response format');
+    }
+    
+    // Check if success is false
+    if (data.success === false) {
+      throw new Error(data.error_message || 'Google scraper failed to get AI Overview');
+    }
+    
+    // Check if ai_overview_text is empty or too short
+    if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
+      throw new Error('Google scraper returned empty or insufficient content');
+    }
+    
+    return data;
   } catch (error: any) {
     let status: number | undefined;
     let humanMessage = 'We were unable to reach the Google AI Overview scraping service. Please try again in a moment.';
@@ -236,6 +265,8 @@ function OptimizePageContent() {
     setIsAnalyzing,
     addProduct,
     saveProductToSupabase,
+    updateProductInSupabase,
+    loadProductsFromSupabase,
     setUserInfo,
     setUserCredits,
     adjustUserCredits,
@@ -266,6 +297,7 @@ function OptimizePageContent() {
   const [isPerplexityScraping, setIsPerplexityScraping] = useState(false);
   const [isGoogleScraping, setIsGoogleScraping] = useState(false);
   const [isLoadingQueries, setIsLoadingQueries] = useState(false);
+  const [loadingResultKey, setLoadingResultKey] = useState<string | null>(null);
 
   const formatSpecificationKeyForDisplay = useCallback((key: string) =>
     key
@@ -349,13 +381,17 @@ function OptimizePageContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id }),
         });
-        if (!response.ok) throw new Error('Failed to fetch credits');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to fetch credits (${response.status})`);
+        }
         const data = await response.json();
         if (typeof data.currentCredits === 'number') {
           setUserCredits(data.currentCredits);
         }
       } catch (error) {
         console.error('Failed to fetch user credits:', error);
+        // Don't block the app, just log the error
       }
     };
 
@@ -1095,11 +1131,11 @@ function OptimizePageContent() {
       // Store all queries in the new state fields
       if (perplexityResult) {
         setAllPerplexityQueries(perplexityResult.queries || [perplexityResult.topQuery]);
-        setSelectedPerplexityQueries([perplexityResult.topQuery]); // Default select first query
+        // Don't auto-select - let the user manually select queries
       }
       if (googleResult) {
         setAllGoogleQueries(googleResult.queries || [googleResult.topQuery]);
-        setSelectedGoogleQueries([googleResult.topQuery]); // Default select first query
+        // Don't auto-select - let the user manually select queries
       }
       
       if (perplexityResult && googleResult) {
@@ -1206,9 +1242,8 @@ function OptimizePageContent() {
             setAllPerplexityQueries(parsedData.all.perplexity);
             setAllGoogleQueries(parsedData.all.google);
             
-            // Default selected queries to first available query (for UI compatibility)
-            setSelectedPerplexityQueries(parsedData.all.perplexity.slice(0, 1));
-            setSelectedGoogleQueries(parsedData.all.google.slice(0, 1));
+            // Don't auto-select any queries - let the user manually select them
+            // Used queries should only show "Result" buttons, not be auto-selected
             
             setUsedPerplexityQueries(parsedData.used.perplexity);
             setUsedGoogleQueries(parsedData.used.google);
@@ -1348,13 +1383,15 @@ function OptimizePageContent() {
     google: []
   });
   
+  const [editingQueryLoading, setEditingQueryLoading] = useState(false);
+  
   // Start editing a query
   const handleEditQuery = (query: string, index: number, pipeline: 'perplexity' | 'google_overview') => {
     setEditingQuery({ pipeline, index, value: query });
   };
   
   // Save edited query
-  const handleSaveEditedQuery = () => {
+  const handleSaveEditedQuery = async () => {
     if (!editingQuery) return;
     
     const { pipeline, index, value } = editingQuery;
@@ -1368,6 +1405,12 @@ function OptimizePageContent() {
       }
     }
     
+    // Get the old query value before updating
+    const oldQueryValue = pipeline === 'perplexity' ? allPerplexityQueries[index] : allGoogleQueries[index];
+    
+    // Add loading state for query editing
+    setEditingQueryLoading(true);
+    
     // Update the edited queries state
     if (pipeline === 'perplexity') {
       const newEditedPerplexity = [...editedQueries.perplexity];
@@ -1379,8 +1422,8 @@ function OptimizePageContent() {
       newAllPerplexity[index] = value;
       setAllPerplexityQueries(newAllPerplexity);
       
-      // Update selection if this query was selected
-      if (selectedPerplexityQueries.includes(allPerplexityQueries[index])) {
+      // Update selection if this query was selected - use the NEW value
+      if (selectedPerplexityQueries.includes(oldQueryValue)) {
         setSelectedPerplexityQueries([value]);
       }
     } else {
@@ -1393,14 +1436,102 @@ function OptimizePageContent() {
       newAllGoogle[index] = value;
       setAllGoogleQueries(newAllGoogle);
       
-      // Update selection if this query was selected
-      if (selectedGoogleQueries.includes(allGoogleQueries[index])) {
+      // Update selection if this query was selected - use the NEW value
+      if (selectedGoogleQueries.includes(oldQueryValue)) {
         setSelectedGoogleQueries([value]);
       }
     }
     
-    // Exit editing mode
-    setEditingQuery(null);
+    // Immediately update the database
+    try {
+      if (!user || !currentProductId) {
+        console.error('Cannot update database: missing user or product ID');
+        setEditingQuery(null);
+        return;
+      }
+
+      // Prepare the updated query data
+      const updatedQueryData: QueryData = {
+        all: {
+          perplexity: allPerplexityQueries.map((q, i) => 
+            pipeline === 'perplexity' && i === index ? value : q
+          ),
+          google: allGoogleQueries.map((q, i) => 
+            pipeline === 'google_overview' && i === index ? value : q
+          ),
+        },
+        used: {
+          perplexity: usedPerplexityQueries.map((q, i) => 
+            pipeline === 'perplexity' && q === oldQueryValue ? value : q
+          ),
+          google: usedGoogleQueries.map((q, i) => 
+            pipeline === 'google_overview' && q === oldQueryValue ? value : q
+          ),
+        },
+      };
+
+      const response = await fetch('/api/products/update-queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: currentProductId,
+          userId: user.id,
+          queryData: updatedQueryData,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update queries in database');
+      }
+
+      console.log('Query successfully updated in database');
+      
+      // Update the local query states to match the database without full refresh
+      const currentProduct = products.find(p => p.id === currentProductId);
+      if (currentProduct) {
+        // Update all queries arrays
+        setAllPerplexityQueries(updatedQueryData.all.perplexity);
+        setAllGoogleQueries(updatedQueryData.all.google);
+        
+        // Update used queries arrays  
+        setUsedPerplexityQueries(updatedQueryData.used.perplexity);
+        setUsedGoogleQueries(updatedQueryData.used.google);
+        
+        // Update selected queries if they were affected
+        if (pipeline === 'perplexity' && selectedPerplexityQueries.includes(oldQueryValue)) {
+          setSelectedPerplexityQueries([value]);
+        } else if (pipeline === 'google_overview' && selectedGoogleQueries.includes(oldQueryValue)) {
+          setSelectedGoogleQueries([value]);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Failed to update query in database:', error);
+      setServerError('Failed to save query changes. Please try again.');
+      // Revert the local changes if database update failed
+      if (pipeline === 'perplexity') {
+        const revertPerplexity = [...allPerplexityQueries];
+        revertPerplexity[index] = oldQueryValue;
+        setAllPerplexityQueries(revertPerplexity);
+        
+        if (selectedPerplexityQueries.includes(value)) {
+          setSelectedPerplexityQueries([oldQueryValue]);
+        }
+      } else {
+        const revertGoogle = [...allGoogleQueries];
+        revertGoogle[index] = oldQueryValue;
+        setAllGoogleQueries(revertGoogle);
+        
+        if (selectedGoogleQueries.includes(value)) {
+          setSelectedGoogleQueries([oldQueryValue]);
+        }
+      }
+    } finally {
+      // Exit editing mode and clear loading
+      setEditingQuery(null);
+      setEditingQueryLoading(false);
+    }
   };
   
   // Cancel editing
@@ -1428,16 +1559,51 @@ function OptimizePageContent() {
       return;
     }
     
-    const currentProduct = products.find(p => p.id === currentProductId);
-    console.log('Current product:', currentProduct);
-    
-    if (!currentProduct || !currentProduct.analyses) {
-      setServerError('Analysis history not found for this product.');
+    if (!user) {
+      setServerError('User not authenticated. Please sign in.');
       return;
     }
     
+    // Create a unique key for this specific button
+    const resultKey = `${pipeline}-${query}`;
+    setLoadingResultKey(resultKey);
+    
+    try {
+      // Get current product data
+      let currentProduct = products.find(p => p.id === currentProductId);
+      console.log('Current product (initial):', currentProduct);
+      
+      // If no analyses found, fetch fresh data from database without card reload
+      if (!currentProduct || !currentProduct.analyses || currentProduct.analyses.length === 0) {
+        console.log('No analyses found, fetching fresh data from database...');
+        try {
+          // Fetch only this product's data from API without full refresh
+          const response = await fetch(`/api/products/${currentProductId}`);
+          if (response.ok) {
+            const productData = await response.json();
+            currentProduct = productData;
+            console.log('Fresh product data loaded:', currentProduct);
+          } else {
+            throw new Error('Failed to fetch product data');
+          }
+        } catch (fetchError) {
+          console.error('Error fetching fresh product data:', fetchError);
+          setServerError('Failed to load analysis data. Please try again.');
+          return;
+        }
+      }
+      
+      if (!currentProduct || !currentProduct.analyses) {
+        setServerError('Analysis history not found for this product.');
+        return;
+      }
+    
     console.log('Available analyses:', currentProduct.analyses);
-    console.log('Looking for query:', query, 'in pipeline:', pipeline);
+    console.log('Looking for query:', JSON.stringify(query), 'in pipeline:', pipeline);
+    console.log('Used queries for comparison:', {
+      perplexity: usedPerplexityQueries,
+      google: usedGoogleQueries
+    });
     
     // Find the analysis record that matches this query and pipeline
     const matchingAnalysis = currentProduct.analyses.find((analysis: any) => {
@@ -1450,9 +1616,38 @@ function OptimizePageContent() {
       });
 
       if (pipeline === 'perplexity') {
-        return analysis.optimization_query === query;
+        // Try exact match first, then case-insensitive match
+        const analysisQuery = analysis.optimization_query;
+        const exactMatch = analysisQuery === query;
+        const caseInsensitiveMatch = analysisQuery && 
+          analysisQuery.toLowerCase() === query.toLowerCase();
+        
+        console.log('Perplexity match results:', { 
+          exactMatch, 
+          caseInsensitiveMatch,
+          analysisQuery,
+          searchQuery: query,
+          analysisQueryType: typeof analysisQuery,
+          searchQueryType: typeof query
+        });
+        return exactMatch || caseInsensitiveMatch;
       }
-      return analysis.google_search_query === query;
+      
+      // Google pipeline matching
+      const analysisQuery = analysis.google_search_query;
+      const exactMatch = analysisQuery === query;
+      const caseInsensitiveMatch = analysisQuery && 
+        analysisQuery.toLowerCase() === query.toLowerCase();
+      
+      console.log('Google match results:', { 
+        exactMatch, 
+        caseInsensitiveMatch,
+        analysisQuery,
+        searchQuery: query,
+        analysisQueryType: typeof analysisQuery,
+        searchQueryType: typeof query
+      });
+      return exactMatch || caseInsensitiveMatch;
     });
     
     console.log('Matching analysis:', matchingAnalysis);
@@ -1472,6 +1667,16 @@ function OptimizePageContent() {
       router.push(`/results/perplexity/${matchingAnalysis.id}`);
     } else {
       router.push(`/results/google/${matchingAnalysis.id}`);
+    }
+    
+    // Clear loading state after a short delay to ensure it's visible
+    setTimeout(() => {
+      setLoadingResultKey(null);
+    }, 1000);
+    } catch (error) {
+      console.error('Error loading analysis result:', error);
+      setServerError('Failed to load analysis result. Please try again.');
+      setLoadingResultKey(null);
     }
   };
   
@@ -1693,50 +1898,93 @@ function OptimizePageContent() {
         setQueryData(fallbackQueryData);
       }
 
+      let savedProductId: string | null = null;
       try {
-        const savedProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
-        console.log('Product saved to Supabase successfully with ID:', savedProductId);
-        if (savedProductId) {
-          setCurrentProductId(savedProductId);
+        if (currentProductId) {
+          // Existing product: update it with the latest form and analysis state
+          await updateProductInSupabase(currentProductId, user.id);
+          savedProductId = currentProductId;
+        } else {
+          // New product: create in Supabase and capture its ID
+          savedProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+          console.log('Product saved to Supabase successfully with ID:', savedProductId);
+          if (savedProductId) {
+            setCurrentProductId(savedProductId);
+          }
         }
       } catch (saveError) {
         console.error('Failed to save product to Supabase:', saveError);
       }
 
-      // 9) Mark the used query in Supabase after successful analysis
+      // 9) Save analysis to product-analyses table
       let finalQueryData: QueryData | null = null;
-      if (queryDataString) {
-        // Parse the query data that was just saved to ensure consistency
-        let currentQueryData: QueryData | null = null;
+      
+      if (savedProductId) {
         try {
-          currentQueryData = JSON.parse(queryDataString) as QueryData;
-        } catch (error) {
-          console.warn('Failed to parse saved query data:', error);
-        }
-        
-        if (currentQueryData) {
-          const updatedQueryData: QueryData = {
-            ...currentQueryData,
-            used: {
-              perplexity:
-                pipeline === 'perplexity'
-                  ? [...new Set([...currentQueryData.used.perplexity, firstQuery])]
-                  : currentQueryData.used.perplexity,
-              google:
-                pipeline === 'google_overview'
-                  ? [...new Set([...currentQueryData.used.google, firstQuery])]
-                  : currentQueryData.used.google,
-            },
-          };
-          await updateQueryDataInSupabase(user.id, updatedQueryData);
-          setQueryData(updatedQueryData);
-          setUsedPerplexityQueries(updatedQueryData.used.perplexity);
-          setUsedGoogleQueries(updatedQueryData.used.google);
-          finalQueryData = updatedQueryData;
+          const analysisResponse = await fetch('/api/product-analyses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_id: savedProductId,
+              optimization_query: pipeline === 'perplexity' ? firstQuery : null,
+              google_search_query: pipeline === 'google_overview' ? firstQuery : null,
+              optimization_analysis: pipeline === 'perplexity' ? perplexityAnalysis : null,
+              google_overview_analysis: pipeline === 'google_overview' ? googleAnalysis : null,
+              combined_analysis: null,
+              source_links: productRecord.sourceLinks || [],
+              processed_sources: productRecord.processedSources || [],
+              perplexity_raw_serp_results: pipeline === 'perplexity' ? scraperResponse : null,
+              google_raw_serp_results: pipeline === 'google_overview' ? scraperResponse : null,
+            }),
+          });
+          
+          if (analysisResponse.ok) {
+            const analysisData = await analysisResponse.json();
+            console.log('Analysis saved to product_analysis tables with IDs:', {
+              google: analysisData.googleAnalysis?.id,
+              perplexity: analysisData.perplexityAnalysis?.id,
+            });
+
+            // 10) Mark the used query in Supabase ONLY after successful analysis save
+            if (queryDataString) {
+              // Parse the query data that was just saved to ensure consistency
+              let currentQueryData: QueryData | null = null;
+              try {
+                currentQueryData = JSON.parse(queryDataString) as QueryData;
+              } catch (error) {
+                console.warn('Failed to parse saved query data:', error);
+              }
+              
+              if (currentQueryData) {
+                const updatedQueryData: QueryData = {
+                  ...currentQueryData,
+                  used: {
+                    perplexity:
+                      pipeline === 'perplexity'
+                        ? [...new Set([...currentQueryData.used.perplexity, firstQuery])]
+                        : currentQueryData.used.perplexity,
+                    google:
+                      pipeline === 'google_overview'
+                        ? [...new Set([...currentQueryData.used.google, firstQuery])]
+                        : currentQueryData.used.google,
+                  },
+                };
+                await updateQueryDataInSupabase(user.id, updatedQueryData);
+                setQueryData(updatedQueryData);
+                setUsedPerplexityQueries(updatedQueryData.used.perplexity);
+                setUsedGoogleQueries(updatedQueryData.used.google);
+                finalQueryData = updatedQueryData;
+              }
+            }
+          } else {
+            console.error('Failed to save analysis to product_analysis tables. Response not OK:', analysisResponse.status);
+          }
+        } catch (analysisSaveError) {
+          console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
         }
       }
 
-      // 10) Navigate to appropriate results page
+      // 11) Navigate to appropriate results page
       // Ensure generatedQuery contains the full QueryData structure for results pages
       if (finalQueryData) {
         setGeneratedQuery(JSON.stringify(finalQueryData));
@@ -2030,10 +2278,17 @@ function OptimizePageContent() {
       // Save to Supabase if user is authenticated
       let savedProductId: string | null = null;
       try {
-        savedProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
-        console.log('Product saved to Supabase successfully with ID:', savedProductId);
-        if (savedProductId) {
-          setCurrentProductId(savedProductId);
+        if (currentProductId) {
+          // Existing product: update it with latest form/analysis state
+          await updateProductInSupabase(currentProductId, user.id);
+          savedProductId = currentProductId;
+        } else {
+          // New product: create and capture its ID
+          savedProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+          console.log('Product saved to Supabase successfully with ID:', savedProductId);
+          if (savedProductId) {
+            setCurrentProductId(savedProductId);
+          }
         }
       } catch (saveError) {
         console.error('Failed to save product to Supabase:', saveError);
@@ -2042,6 +2297,8 @@ function OptimizePageContent() {
       // Also persist this specific analysis run into the split analysis tables for history
       let savedGoogleAnalysisId: string | null = null;
       let savedPerplexityAnalysisId: string | null = null;
+      let finalQueryData: QueryData | null = null;
+      
       if (savedProductId) {
         try {
           const analysisResponse = await fetch('/api/product-analyses', {
@@ -2059,6 +2316,8 @@ function OptimizePageContent() {
                   : null,
               source_links: productRecord.sourceLinks || [],
               processed_sources: productRecord.processedSources || [],
+              perplexity_raw_serp_results: perplexityScraperResponse || null,
+              google_raw_serp_results: googleScraperResponse || null,
             }),
           });
           
@@ -2070,37 +2329,38 @@ function OptimizePageContent() {
               google: savedGoogleAnalysisId,
               perplexity: savedPerplexityAnalysisId,
             });
+
+            // 7) Mark queries as used in queryData ONLY after successful analysis save
+            if (queryDataString) {
+              // Parse the query data that was just saved to ensure consistency
+              let currentQueryData: QueryData | null = null;
+              try {
+                currentQueryData = JSON.parse(queryDataString) as QueryData;
+              } catch (error) {
+                console.warn('Failed to parse saved query data:', error);
+              }
+
+              if (currentQueryData) {
+                const updatedQueryData: QueryData = {
+                  ...currentQueryData,
+                  used: {
+                    perplexity: perplexityQuery ? [...new Set([...currentQueryData.used.perplexity, perplexityQuery])] : currentQueryData.used.perplexity,
+                    google: googleQuery ? [...new Set([...currentQueryData.used.google, googleQuery])] : currentQueryData.used.google,
+                  },
+                };
+                await updateQueryDataInSupabase(user.id, updatedQueryData);
+                setQueryData(updatedQueryData);
+                setUsedPerplexityQueries(updatedQueryData.used.perplexity);
+                setUsedGoogleQueries(updatedQueryData.used.google);
+                finalQueryData = updatedQueryData;
+              }
+            }
+          } else {
+            console.error('Failed to save analysis to product_analysis tables. Response not OK:', analysisResponse.status);
           }
         } catch (analysisSaveError) {
           console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
           // Do not block user from seeing results if history save fails
-        }
-      }
-
-      // 7) Mark both queries as used in queryData and persist to products table
-      let finalQueryData: QueryData | null = null;
-      if (queryDataString) {
-        // Parse the query data that was just saved to ensure consistency
-        let currentQueryData: QueryData | null = null;
-        try {
-          currentQueryData = JSON.parse(queryDataString) as QueryData;
-        } catch (error) {
-          console.warn('Failed to parse saved query data:', error);
-        }
-
-        if (currentQueryData) {
-          const updatedQueryData: QueryData = {
-            ...currentQueryData,
-            used: {
-              perplexity: [...new Set([...currentQueryData.used.perplexity, perplexityQuery])],
-              google: [...new Set([...currentQueryData.used.google, googleQuery])],
-            },
-          };
-          await updateQueryDataInSupabase(user.id, updatedQueryData);
-          setQueryData(updatedQueryData);
-          setUsedPerplexityQueries(updatedQueryData.used.perplexity);
-          setUsedGoogleQueries(updatedQueryData.used.google);
-          finalQueryData = updatedQueryData;
         }
       }
 
@@ -2128,9 +2388,10 @@ function OptimizePageContent() {
     // This function uses the already generated queries for analysis
     // (queries were already generated by handleGenerateQueryOnly)
     try {
-      // Skip query generation - use existing generated queries
-      const runPerplexity = selectedPipeline === 'all' || selectedPipeline === 'perplexity';
-      const runGoogle = selectedPipeline === 'all' || selectedPipeline === 'google_overview';
+      // Determine what to run based on actual selected queries, not pipeline state
+      const analysisMode = getAnalysisMode();
+      const runPerplexity = analysisMode === 'all' || analysisMode === 'perplexity';
+      const runGoogle = analysisMode === 'all' || analysisMode === 'google_overview';
       
       let perplexityScraperResponse: any = null;
       let googleScraperResponse: any = null;
@@ -2180,10 +2441,17 @@ function OptimizePageContent() {
           googleOverviewAnalysis: googleScraperResponse?.data.analysis,
         };
 
-        const savedProductId = await saveProductToSupabase(productToSave, user!.id, generatedQuery);
-        
-        if (savedProductId) {
-          setCurrentProductId(savedProductId);
+        let savedProductId: string | null = null;
+        if (currentProductId) {
+          // Existing product: update with latest analysis
+          await updateProductInSupabase(currentProductId, user!.id);
+          savedProductId = currentProductId;
+        } else {
+          // New product: create in Supabase
+          savedProductId = await saveProductToSupabase(productToSave, user!.id, generatedQuery);
+          if (savedProductId) {
+            setCurrentProductId(savedProductId);
+          }
         }
 
         // Navigate based on the pipeline
@@ -2278,7 +2546,8 @@ function OptimizePageContent() {
     }
     
     // Check credits availability before starting (without deducting)
-    const requiredCredits = selectedPipeline === 'all' ? 2 : 1;
+    const analysisMode = getAnalysisMode();
+    const requiredCredits = analysisMode === 'all' ? 2 : 1;
     try {
       const creditCheckResponse = await fetch('/api/analyze/check-credits', {
         method: 'POST',
@@ -2363,8 +2632,8 @@ function OptimizePageContent() {
       setAnalysisError(null);
       
       try {
-        const runPerplexity = selectedPipeline === 'perplexity' || selectedPipeline === 'all';
-        const runGoogle = selectedPipeline === 'google_overview' || selectedPipeline === 'all';
+        const runPerplexity = analysisMode === 'perplexity' || analysisMode === 'all';
+        const runGoogle = analysisMode === 'google_overview' || analysisMode === 'all';
 
         let perplexityScraperResponse: any | null = null;
         let googleScraperResponse: any | null = null;
@@ -2377,18 +2646,54 @@ function OptimizePageContent() {
           console.log("Using Perplexity-optimized query:", perplexityQueryToUse);
           console.log("Using Google-optimized query:", googleQueryToUse);
           
-          const [perplexityResult, googleResult] = await Promise.all([
-            callPerplexityScraper(perplexityQueryToUse, selectedLocation),
-            callGoogleOverviewScraper(googleQueryToUse, selectedLocation),
-          ]);
-          perplexityScraperResponse = perplexityResult;
-          googleScraperResponse = googleResult;
+          try {
+            const [perplexityResult, googleResult] = await Promise.all([
+              callPerplexityScraper(perplexityQueryToUse, selectedLocation),
+              callGoogleOverviewScraper(googleQueryToUse, selectedLocation),
+            ]);
+            perplexityScraperResponse = perplexityResult;
+            googleScraperResponse = googleResult;
+          } catch (error: any) {
+            console.error('Scraper API call failed:', error);
+            setServerError(
+              'We apologize for the inconvenience. Our AI search service encountered an issue while gathering competitor data. ' +
+              'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
+              'Your credits have not been deducted.'
+            );
+            setIsAnalyzing(false);
+            setIsGeneratingQuery(false);
+            return;
+          }
         } else if (runPerplexity) {
           const queryToUse = perplexityQuery || primaryQuery;
-          perplexityScraperResponse = await callPerplexityScraper(queryToUse, selectedLocation);
+          try {
+            perplexityScraperResponse = await callPerplexityScraper(queryToUse, selectedLocation);
+          } catch (error: any) {
+            console.error('Perplexity scraper failed:', error);
+            setServerError(
+              'We apologize for the inconvenience. Our Perplexity AI search service encountered an issue while gathering competitor data. ' +
+              'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
+              'Your credits have not been deducted.'
+            );
+            setIsAnalyzing(false);
+            setIsGeneratingQuery(false);
+            return;
+          }
         } else if (runGoogle) {
           const queryToUse = googleQuery || primaryQuery;
-          googleScraperResponse = await callGoogleOverviewScraper(queryToUse, selectedLocation);
+          try {
+            googleScraperResponse = await callGoogleOverviewScraper(queryToUse, selectedLocation);
+          } catch (error: any) {
+            console.error('Google scraper failed:', error);
+            setServerError(
+              'We apologize for the inconvenience. Our Google AI Overview service encountered an issue while gathering competitor data. ' +
+              'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
+              'Your credits have not been deducted.'
+            );
+            setIsAnalyzing(false);
+            setIsGeneratingQuery(false);
+            return;
+          }
         }
 
           const scraperResponse = perplexityScraperResponse || googleScraperResponse;
@@ -2398,24 +2703,6 @@ function OptimizePageContent() {
           if (scraperResponse.source_links && Array.isArray(scraperResponse.source_links)) {
             setSourceLinks(scraperResponse.source_links);
             console.log(`[Source Links] Stored ${scraperResponse.source_links.length} raw source links`);
-          }
-          
-          // Validate scraper response
-          if (!scraperResponse || typeof scraperResponse !== 'object') {
-            throw new Error('Invalid scraper response format');
-          }
-          
-          // Check if primary scraper returned success: false
-          if (scraperResponse.success === false) {
-            console.error('Scraper returned success: false', scraperResponse);
-            setServerError(
-              'We apologize for the inconvenience. Our AI search service encountered an issue while gathering competitor data. ' +
-              'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
-              'Your credits have not been deducted.'
-            );
-            setIsAnalyzing(false);
-            setIsGeneratingQuery(false);
-            return;
           }
           
           // Part 2.2: Run strategic analysis for selected engines (and sources for Perplexity)
@@ -2584,8 +2871,19 @@ function OptimizePageContent() {
           let savedPerplexityAnalysisId: string | null = null;
           if (user) {
             try {
-              const savedProductId = await saveProductToSupabase(productRecord, user.id, generatedQueriesPayload);
-              console.log('Product saved to Supabase successfully with ID:', savedProductId);
+              let savedProductId: string | null = null;
+              if (currentProductId) {
+                // Existing product: update with latest state
+                await updateProductInSupabase(currentProductId, user.id);
+                savedProductId = currentProductId;
+              } else {
+                // New product: create in Supabase
+                savedProductId = await saveProductToSupabase(productRecord, user.id, generatedQueriesPayload);
+                console.log('Product saved to Supabase successfully with ID:', savedProductId);
+                if (savedProductId) {
+                  setCurrentProductId(savedProductId);
+                }
+              }
 
               // Also persist this specific analysis run into the split analysis tables for history
               if (savedProductId) {
@@ -2648,7 +2946,7 @@ function OptimizePageContent() {
           }
           
           // Route based on which engines ran: Perplexity (including "all") goes to /results; Google-only goes to /results/google
-          const ranPerplexity = selectedPipeline === 'perplexity' || selectedPipeline === 'all';
+          const ranPerplexity = analysisMode === 'perplexity' || analysisMode === 'all';
           router.push(ranPerplexity ? "/results" : "/results/google");
           
         } catch (error: any) {
@@ -4408,6 +4706,8 @@ function OptimizePageContent() {
                               <Button
                                 size="sm"
                                 onClick={handleSaveEditedQuery}
+                                loading={editingQueryLoading}
+                                disabled={editingQueryLoading}
                                 sx={{
                                   minWidth: 60,
                                   backgroundColor: "#2ED47A",
@@ -4461,6 +4761,8 @@ function OptimizePageContent() {
                                     <Button
                                       size="sm"
                                       variant="outlined"
+                                      loading={loadingResultKey === `perplexity-${query}`}
+                                      disabled={loadingResultKey === `perplexity-${query}`}
                                       onClick={() => handleViewAnalysisResult(query, 'perplexity')}
                                       sx={{
                                         minWidth: 90,
@@ -4584,7 +4886,8 @@ function OptimizePageContent() {
                                 <Button
                                   size="sm"
                                   onClick={handleSaveEditedQuery}
-                                  disabled={editingQuery.value.trim().split(/\s+/).length < 6}
+                                  loading={editingQueryLoading}
+                                  disabled={editingQueryLoading || editingQuery.value.trim().split(/\s+/).length < 6}
                                   sx={{
                                     minWidth: 60,
                                     backgroundColor: editingQuery.value.trim().split(/\s+/).length >= 6 ? "#2ED47A" : "transparent",
@@ -4652,6 +4955,8 @@ function OptimizePageContent() {
                                     <Button
                                       size="sm"
                                       variant="outlined"
+                                      loading={loadingResultKey === `google_overview-${query}`}
+                                      disabled={loadingResultKey === `google_overview-${query}`}
                                       onClick={() => handleViewAnalysisResult(query, 'google_overview')}
                                       sx={{
                                         minWidth: 90,

@@ -1,0 +1,67 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes established Mobile Measurement Partners with clearly defined specializations (e.g., deep linking, privacy, gaming) and mentions on authoritative third-party review sites.",
+    "strategic_analogy": "This is like trying to join an all-star team by saying you're a 'good athlete.' The AI is acting as a coach who is only recruiting for specific positions like 'power hitter' or 'ace pitcher.' Your product needs to clearly define its specialist role to make the roster."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name or brand in the AI overview text or in any of the cited source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a guide for selecting the best MMP by categorizing market leaders based on their unique specializations like fraud prevention, deep linking, or ROI optimization. It provides clear, use-case-based recommendations (e.g., 'For gaming & budget: Tenjin'), establishing a narrative that the 'best' choice depends on the user's specific needs.",
+    "key_decision_factors": [
+      "Clearly defined specializations (e.g., fraud prevention, deep linking, ROI optimization, privacy focus)",
+      "Target market segmentation (e.g., enterprise, gaming, e-commerce, subscription apps)",
+      "Source authority from industry publications and listicles (e.g., Business of Apps, LinkedIn)",
+      "Presence of established, well-known brand names"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in third-party industry content, such as 'best of' listicles and market analyses from sites like Business of Apps, LinkedIn, MobileAction, and tech news outlets. It also includes direct brand search links, indicating it recognizes these entities as key players, and one direct link to a competitor's (Adjust) glossary page, showing trust in brand-owned educational content."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "AppsFlyer",
+      "reason_for_inclusion": "Positioned as a market leader with comprehensive analytics, extensive integrations, and strong fraud prevention, suitable for all business sizes, especially large-scale enterprises.",
+      "source_of_mention": "https://www.google.com/search?q=AppsFlyer&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBBAB&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    },
+    {
+      "competitor_name": "Adjust",
+      "reason_for_inclusion": "Highlighted as a market leader with a strong focus on privacy, advanced fraud prevention, and SKAdNetwork support, making it a top choice for large-scale enterprises.",
+      "source_of_mention": "https://www.google.com/search?q=Adjust&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBBAD&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    },
+    {
+      "competitor_name": "Branch",
+      "reason_for_inclusion": "Named as the industry leader for deep linking, cross-device tracking, and web-to-app journeys. It's specifically recommended for e-commerce, DTC, and UX-focused businesses.",
+      "source_of_mention": "https://www.google.com/search?q=Branch&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBBAF&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    },
+    {
+      "competitor_name": "Singular",
+      "reason_for_inclusion": "Identified as a top choice for unified ROI analysis because it combines attribution with cost aggregation, making it excellent for multi-channel optimization.",
+      "source_of_mention": "https://www.google.com/search?q=Singular&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBBAH&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    },
+    {
+      "competitor_name": "Kochava",
+      "reason_for_inclusion": "Listed as a market leader with robust fraud protection, customizable reports, and strong support for omnichannel and CTV/OTT, recommended for large-scale enterprises.",
+      "source_of_mention": "https://www.google.com/search?q=Kochava&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBBAJ&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    },
+    {
+      "competitor_name": "Tenjin",
+      "reason_for_inclusion": "Featured as a specialized, cost-effective, and user-friendly option, particularly strong for gaming apps and startups. It is specifically recommended for those on a budget.",
+      "source_of_mention": "https://www.google.com/search?q=Tenjin&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBxAB&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    },
+    {
+      "competitor_name": "Firebase",
+      "reason_for_inclusion": "Included as Google's platform, noted for providing user behavior data, making it useful for broader app development needs beyond just attribution.",
+      "source_of_mention": "https://www.google.com/search?q=Firebase&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBxAD&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    },
+    {
+      "competitor_name": "Airbridge",
+      "reason_for_inclusion": "Mentioned as another solid choice for attribution and user journey tracking, positioning it as a viable contender in the market.",
+      "source_of_mention": "https://www.google.com/search?q=Airbridge&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBxAF&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    },
+    {
+      "competitor_name": "RevenueCat",
+      "reason_for_inclusion": "Named as a specialized option specifically tailored for subscription-based apps, giving it a strong niche position.",
+      "source_of_mention": "https://www.google.com/search?q=RevenueCat&sca_esv=6b2138f27b7b78e4&source=hp&ei=GwY3ae7iFKOPseMP0dapsAs&iflsig=AOw8s4IAAAAAaTcUKzKx9qqZpTnl-woD3WFClGCO5Rrd&ved=2ahUKEwiU5MLNva6RAxVITmwGHbepIQYQgK4QegQIBxAH&uact=5&oq=what+are+the+best+mobile+measurement+partners+for+optimizing+user+acquisition+channels&gs_lp=Egdnd3Mtd2l6IlZ3aGF0IGFyZSB0aGUgYmVzdCBtb2JpbGUgbWVhc3VyZW1lbnQgcGFydG5lcnMgZm9yIG9wdGltaXppbmcgdXNlciBhY3F1aXNpdGlvbiBjaGFubmVsc0iLQVCgAli4PXAAeACQAQCYAfYEoAGjE6oBAzUtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHsQiyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAyyouYeUZMfzEbqkc3Uey9AyS12iN0A22fpNUmzU_5DOcUEy7QMofi1CjLYn0aqN0Ky3j7BHfbVlpj1NsJLEziQ1tRKjWXq9wbJ1W445HCvjJ3E3yRkgfTuVjoutPyjMQ&csui=3"
+    }
+  ]

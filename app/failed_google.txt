@@ -1,0 +1,16 @@
+{
+  query: 'what are the best mobile measurement partners for understanding app user acquisition channels',
+  original_query: 'what are the best mobile measurement partners for understanding app user acquisition channels',
+  ai_overview_found: false,
+  ai_overview_text: '',
+  source_links: [],
+  did_query_popped_AI_overview: false,
+  query_modifications_tried: [
+    'what are the best mobile measurement partners for understanding app user acquisition channels'
+  ],
+  success: false,
+  timestamp: '2025-12-09T11:28:39.765484',
+  location: 'India',
+  structure_type: 'none',
+  error_message: 'No AI Overview found for this query'
+}

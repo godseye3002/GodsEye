@@ -413,13 +413,23 @@ export const useProductStore = create<ProductStoreState>()(
           console.error('Error loading products from Supabase:', error);
         }
       },
-      saveProductToSupabase: async (product: OptimizedProduct, userId: string, generatedQuery?: string | null) => {
+      saveProductToSupabase: async (product: OptimizedProduct, userId: string) => {
         try {
-          // Extract general_product_type and specific_product_type from specifications if not at top level
           const specs = product.formData.specifications || {};
           const generalType = product.formData.general_product_type || specs.general_product_type || '';
           const specificType = product.formData.specific_product_type || specs.specific_product_type || '';
           
+          // Generate query data for saving
+          let generatedQuery = null;
+          if (product.analysis) {
+            // Generate query data from analysis for backward compatibility
+            generatedQuery = JSON.stringify({
+              root_topic: product.formData.product_name || 'Untitled Product',
+              optimization_query: product.analysis,
+              google_search_query: product.googleOverviewAnalysis,
+            });
+          }
+
           const response = await fetch('/api/products', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -435,14 +445,6 @@ export const useProductStore = create<ProductStoreState>()(
               general_product_type: generalType,
               specific_product_type: specificType,
               generated_query: generatedQuery || null,
-              optimization_analysis: product.analysis || null,
-              google_overview_analysis: product.googleOverviewAnalysis || null,
-              combined_analysis:
-                product.analysis && product.googleOverviewAnalysis
-                  ? { perplexity: product.analysis, google: product.googleOverviewAnalysis }
-                  : product.combinedAnalysis || null,
-              source_links: product.sourceLinks || [],
-              processed_sources: product.processedSources || [],
             }),
           });
           
@@ -491,14 +493,6 @@ export const useProductStore = create<ProductStoreState>()(
               general_product_type: generalType,
               specific_product_type: specificType,
               generated_query: state.generatedQuery || null,
-              optimization_analysis: state.optimizationAnalysis || null,
-              google_overview_analysis: state.googleOverviewAnalysis || null,
-              combined_analysis:
-                state.optimizationAnalysis && state.googleOverviewAnalysis
-                  ? { perplexity: state.optimizationAnalysis, google: state.googleOverviewAnalysis }
-                  : null,
-              source_links: state.sourceLinks || [],
-              processed_sources: state.processedSources || [],
             }),
           });
 
@@ -544,11 +538,11 @@ export const useProductStore = create<ProductStoreState>()(
                   general_product_type: updated.general_product_type || (updated.specifications?.general_product_type ?? ''),
                   specific_product_type: updated.specific_product_type || (updated.specifications?.specific_product_type ?? ''),
                 },
-                analysis: updated.optimization_analysis || null,
-                googleOverviewAnalysis: updated.google_overview_analysis || null,
-                combinedAnalysis: updated.combined_analysis || null,
-                sourceLinks: updated.source_links || [],
-                processedSources: updated.processed_sources || [],
+                analysis: null, // Analysis now comes from product_analysis_perplexity table
+                googleOverviewAnalysis: null, // Analysis now comes from product_analysis_google table
+                combinedAnalysis: null,
+                sourceLinks: [], // Source links now come from product_analysis_perplexity.citations
+                processedSources: [], // Processed sources no longer stored in products table
               },
               ...state.products.filter((p) => p.id !== updated.id),
             ].slice(0, 10),

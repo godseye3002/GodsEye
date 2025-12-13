@@ -1,22 +1,18 @@
 {
   "product": {
-    "product_name": "Linkrunner",
-    "description": "Linkrunner is an AI-driven Mobile Measurement Partner (MMP) designed to help businesses track their top-performing distribution channels with granular detail, from every click to download and onboarding.",
-    "general_product_type": "Software",
-    "specific_product_type": "Mobile Measurement Partner (MMP)",
+    "product_name": "Onelink.to alternative",
+    "description": "A smarter alternative to Onelink.to, specifically designed for growth marketers to track the performance of their distribution channels, including clicks, downloads, and onboarding.",
+    "general_product_type": "Marketing Software",
+    "specific_product_type": "Link Tracking and Analytics Tool",
     "specifications": {},
     "features": [
       {
-        "name": "AI-driven tracking",
-        "description": "Utilizes artificial intelligence to provide insights into distribution channel performance."
-      },
-      {
-        "name": "Granular channel performance tracking",
-        "description": "Monitors key metrics such as clicks, downloads, and onboarding for distribution channels."
+        "name": "Performance Tracking",
+        "description": "Enables tracking of top-performing distribution channels down to every click, download, and onboarding action."
       }
     ],
-    "targeted_market": "Businesses that rely on multiple distribution channels to acquire users for their mobile applications and need to understand the effectiveness of each channel.",
-    "problem_product_is_solving": "Lack of clear visibility into the performance of various distribution channels for mobile apps, making it difficult to optimize marketing spend and user acquisition strategies."
+    "targeted_market": "Growth marketers looking for a more advanced solution to monitor and optimize their marketing channel effectiveness.",
+    "problem_product_is_solving": "Lack of granular insight into the performance of marketing distribution channels, making it difficult to identify which channels are driving the most valuable user actions like clicks, downloads, and onboarding."
   },
   "extraction_method": "selectors-fallback",
   "missing_fields": [

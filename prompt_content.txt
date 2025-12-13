@@ -15,7 +15,7 @@ Note: The price or any data related to price should not be included in the JSON 
 
 Here is the text content:
 ---
-Linkrunner raises $560k pre-seed to build an AI-driven MMP!
+The smarter Onelink.to alternative, built for growth marketers
 
 Track your top-performing distribution channels down to every click, download and onboard
 ---

@@ -432,25 +432,6 @@ export default function AnalysisDisplay({ analysis, onClose, formatMarkdownToHtm
         </Box>
       </Card>
 
-      {/* Action Button */}
-      <Box sx={{ textAlign: 'center' }}>
-        <Button
-          variant="outlined"
-          onClick={onClose}
-          size="lg"
-          sx={{
-            minWidth: 200,
-            borderColor: "rgba(167, 139, 250, 0.3)",
-            color: "#a78bfa",
-            "&:hover": {
-              borderColor: "rgba(167, 139, 250, 0.5)",
-              backgroundColor: "rgba(167, 139, 250, 0.05)",
-            }
-          }}
-        >
-          Start New Analysis
-        </Button>
-      </Box>
-    </>
+      </>
   );
 }

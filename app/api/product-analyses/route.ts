@@ -13,6 +13,9 @@ export async function POST(request: Request) {
       combined_analysis,
       source_links,
       processed_sources,
+      raw_serp_results,
+      perplexity_raw_serp_results,
+      google_raw_serp_results,
     } = body || {};
 
     if (!product_id) {
@@ -35,6 +38,7 @@ export async function POST(request: Request) {
           product_id,
           search_query: google_search_query,
           google_overview_analysis,
+          raw_serp_results: google_raw_serp_results || raw_serp_results || [],
         })
         .select()
         .single();
@@ -61,6 +65,7 @@ export async function POST(request: Request) {
           optimization_prompt: optimization_query,
           optimization_analysis,
           citations: source_links ?? [],
+          raw_serp_results: perplexity_raw_serp_results || raw_serp_results || [],
           related_google_analysis_id: googleAnalysis?.id ?? null,
         })
         .select()

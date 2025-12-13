@@ -102,13 +102,7 @@ export async function POST(request: NextRequest) {
             6. **Source Links:** You MUST represent all source_links from the [AI_SEARCH_JSON] in the structured output, without inventing new URLs or sources.
 
    - **competitive_landscape_analysis**: Summarizes competitors that appear in the AI answer, and links them to the MOST relevant source URL from source_links.
-   - **sources_ai_used**: A complete list where there is EXACTLY ONE entry for EACH item in source_links.
 
-   For sources_ai_used:
-   - The number of items in sources_ai_used MUST equal the number of items in source_links.
-   - Each item must correspond directly to one source_links entry.
-   - Use only information that actually appears in ai_overview_text or source_links. If you cannot find enough detail for a snippet or reason, say so explicitly (e.g., 'Snippet not clearly available in provided text.').
-   - Do NOT invent URLs, brands, or claims that are not grounded in the provided JSON.
 
             Here is the [AI_SEARCH_JSON]:
 
@@ -146,50 +140,47 @@ export async function POST(request: NextRequest) {
                   "source_of_mention": "Provide the URL from source_links that this competitor is most directly associated with. If multiple could apply, pick the single best matching URL. Do not invent or modify URLs."
                 }
               ],
-              "sources_ai_used": [
-                {
-                  "source_snippet": "Extract a short snippet from this source or from the AI overview that reflects how this source was used. If no clear snippet is available, state 'Snippet not clearly available in provided text.'",
-                  "reason_for_inclusion": "In one or two sentences, explain why this source matters for the AI's reasoning, based only on information actually present in ai_overview_text or source_links.",
-                  "source_of_mention": "Provide the exact URL from source_links. Do not invent or alter URLs."
-                }
-              ],
-
               "strategic_gap_and_opportunity_analysis": {
-                "analysis_summary": "This is the core of your report. Provide a detailed explanation based on your product's visibility status.",
-                "if_featured": {
-                  "current_positioning": "How does the AI's description of your product compare to competitors? What are its perceived strengths and weaknesses? (e.g., 'Your product is positioned effectively as a premium, science-backed solution due to the mention of 'adenosine' and 'procapil'. However, competitors like Dove are framed as being better for 'smoother hair', indicating a potential gap in highlighting secondary benefits.')",
-                  "opportunities_for_improvement": "How can you enhance your positioning? (e.g., 'Update your product page to also emphasize moisturizing and smoothing properties to compete with Dove's narrative. Seek mentions on pharmacy or health blogs to match the source diversity of competitors.')"
-                },
-
-                "if_not_featured": {
-                        competitive_landscape_analysis, what are the specific reasons your product was excluded? Be direct. (e.g., 'Your product was not mentioned primarily because your online content does not explicitly name the key active ingredients that the AI is looking for, such as 'keratin' or 'biotin'. Competitors are being rewarded for this specificity.')",
-                        uct featured? (e.g., 'Revise your product page to include a 'Key Ingredients' section that clearly lists active components and their benefits. Pursue a product feature on a major e-commerce platform like Nykaa or a content site like Health.com, as the AI trusts these third-party sources.')"
-
-                    }
+                  "analysis_summary": "This is the core of your report. Provide a detailed explanation based on your product's visibility status.",
+                  "if_featured": {
+                    "current_positioning": "How does the AI's description of your product compare to competitors? What are its perceived strengths and weaknesses? (e.g., 'Your product is positioned effectively as a premium, science-backed solution due to the mention of 'adenosine' and 'procapil'. However, competitors like Dove are framed as being better for 'smoother hair', indicating a potential gap in highlighting secondary benefits.')",
+                    "opportunities_for_improvement": "How can you enhance your positioning? (e.g., 'Update your product page to also emphasize moisturizing and smoothing properties to compete with Dove's narrative. Seek mentions on pharmacy or health blogs to match the source diversity of competitors.')"
                   },
+                  "if_not_featured": {
+                    "exclusion_reasons": "Based on the competitive_landscape_analysis, what are the specific reasons your product was excluded? Be direct. (e.g., 'Your product was not mentioned primarily because your online content does not explicitly name the key active ingredients that the AI is looking for, such as 'keratin' or 'biotin'. Competitors are being rewarded for this specificity.')",
+                    "path_to_inclusion": "How can you get the product featured? (e.g., 'Revise your product page to include a 'Key Ingredients' section that clearly lists active components and their benefits. Pursue a product feature on a major e-commerce platform like Nykaa or a content site like Health.com, as the AI trusts these third-party sources.')"
+                  }
+              },
 
-                  "actionable_recommendations": [
-                          {
-                            "recommendation": "Content Structure Enhancement",
-                            "action": "On your primary product page, implement a clear, scannable structure using H2/H3 tags for 'Key Benefits', 'Active Ingredients', and 'How It Works'. Use bullet points to list features, making the information easily parsable for AI crawlers."
-                          },
-                          {
-                            "recommendation": "Keyword and Claim Alignment",
-                            "action": "Ensure the exact phrases and claims rewarded by the AI (e.g., 'reduces breakage', 'clinically proven', 'sulphate-free') are present and prominent in your product descriptions and marketing copy."
-                          },
-                          {
-                          "recommendation": "Third-Party Validation Strategy",
-                          "action": "Develop a strategy to get your product listed or reviewed on the types of authoritative domains the AI is citing (e.g., health blogs, online pharmacies, respected e-commerce sites). This builds the external trust the AI is looking for."
-                          }
-                      ]
-                }
-                
-                CRITICAL REQUIREMENTS:
-                1. You MUST populate the other_sources_ai_used array with ALL non-competitor sources from source_links
-                2. Every source from source_links must appear in either competitive_landscape_analysis OR other_sources_ai_used
-                3. Do not leave other_sources_ai_used empty unless there are truly no other sources
-                4. Ensure all URLs are valid and accessible
-                `;
+              "actionable_recommendations": [
+                  {
+                    "recommendation": "Content Structure Enhancement",
+                    "action": "On your primary product page, implement a clear, scannable structure using H2/H3 tags for 'Key Benefits', 'Active Ingredients', and 'How It Works'. Use bullet points to list features, making the information easily parsable for AI crawlers."
+                  },
+                  {
+                    "recommendation": "Keyword and Claim Alignment",
+                    "action": "Ensure the exact phrases and claims rewarded by the AI (e.g., 'reduces breakage', 'clinically proven', 'sulphate-free') are present and prominent in your product descriptions and marketing copy."
+                  },
+                  {
+                  "recommendation": "Third-Party Validation Strategy",
+                  "action": "Develop a strategy to get your product listed or reviewed on the types of authoritative domains the AI is citing (e.g., health blogs, online pharmacies, respected e-commerce sites). This builds the external trust the AI is looking for."
+                  }
+                ]
+              }
+              `;
+
+//               "sources_ai_used": [
+//                 {
+//                   "source_snippet": "Extract a short snippet from this source or from the AI overview that reflects how this source was used. If no clear snippet is available, state 'Snippet not clearly available in provided text.'",
+//                   "reason_for_inclusion": "In one or two sentences, explain why this source matters for the AI's reasoning, based only on information actually present in ai_overview_text or source_links.",
+//                   "source_of_mention": "Provide the exact URL from source_links. Do not invent or alter URLs."
+//                 }
+//               ],
+              // CRITICAL REQUIREMENTS:
+              // 1. You MUST populate the other_sources_ai_used array with ALL non-competitor sources from source_links
+              // 2. Every source from source_links must appear in either competitive_landscape_analysis OR other_sources_ai_used
+              // 3. Do not leave other_sources_ai_used empty unless there are truly no other sources
+              // 4. Ensure all URLs are valid and accessible
 
     const prompt =
       pipeline === 'google_overview'
@@ -247,6 +238,20 @@ export async function POST(request: NextRequest) {
 
       // First parse attempt
       try {
+        // Write raw response before parsing for debugging
+        if (process.env.NODE_ENV !== 'production') {
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const rawFilePath = path.join(process.cwd(), `gemini-raw-response-${timestamp}.json`);
+            fs.writeFileSync(rawFilePath, cleanText, 'utf8');
+            console.log(`[DEBUG] Raw Gemini response written to: ${rawFilePath}`);
+          } catch (writeError) {
+            console.error('[DEBUG] Failed to write raw response file:', writeError);
+          }
+        }
+        
         analysisResult = JSON.parse(cleanText);
       } catch (innerError) {
         // Repair common JSON issues such as trailing commas before } or ]
@@ -256,15 +261,85 @@ export async function POST(request: NextRequest) {
 
         if (process.env.NODE_ENV !== 'production') {
           console.warn('Initial JSON.parse failed, attempting repair:', innerError);
+          
+          // Write repaired response after attempting repair
+          try {
+            const fs = require('fs');
+            const path = require('path');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const repairedFilePath = path.join(process.cwd(), `gemini-repaired-response-${timestamp}.json`);
+            fs.writeFileSync(repairedFilePath, repairedText, 'utf8');
+            console.log(`[DEBUG] Repaired Gemini response written to: ${repairedFilePath}`);
+          } catch (writeError) {
+            console.error('[DEBUG] Failed to write repaired response file:', writeError);
+          }
         }
 
-        analysisResult = JSON.parse(repairedText);
-        cleanText = repairedText;
+        // Second parse attempt on the repaired text
+        try {
+          analysisResult = JSON.parse(repairedText);
+          cleanText = repairedText;
+        } catch (secondError) {
+          // Final safety net: auto-balance missing closing brackets/braces
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('Second JSON.parse failed, attempting bracket/balance repair:', secondError);
+          }
+
+          let finalText = repairedText.trimEnd();
+
+          // Count braces/brackets to detect obvious truncation
+          const openBraces = (finalText.match(/{/g) || []).length;
+          const closeBraces = (finalText.match(/}/g) || []).length;
+          const openBrackets = (finalText.match(/\[/g) || []).length;
+          const closeBrackets = (finalText.match(/\]/g) || []).length;
+
+          // If an array is left open, close it
+          if (closeBrackets < openBrackets) {
+            finalText += ']';
+          }
+
+          // If the root object (or nested objects) are left open, close them
+          if (closeBraces < openBraces) {
+            finalText += '}';
+          }
+
+          // Special case: if text ends with an object but no closing array/root
+          // This handles the case where Gemini cuts off after the last array element
+          if (!finalText.endsWith(']}') && !finalText.endsWith('}')) {
+            // Check if we're inside an array by looking for the pattern "},"
+            const lastCommaIndex = finalText.lastIndexOf('},');
+            if (lastCommaIndex !== -1 && lastCommaIndex > finalText.lastIndexOf(']')) {
+              // Remove the trailing comma and close the array and object
+              finalText = finalText.substring(0, lastCommaIndex + 1) + ']}';
+            }
+          }
+
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[DEBUG] Applying auto-balance fix for JSON brackets/braces');
+          }
+
+          analysisResult = JSON.parse(finalText);
+          cleanText = finalText;
+        }
       }
       
       // Validate required structure
       if (!analysisResult.executive_summary || !analysisResult.client_product_visibility) {
         throw new Error('Invalid analysis structure: missing required fields');
+      }
+      
+      // Populate sources_ai_used from original source_links to avoid token limit issues
+      const aiSearchAny = aiSearchJson as any;
+      if (Array.isArray(aiSearchAny?.source_links) && (!analysisResult.sources_ai_used || analysisResult.sources_ai_used.length === 0)) {
+        analysisResult.sources_ai_used = aiSearchAny.source_links.map((src: any) => ({
+          source_snippet: src.snippet || src.text || 'Snippet not clearly available in provided text.',
+          reason_for_inclusion: `Source was included in the AI search results${src.related_to ? ` and is related to ${src.related_to}` : ''}. Position: ${src.position || 'Unknown'}.`,
+          source_of_mention: src.url || 'Unknown source',
+        }));
+        
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[DEBUG] Populated sources_ai_used from source_links: ${analysisResult.sources_ai_used?.length || 0} sources`);
+        }
       }
       
       // DEBUG: Log the final parsed result to verify sources_ai_used presence

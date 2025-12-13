@@ -7,6 +7,7 @@ import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import { useProductStore } from "../../../optimize/store";
 import AnalysisDisplay from "../../../optimize/analysis-display";
 import { exportAnalysisToDocx, exportAnalysisToPdf } from "../../../optimize/export-utils";
+import AnalysisReplacer from "../../../components/AnalysisReplacer";
 
 export default function GoogleAnalysisResultPage() {
   const router = useRouter();
@@ -215,11 +216,11 @@ export default function GoogleAnalysisResultPage() {
       <Box sx={{ mb: 4 }}>
         <Button
           variant="plain"
-          onClick={() => router.push('/optimize')}
+          onClick={() => router.back()}
           sx={{ color: "#2ED47A", mb: 2 }}
         >
           <KeyboardArrowLeftIcon />
-          Back to Optimization
+          Back
         </Button>
         <Typography level="h1" sx={{ color: "#F2F5FA", mb: 2 }}>
           🌐 Google AI Overview Analysis
@@ -267,19 +268,34 @@ export default function GoogleAnalysisResultPage() {
             >
               Export as PDF
             </Button>
-            <Button
-              onClick={handleReset}
-              variant="plain"
-              sx={{
-                color: "#F35B64",
-                fontWeight: 600,
-                "&:hover": {
-                  backgroundColor: "rgba(243, 91, 100, 0.1)",
-                },
+            <AnalysisReplacer
+              analysisId={analysisId}
+              query={analysis?.google_search_query || ''}
+              pipeline="google_overview"
+              onComplete={async () => {
+                // Refresh the analysis data after replacement
+                try {
+                  setLoading(true);
+                  const response = await fetch(`/api/product-analyses/${analysisId}`);
+                  if (response.ok) {
+                    const data = await response.json();
+                    // Update the local state with fresh data
+                    if (data.analysis) {
+                      setGoogleOverviewAnalysis(data.analysis);
+                    }
+                  }
+                } catch (error) {
+                  console.error('Failed to refresh analysis:', error);
+                  // Fallback to full page reload if fetch fails
+                  window.location.reload();
+                } finally {
+                  setLoading(false);
+                }
               }}
-            >
-              Start New Analysis
-            </Button>
+              onError={(error) => {
+                setError(error);
+              }}
+            />
           </Box>
 
           <AnalysisDisplay 
@@ -332,7 +348,7 @@ export default function GoogleAnalysisResultPage() {
         <ModalDialog sx={{ backgroundColor: "#0D0F14", border: "1px solid rgba(46, 212, 122, 0.14)" }}>
           <ModalClose />
           <Typography level="h2" sx={{ color: "#F2F5FA", mb: 2 }}>
-            Start New Analysis?
+            Re-Do Analysis?
           </Typography>
           <Typography level="body-md" sx={{ color: "rgba(162, 167, 180, 0.88)", mb: 4 }}>
             This will clear the current analysis results and return you to the optimization page.
