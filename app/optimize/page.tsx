@@ -34,6 +34,7 @@ import axios from 'axios';
 import { useRouter } from "next/navigation";
 import { useProductStore } from "./store";
 import type { QueryData } from "./store";
+import SOVPerformanceCard from "@/components/SOVPerformanceCard";
 import {
   Feature,
   OptimizationAnalysis,
@@ -298,6 +299,10 @@ function OptimizePageContent() {
   const [isGoogleScraping, setIsGoogleScraping] = useState(false);
   const [isLoadingQueries, setIsLoadingQueries] = useState(false);
   const [loadingResultKey, setLoadingResultKey] = useState<string | null>(null);
+  
+  // SOV card state management
+  const [showSOVCards, setShowSOVCards] = useState(false);
+  const [sovCardEngine, setSovCardEngine] = useState<'google' | 'perplexity'>('google');
 
   const formatSpecificationKeyForDisplay = useCallback((key: string) =>
     key
@@ -1553,6 +1558,8 @@ function OptimizePageContent() {
   // View analysis result for a used query
   const handleViewAnalysisResult = async (query: string, pipeline: 'perplexity' | 'google_overview') => {
     console.log('handleViewAnalysisResult called', { query, pipeline, currentProductId });
+    // Clear any stale error that could otherwise show up later when returning to /optimize
+    setServerError(null);
     
     if (!currentProductId) {
       setServerError('No product selected. Please select a product first.');
@@ -1662,20 +1669,15 @@ function OptimizePageContent() {
       google: `/results/google/${matchingAnalysis.id}`
     });
     
-    // Navigate to the appropriate historical results page with analysis ID
-    if (pipeline === 'perplexity') {
-      router.push(`/results/perplexity/${matchingAnalysis.id}`);
-    } else {
-      router.push(`/results/google/${matchingAnalysis.id}`);
-    }
-    
-    // Clear loading state after a short delay to ensure it's visible
-    setTimeout(() => {
-      setLoadingResultKey(null);
-    }, 1000);
+    // Show SOV card instead of navigating to results page
+    setSovCardEngine(pipeline === 'perplexity' ? 'perplexity' : 'google');
+    setShowSOVCards(true);
     } catch (error) {
       console.error('Error loading analysis result:', error);
       setServerError('Failed to load analysis result. Please try again.');
+    } finally {
+      // Always clear loading if we stay on the page (errors / early returns).
+      // On successful navigation, this component will unmount anyway.
       setLoadingResultKey(null);
     }
   };
@@ -3116,7 +3118,8 @@ function OptimizePageContent() {
               color="neutral"
               onClick={() => {
                 setActiveSection("perplexity");
-                router.push("/results");
+                setSovCardEngine('perplexity');
+                setShowSOVCards(true);
               }}
               sx={{
                 backgroundColor: activeSection === "perplexity" ? accentColor : "transparent",
@@ -3145,7 +3148,8 @@ function OptimizePageContent() {
               color="neutral"
               onClick={() => {
                 setActiveSection("google");
-                router.push("/results/google");
+                setSovCardEngine('google');
+                setShowSOVCards(true);
               }}
               sx={{
                 backgroundColor: activeSection === "google" ? accentColor : "transparent",
@@ -5250,6 +5254,16 @@ function OptimizePageContent() {
               </Box>
             )}
           </Card>
+        )}
+
+        {/* SOV Performance Cards */}
+        {showSOVCards && currentProductId && (
+          <Box sx={{ mt: 4 }}>
+            <SOVPerformanceCard 
+              productId={currentProductId} 
+              engine={sovCardEngine}
+            />
+          </Box>
         )}
       </Box>
     </Box>

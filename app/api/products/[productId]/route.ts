@@ -20,24 +20,10 @@ export async function GET(
       );
     }
 
-    // Fetch product with its analyses
+    // Fetch product with its analyses from both tables
     const { data: product, error: productError } = await supabase
       .from('products')
-      .select(`
-        *,
-        product_analyses (
-          id,
-          user_id,
-          optimization_query,
-          optimization_analysis,
-          google_search_query,
-          google_overview_analysis,
-          citations,
-          raw_serp_results,
-          created_at,
-          updated_at
-        )
-      `)
+      .select('*')
       .eq('id', productId)
       .single();
 
@@ -56,10 +42,55 @@ export async function GET(
       );
     }
 
+    // Fetch analyses from both Google and Perplexity tables
+    const [googleAnalyses, perplexityAnalyses] = await Promise.all([
+      supabase
+        .from('product_analysis_google')
+        .select('*')
+        .eq('product_id', productId)
+        .order('created_at', { ascending: false }),
+      
+      supabase
+        .from('product_analysis_perplexity')
+        .select('*')
+        .eq('product_id', productId)
+        .order('created_at', { ascending: false })
+    ]);
+
+    // Combine and normalize analyses data
+    const allAnalyses = [
+      ...(googleAnalyses.data || []).map(analysis => ({
+        id: analysis.id,
+        user_id: analysis.user_id,
+        optimization_query: analysis.search_query,
+        optimization_analysis: analysis.google_overview_analysis,
+        google_search_query: analysis.search_query,
+        google_overview_analysis: analysis.google_overview_analysis,
+        citations: null,
+        raw_serp_results: analysis.raw_serp_results,
+        created_at: analysis.created_at,
+        updated_at: analysis.updated_at,
+        pipeline: 'google_overview'
+      })),
+      ...(perplexityAnalyses.data || []).map(analysis => ({
+        id: analysis.id,
+        user_id: analysis.user_id,
+        optimization_query: analysis.optimization_prompt,
+        optimization_analysis: analysis.optimization_analysis,
+        google_search_query: null,
+        google_overview_analysis: null,
+        citations: analysis.citations,
+        raw_serp_results: analysis.raw_serp_results,
+        created_at: analysis.created_at,
+        updated_at: analysis.updated_at,
+        pipeline: 'perplexity'
+      }))
+    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
     // Normalize the analyses data
     const normalizedProduct = {
       ...product,
-      analyses: product.product_analyses || [],
+      analyses: allAnalyses,
       query_text: product.query_text || { all: { perplexity: [], google: [] }, used: { perplexity: [], google: [] } }
     };
 

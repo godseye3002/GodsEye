@@ -1,0 +1,76 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes well-established category leaders (e.g., All-in-One, SEO, Link Management) and your product's specific niche has not yet achieved this level of recognition in the AI's sources.",
+    "strategic_analogy": "This is like trying to enter a 'Best Vehicle' competition by presenting a high-performance engine. The judges are awarding prizes for complete vehicles in established categories like 'Best Sedan' or 'Best SUV'. Your product is a powerful component, but it needs to be framed as a complete, category-defining solution to be recognized."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Your product, Linkrunner, was not mentioned by name in the AI overview text or referenced in any of the source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a narrative that guides users to the 'best' tool by segmenting the market into distinct use cases like All-in-One, Deep Analytics, Link Management, and SEO. It presents a curated list of established leaders for each category, implying that the right choice depends on the marketer's primary focus.",
+    "key_decision_factors": [
+      "Categorization by specific use case (e.g., 'All-in-One', 'Link Management', 'SEO')",
+      "Brand recognition and established market leadership",
+      "Specific, named functionalities (e.g., 'link shortening', 'UTM tracking', 'managing affiliate campaigns')",
+      "Source authority from a mix of brand sites, review platforms, and competitor blogs",
+      "Target audience focus (e.g., e-commerce, enterprise, inbound)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in a mix of direct-to-consumer brand websites (Trackier), major third-party review/integration platforms (G2, Zapier), and high-quality competitor content marketing (Cometly's blog). This indicates a need for both strong brand presence and external validation from authoritative tech domains."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "HubSpot",
+      "reason_for_inclusion": "Positioned as the top 'All-in-One & Inbound Marketing' solution for managing entire campaigns, tracking leads, and analyzing ROI. It's cited by multiple third-party sources (G2, Zapier) as a comprehensive or premium choice.",
+      "source_of_mention": "https://learn.g2.com/best-marketing-analytics-tools"
+    },
+    {
+      "competitor_name": "Google Analytics 4",
+      "reason_for_inclusion": "Included as the essential tool for 'Deep Analytics & Attribution', specifically for advanced web traffic analysis and understanding user journeys. It is framed as a foundational analytics tool.",
+      "source_of_mention": "https://www.cometly.com/post/performance-marketing-tracking-software"
+    },
+    {
+      "competitor_name": "Bitly",
+      "reason_for_inclusion": "Highlighted as a popular and well-known tool specifically for 'Link Management & E-commerce', praised for its link shortening, QR codes, and UTM tracking capabilities.",
+      "source_of_mention": "https://shortpen.com/best-link-tracking-software/#:~:text=Bitly%20is%20one%20of%20the,Key%20Features"
+    },
+    {
+      "competitor_name": "Cometly",
+      "reason_for_inclusion": "Featured as a specialized solution for 'Deep Analytics & Attribution', with a clear focus on showing which ads and channels directly drive revenue.",
+      "source_of_mention": "https://www.cometly.com/post/performance-marketing-tracking-software"
+    },
+    {
+      "competitor_name": "Trackier",
+      "reason_for_inclusion": "Named as the go-to platform for 'Performance & Affiliate Marketing', described as an all-in-one solution for managing and optimizing these specific campaign types with robust tracking.",
+      "source_of_mention": "https://trackier.com/performance-marketing-software/#:~:text=%E2%80%9CIt%20was%20a%20wise%20decision,Harness%20every%20digital%20channel."
+    },
+    {
+      "competitor_name": "Semrush",
+      "reason_for_inclusion": "Included as the best-in-class tool for the 'SEO & Content' category, focusing on competitor analysis and content strategy optimization.",
+      "source_of_mention": "https://www.google.com/search?q=Semrush&sca_esv=cc24bdeaa2bd123f&source=hp&ei=H_9HaZrzDOvEkPIP4dLLuQU&iflsig=AOw8s4IAAAAAaUgNL8xTBLaB1KD6vnrsvSgM_k77-mFb&ved=2ahUKEwjRl8qr7c6RAxXRLrkGHXm6JpkQgK4QegQIDBAB&uact=5&oq=best+marketing+software+for+tracking+link+performance+and+optimizing+channels&gs_lp=Egdnd3Mtd2l6Ik1iZXN0IG1hcmtldGluZyBzb2Z0d2FyZSBmb3IgdHJhY2tpbmcgbGluayBwZXJmb3JtYW5jZSBhbmQgb3B0aW1pemluZyBjaGFubmVsc0iWPlDkAli1OnAAeACQAQCYAZoGoAHEGKoBAzYtNLgBA8gBAPgBAZgCAKACAKgCAJgDAJIHAKAHygOyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfBMaiH1GjdqTIMf6Uix6WRSzUN5upApatDwdyN11ZlwrY-I20Bb_HBF6D6SCSnGbKmjhnOb44dch7vkPtiZQMFy12nifpr_wkSjDxG1lB3rwymHqsG9jMUQssKKWyb9dLg&csui=3"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary challenge for Linkrunner is a lack of established authority and clear categorization within the AI's framework. The AI favors well-known brands that are definitive leaders in broad categories. Linkrunner's niche positioning and lack of mentions on trusted third-party sites are the main reasons for its exclusion.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Linkrunner was excluded because the AI's response is built around established, broad categories where other tools are already dominant (e.g., HubSpot for 'All-in-one', Bitly for 'Link Management'). Your product's positioning as a 'smarter alternative to Onelink.to' is too niche for this general query and isn't supported by the high-authority third-party sources the AI is referencing.",
+      "path_to_inclusion": "To gain inclusion, Linkrunner must establish itself as a leader in a clearly defined sub-category, such as 'Granular Channel Performance Tracking' or 'Marketing Attribution for Growth Marketers'. This requires creating detailed content that directly compares Linkrunner to competitors like Bitly and Cometly on these specific features, and securing mentions on authoritative third-party marketing tech blogs, review sites (like G2), and integration directories."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure and Niche Definition",
+      "action": "Create dedicated landing pages and blog posts that clearly define your niche, such as 'The Best Tool for Granular Channel Performance Tracking'. Structure these pages with clear H2/H3 tags for 'Key Features', 'Use Cases for Growth Marketers', and 'Linkrunner vs. [Competitor]' to make your specific value proposition easily parsable for AI."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Incorporate the keywords and concepts the AI has rewarded into your content. Focus on terms like 'marketing attribution', 'channel optimization', 'performance tracking software', and 'ROI analysis'. Frame your features to directly address these high-level marketing needs, not just as a tool alternative."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Develop a targeted outreach strategy to get Linkrunner featured, reviewed, or listed on the types of domains the AI trusts. Prioritize marketing tech blogs, software review sites like G2 and Capterra, and integration platforms like Zapier. Positive mentions on these sites are a powerful signal of authority."
+    }
+  ]
+}

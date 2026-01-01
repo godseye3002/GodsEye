@@ -33,7 +33,10 @@ export default function GoogleAnalysisResultPage() {
   } = useProductStore();
 
   const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  useEffect(() => {
+    setHydrated(true);
+    setServerError(null);
+  }, [setServerError]);
 
   // Load specific analysis by ID
   useEffect(() => {
@@ -44,38 +47,38 @@ export default function GoogleAnalysisResultPage() {
       try {
         setLoading(true);
         setError(null);
+        setServerError(null);
         
-        // Find the analysis in the current product's analyses
+        // 1) Try local store first (fast path)
+        let localMatch: any = null;
         if (currentProductId && products.length > 0) {
           const currentProduct = products.find(p => p.id === currentProductId);
-          if (currentProduct?.analyses) {
-            const matchingAnalysis = currentProduct.analyses.find((a: any) => a.id === analysisId);
-            
-            if (matchingAnalysis && matchingAnalysis.google_overview_analysis) {
-              setAnalysis(matchingAnalysis);
-              setGoogleOverviewAnalysis(matchingAnalysis.google_overview_analysis);
-              setGeneratedQuery(matchingAnalysis.google_search_query || '');
-            } else {
-              setError('Google AI Overview analysis not found for this query.');
-            }
-          } else {
-            setError('No analysis history available for this product.');
-          }
+          localMatch = currentProduct?.analyses?.find((a: any) => a.id === analysisId) ?? null;
+        }
+
+        if (localMatch?.google_overview_analysis) {
+          // Set data synchronously before stopping loading
+          setAnalysis(localMatch);
+          setGoogleOverviewAnalysis(localMatch.google_overview_analysis);
+          setGeneratedQuery(localMatch.google_search_query || '');
+          return;
+        }
+
+        // 2) Fallback: fetch by analysisId (authoritative)
+        const response = await fetch(`/api/product-analyses/${analysisId}`);
+        if (!response.ok) {
+          setError('Failed to load analysis data.');
+          return;
+        }
+
+        const data = await response.json();
+        if (data.analysis?.google_overview_analysis) {
+          // Set data synchronously before stopping loading
+          setAnalysis(data.analysis);
+          setGoogleOverviewAnalysis(data.analysis.google_overview_analysis);
+          setGeneratedQuery(data.analysis.google_search_query || '');
         } else {
-          // Try to fetch analysis directly from API if no product context
-          const response = await fetch(`/api/product-analyses/${analysisId}`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.analysis?.google_overview_analysis) {
-              setAnalysis(data.analysis);
-              setGoogleOverviewAnalysis(data.analysis.google_overview_analysis);
-              setGeneratedQuery(data.analysis.google_search_query || '');
-            } else {
-              setError('Google AI Overview analysis not found for this query.');
-            }
-          } else {
-            setError('Failed to load analysis data.');
-          }
+          setError('Google AI Overview analysis not found for this query.');
         }
       } catch (err) {
         console.error('Error loading analysis:', err);
