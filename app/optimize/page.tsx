@@ -35,6 +35,7 @@ import { useRouter } from "next/navigation";
 import { useProductStore } from "./store";
 import type { QueryData } from "./store";
 import SOVPerformanceCard from "@/components/SOVPerformanceCard";
+import DeepAnalysisCard from "@/components/DeepAnalysisCard";
 import {
   Feature,
   OptimizationAnalysis,
@@ -303,6 +304,9 @@ function OptimizePageContent() {
   // SOV card state management
   const [showSOVCards, setShowSOVCards] = useState(false);
   const [sovCardEngine, setSovCardEngine] = useState<'google' | 'perplexity'>('google');
+  
+  // Deep Analysis state management
+  const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
 
   const formatSpecificationKeyForDisplay = useCallback((key: string) =>
     key
@@ -320,6 +324,11 @@ function OptimizePageContent() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadProductsFromSupabase(user.id);
+  }, [user?.id, loadProductsFromSupabase]);
 
   useEffect(() => {
     if (openModal !== "specifications") {
@@ -1669,17 +1678,18 @@ function OptimizePageContent() {
       google: `/results/google/${matchingAnalysis.id}`
     });
     
-    // Show SOV card instead of navigating to results page
-    setSovCardEngine(pipeline === 'perplexity' ? 'perplexity' : 'google');
-    setShowSOVCards(true);
+    // Navigate to the appropriate historical results page with analysis ID
+    if (pipeline === 'perplexity') {
+      router.push(`/results/perplexity/${matchingAnalysis.id}`);
+    } else {
+      router.push(`/results/google/${matchingAnalysis.id}`);
+    }
     } catch (error) {
       console.error('Error loading analysis result:', error);
       setServerError('Failed to load analysis result. Please try again.');
-    } finally {
-      // Always clear loading if we stay on the page (errors / early returns).
-      // On successful navigation, this component will unmount anyway.
-      setLoadingResultKey(null);
+      setLoadingResultKey(null); // Clear loading on error
     }
+    // Don't clear loading on successful navigation - let the user see the loading state until navigation completes
   };
   
   const startAnalysisWithSelectedQueries = async (pipeline: 'perplexity' | 'google_overview') => {
@@ -5258,11 +5268,38 @@ function OptimizePageContent() {
 
         {/* SOV Performance Cards */}
         {showSOVCards && currentProductId && (
-          <Box sx={{ mt: 4 }}>
+          <Box sx={{ mt: 0 }}>
             <SOVPerformanceCard 
               productId={currentProductId} 
               engine={sovCardEngine}
+              onDeepAnalysisClick={() => setShowDeepAnalysis(!showDeepAnalysis)}
+              isDeepAnalysisActive={showDeepAnalysis}
             />
+            
+            {/* Deep Analysis Card */}
+            {showDeepAnalysis && (
+              <DeepAnalysisCard 
+                engine={sovCardEngine}
+                productId={currentProductId}
+                analysisHash={
+                  products.find((p) => p.id === currentProductId)?.[
+                    sovCardEngine === 'google'
+                      ? 'deep_analysis_google_hash'
+                      : 'deep_analysis_perplexity_hash'
+                  ] ?? null
+                }
+                isAnalysisUpToDate={
+                  products.find((p) => p.id === currentProductId)?.[
+                    sovCardEngine === 'google'
+                      ? 'deep_analysis_google_up_to_date'
+                      : 'deep_analysis_perplexity_up_to_date'
+                  ] ?? false
+                }
+                onStartAnalysis={() => {
+                  console.log('Start Deep Analysis clicked - placeholder for now');
+                }}
+              />
+            )}
           </Box>
         )}
       </Box>

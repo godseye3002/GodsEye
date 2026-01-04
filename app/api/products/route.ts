@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase';
+import { computeAnalysisHashFromIds } from '@/lib/deepAnalysisHash';
 
 // GET - Fetch all products for a user
 export async function GET(request: Request) {
@@ -33,7 +34,35 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ products: data || [] });
+    const enhancedProducts = (data || []).map((product: any) => {
+      const googleIds = Array.isArray(product.product_analysis_google)
+        ? product.product_analysis_google.map((row: any) => row.id)
+        : [];
+      const perplexityIds = Array.isArray(product.product_analysis_perplexity)
+        ? product.product_analysis_perplexity.map((row: any) => row.id)
+        : [];
+
+      const computedGoogleHash = computeAnalysisHashFromIds(googleIds);
+      const computedPerplexityHash = computeAnalysisHashFromIds(perplexityIds);
+
+      const deep_analysis_google_up_to_date =
+        Boolean(computedGoogleHash) &&
+        product.deep_analysis_google_hash &&
+        product.deep_analysis_google_hash === computedGoogleHash;
+
+      const deep_analysis_perplexity_up_to_date =
+        Boolean(computedPerplexityHash) &&
+        product.deep_analysis_perplexity_hash &&
+        product.deep_analysis_perplexity_hash === computedPerplexityHash;
+
+      return {
+        ...product,
+        deep_analysis_google_up_to_date,
+        deep_analysis_perplexity_up_to_date,
+      };
+    });
+
+    return NextResponse.json({ products: enhancedProducts });
   } catch (error: any) {
     if (process.env.NODE_ENV !== 'production') {
       console.error('[Products] GET error:', error);

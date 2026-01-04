@@ -21,9 +21,11 @@ interface SOVSnapshot {
 interface SOVPerformanceCardProps {
   productId: string;
   engine: 'google' | 'perplexity';
+  onDeepAnalysisClick?: () => void;
+  isDeepAnalysisActive?: boolean;
 }
 
-export default function SOVPerformanceCard({ productId, engine }: SOVPerformanceCardProps) {
+export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisClick, isDeepAnalysisActive }: SOVPerformanceCardProps) {
   const [snapshot, setSnapshot] = useState<SOVSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -334,24 +336,29 @@ export default function SOVPerformanceCard({ productId, engine }: SOVPerformance
         {/* Action Buttons */}
         <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
           <Button
-            variant="outlined"
-            color="neutral"
+            variant={isDeepAnalysisActive ? "solid" : "outlined"}
+            color={isDeepAnalysisActive ? "success" : "neutral"}
             startDecorator={<AnalyticsIcon />}
             sx={{
               flex: 1,
-              borderColor: "rgba(46, 212, 122, 0.36)",
-              color: "#F2F5FA",
-              backgroundColor: "transparent",
+              borderColor: isDeepAnalysisActive ? "transparent" : "rgba(46, 212, 122, 0.36)",
+              color: isDeepAnalysisActive ? "#0D0F14" : "#F2F5FA",
+              backgroundColor: isDeepAnalysisActive ? "#2ED47A" : "transparent",
+              boxShadow: isDeepAnalysisActive ? "0 4px 12px rgba(46, 212, 122, 0.3)" : "none",
               "&:hover": {
-                backgroundColor: "rgba(46, 212, 122, 0.1)",
-                borderColor: "rgba(46, 212, 122, 0.6)",
-                color: "#2ED47A",
+                backgroundColor: isDeepAnalysisActive ? "#26B869" : "rgba(46, 212, 122, 0.1)",
+                borderColor: isDeepAnalysisActive ? "transparent" : "rgba(46, 212, 122, 0.6)",
+                color: isDeepAnalysisActive ? "#0D0F14" : "#2ED47A",
+                boxShadow: isDeepAnalysisActive ? "0 6px 16px rgba(46, 212, 122, 0.4)" : "none",
               },
-              fontWeight: 500,
+              fontWeight: isDeepAnalysisActive ? 600 : 500,
               py: 1.2,
+              transition: "all 0.2s ease-in-out",
             }}
             onClick={() => {
-              console.log('Deep Analysis clicked - placeholder for now');
+              if (onDeepAnalysisClick) {
+                onDeepAnalysisClick();
+              }
             }}
           >
             Deep Analysis

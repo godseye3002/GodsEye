@@ -297,6 +297,11 @@ export const useProductStore = create<ProductStoreState>()(
               })),
             ];
 
+            const googleUpToDate = Boolean(p.deep_analysis_google_up_to_date);
+            const perplexityUpToDate = Boolean(p.deep_analysis_perplexity_up_to_date);
+            const verifiedGoogleHash = p.deep_analysis_google_hash || null;
+            const verifiedPerplexityHash = p.deep_analysis_perplexity_hash || null;
+
             return {
               id: p.id,
               name: p.product_name || 'Untitled Product',
@@ -319,6 +324,10 @@ export const useProductStore = create<ProductStoreState>()(
               sourceLinks,
               processedSources,
               analyses,
+              deep_analysis_google_hash: verifiedGoogleHash,
+              deep_analysis_perplexity_hash: verifiedPerplexityHash,
+              deep_analysis_google_up_to_date: googleUpToDate,
+              deep_analysis_perplexity_up_to_date: perplexityUpToDate,
             };
           });
           
@@ -664,8 +673,19 @@ export const useProductStore = create<ProductStoreState>()(
     }),
     {
       name: "godseye-product-store",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persistedState: any, version) => {
+        // v2: ensure stale cached product objects are dropped so newly added DB fields
+        // (e.g., deep_analysis_google_hash / deep_analysis_perplexity_hash) can load.
+        if (version < 2) {
+          return {
+            ...persistedState,
+            products: [],
+          };
+        }
+        return persistedState;
+      },
       partialize: (state) => ({
         // Persist important data to survive reloads
         products: state.products,
