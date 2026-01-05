@@ -5295,14 +5295,11 @@ function OptimizePageContent() {
                       : 'deep_analysis_perplexity_up_to_date'
                   ] ?? false
                 }
-                onStartAnalysis={() => {
-                  console.log('Start Deep Analysis clicked - placeholder for now');
-                }}
               />
             )}
           </Box>
         )}
-      </Box>
+              </Box>
     </Box>
   );
 }

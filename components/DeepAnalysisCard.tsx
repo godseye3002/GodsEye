@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Card, Typography, Stack, Box, Alert } from "@mui/joy";
 import InsightsIcon from "@mui/icons-material/Insights";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import { startGoogleDeepAnalysis, startPerplexityDeepAnalysis } from "@/lib/deepAnalysisApi";
+import { useAnalysisListener } from "@/hooks/useAnalysisListener";
 
 interface DeepAnalysisCardProps {
   engine: 'google' | 'perplexity';
   productId: string;
   analysisHash: string | null;
   isAnalysisUpToDate: boolean;
-  onStartAnalysis: () => void;
 }
 
 export default function DeepAnalysisCard({
@@ -20,11 +21,95 @@ export default function DeepAnalysisCard({
   productId,
   analysisHash,
   isAnalysisUpToDate,
-  onStartAnalysis,
 }: DeepAnalysisCardProps) {
   const engineLabel = engine === 'google' ? 'Google AI Overview' : 'Perplexity Citations';
-  const isCompleted = Boolean(analysisHash);
   const [showCopyNotification, setShowCopyNotification] = useState(false);
+  const [isStartingAnalysis, setIsStartingAnalysis] = useState(false);
+  const [startAnalysisError, setStartAnalysisError] = useState<string | null>(null);
+  const [showStartSuccess, setShowStartSuccess] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const {
+    status: liveAnalysisStatus,
+    data: latestAnalysisRow,
+    setStatus: setLiveAnalysisStatus,
+  } = useAnalysisListener(productId, engine);
+
+  const hasRealtimeAnalysis = Boolean(latestAnalysisRow);
+  const hasAnalysisData = Boolean(analysisHash) || hasRealtimeAnalysis;
+  const isAnalysisCurrentlyUpToDate = Boolean(isAnalysisUpToDate || hasRealtimeAnalysis);
+
+  const isCompleted = hasAnalysisData;
+
+  useEffect(() => {
+    // When realtime insert arrives (or backend up-to-date flag is true), stop showing "processing"
+    if (isAnalysisUpToDate || hasRealtimeAnalysis) {
+      setLiveAnalysisStatus('completed');
+    }
+  }, [isAnalysisUpToDate, hasRealtimeAnalysis, setLiveAnalysisStatus]);
+
+  const startDeepAnalysis = async () => {
+    if (isStartingAnalysis || liveAnalysisStatus === 'processing') {
+      return;
+    }
+
+    // Check internet connectivity first
+    try {
+      const response = await fetch('https://httpbin.org/get', { 
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000)
+      });
+      if (!response.ok) throw new Error('Network check failed');
+      setConnectionError(null);
+    } catch (err) {
+      setConnectionError('Poor internet connection detected. Please check your connection and try again.');
+      return;
+    }
+
+    let retries = 0;
+    const maxRetries = 2;
+    const retryDelay = 2000; // 2 seconds between retries
+
+    while (retries < maxRetries) {
+      try {
+        setIsStartingAnalysis(true);
+        setStartAnalysisError(null);
+        setShowStartSuccess(false);
+        setLiveAnalysisStatus('processing');
+
+        if (engine === 'google') {
+          await startGoogleDeepAnalysis(productId);
+        } else {
+          await startPerplexityDeepAnalysis(productId);
+        }
+
+        // Success - exit retry loop
+        setShowStartSuccess(true);
+        setTimeout(() => setShowStartSuccess(false), 5000);
+        // Don't set to completed here - let realtime handle it
+        // Keep status as 'processing' until realtime data arrives
+        break; // Exit while loop on success
+        
+      } catch (err) {
+        retries++;
+        
+        if (retries >= maxRetries) {
+          // Final attempt failed - show error
+          const message = err instanceof Error ? err.message : 'Failed to start deep analysis after multiple attempts';
+          setStartAnalysisError(message);
+          setLiveAnalysisStatus('completed');
+        } else {
+          // Retry attempt - show retry message in console only
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`[DeepAnalysis] Attempt ${retries} failed, retrying in ${retryDelay}ms...`, err);
+          }
+          // Brief pause before retry
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      } finally {
+        setIsStartingAnalysis(false);
+      }
+    }
+  };
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -79,7 +164,7 @@ export default function DeepAnalysisCard({
           
           {isCompleted && (
             <Stack direction="row" spacing={1} alignItems="center">
-              {isAnalysisUpToDate ? (
+              {isAnalysisCurrentlyUpToDate ? (
                 <>
                   <Box
                     sx={{
@@ -104,7 +189,7 @@ export default function DeepAnalysisCard({
                     }}
                   />
                   <Typography level="body-sm" sx={{ color: "#F59E0B", fontWeight: 500 }}>
-                    New data available
+                    New query data available, start new deep analysis
                   </Typography>
                 </>
               )}
@@ -135,7 +220,8 @@ export default function DeepAnalysisCard({
               variant="solid"
               color="success"
               startDecorator={<TrendingUpIcon />}
-              onClick={onStartAnalysis}
+              onClick={startDeepAnalysis}
+              disabled={isStartingAnalysis || liveAnalysisStatus === 'processing'}
               sx={{
                 width: "100%",
                 backgroundColor: "#2ED47A",
@@ -149,8 +235,67 @@ export default function DeepAnalysisCard({
                 fontSize: "1rem",
               }}
             >
-              Start Deep Analysis
+              {isStartingAnalysis ? 'Starting…' : liveAnalysisStatus === 'processing' ? 'Analyzing…' : 'Start Deep Analysis'}
             </Button>
+
+            {showStartSuccess && (
+              <Alert
+                variant="soft"
+                color="success"
+                sx={{
+                  mt: 2,
+                  backgroundColor: "rgba(46, 212, 122, 0.1)",
+                  color: "#2ED47A",
+                  border: "1px solid rgba(46, 212, 122, 0.3)",
+                }}
+              >
+                Request submitted successfully. It will take a few minutes to complete.
+              </Alert>
+            )}
+
+            {liveAnalysisStatus === 'processing' && (
+              <Alert
+                variant="soft"
+                color="warning"
+                sx={{
+                  mt: 1.5,
+                  border: "1px solid rgba(245, 158, 11, 0.35)",
+                  backgroundColor: "rgba(245, 158, 11, 0.08)",
+                  color: "#F59E0B",
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: '50%', 
+                    backgroundColor: '#F59E0B',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    '@keyframes pulse': {
+                      '0%, 100%': { opacity: 1 },
+                      '50%': { opacity: 0.3 }
+                    }
+                  }} />
+                  <Typography level="body-sm" sx={{ fontWeight: 500 }}>
+                    Deep analysis is running. This typically takes 2-5 minutes. You'll be notified when complete.
+                  </Typography>
+                </Box>
+              </Alert>
+            )}
+
+            {startAnalysisError && (
+              <Alert
+                variant="soft"
+                color="danger"
+                sx={{
+                  mt: 2,
+                  border: "1px solid rgba(243, 91, 100, 0.35)",
+                  backgroundColor: "rgba(243, 91, 100, 0.08)",
+                }}
+              >
+                {startAnalysisError}
+              </Alert>
+            )}
           </>
         ) : (
           <>
@@ -175,7 +320,7 @@ export default function DeepAnalysisCard({
                 lineHeight: 1.6,
                 mb: 2,
               }}>
-                The GodsEye MCP connects your AI coding agent (Cursor, Windsurf, Claude Desktop) directly to the GodsEye AEO Database. It injects the "Winning Content DNA" directly into your workspace and enables automatic Gap Analysis.
+                The GodsEye MCP connects your AI coding agent (Cursor, Windsurf, Claude Desktop) directly to the GodsEye AEO Database. It injects the "Godseyes AEO Analysis" directly into your workspace and enables automatic Gap Analysis.
               </Typography>
 
               <Typography level="body-sm" sx={{ color: "#F2F5FA", fontWeight: 600, mb: 1 }}>
@@ -403,10 +548,10 @@ export default function DeepAnalysisCard({
               </Typography>
             </Box>
 
-            {isAnalysisUpToDate ? (
-              <Box
-                sx={{
-                  mt: 2,
+                {isAnalysisCurrentlyUpToDate ? (
+                  <Box
+                    sx={{
+                      mt: 2,
                   p: 2,
                   borderRadius: "8px",
                   border: "1px solid rgba(46, 212, 122, 0.25)",
@@ -414,17 +559,18 @@ export default function DeepAnalysisCard({
                 }}
               >
                 <Typography level="body-md" sx={{ color: "#2ED47A", fontWeight: 600 }}>
-                  ✅ This analysis is up to date.
-                </Typography>
-                <Typography level="body-sm" sx={{ color: "rgba(162, 167, 180, 0.88)", mt: 0.5 }}>
-                  Run more queries to increase the accuracy of the analysis and to enable deep analysis.
-                </Typography>
-              </Box>
-            ) : (
+                    ✅ This analysis is up to date.
+                  </Typography>
+                  <Typography level="body-sm" sx={{ color: "rgba(162, 167, 180, 0.88)", mt: 0.5 }}>
+                    Run more queries to increase the accuracy of the analysis and to enable deep analysis.
+                  </Typography>
+                </Box>
+              ) : (
               <Button
                 variant="outlined"
                 color="neutral"
-                onClick={onStartAnalysis}
+                onClick={startDeepAnalysis}
+                disabled={liveAnalysisStatus === 'processing'}
                 sx={{
                   width: "100%",
                   borderColor: "rgba(46, 212, 122, 0.36)",
@@ -439,8 +585,53 @@ export default function DeepAnalysisCard({
                   py: 1.4,
                 }}
               >
-                Start New Deep Analysis
+                {liveAnalysisStatus === 'processing' ? 'Analyzing…' : 'Start New Deep Analysis'}
               </Button>
+            )}
+
+            {showStartSuccess && (
+              <Alert
+                variant="soft"
+                color="success"
+                sx={{
+                  mt: 2,
+                  backgroundColor: "rgba(46, 212, 122, 0.1)",
+                  color: "#2ED47A",
+                  border: "1px solid rgba(46, 212, 122, 0.3)",
+                  borderRadius: "8px",
+                }}
+              >
+                Request submitted successfully. It will take a few minutes to complete.
+              </Alert>
+            )}
+
+            {connectionError && (
+              <Alert
+                variant="soft"
+                color="warning"
+                sx={{
+                  mt: 2,
+                  border: "1px solid rgba(245, 158, 11, 0.35)",
+                  backgroundColor: "rgba(245, 158, 11, 0.08)",
+                  color: "#F59E0B",
+                }}
+              >
+                {connectionError}
+              </Alert>
+            )}
+
+            {startAnalysisError && (
+              <Alert
+                variant="soft"
+                color="danger"
+                sx={{
+                  mt: 2,
+                  border: "1px solid rgba(243, 91, 100, 0.35)",
+                  backgroundColor: "rgba(243, 91, 100, 0.08)",
+                }}
+              >
+                {startAnalysisError}
+              </Alert>
             )}
           </>
         )}
