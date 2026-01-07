@@ -48,21 +48,21 @@ import {
 // Function to call the Perplexity scraper API
 async function callPerplexityScraper(query: string, location: string = 'India') {
   try {
-    const response = await axios.post('http://127.0.0.1:8001/scrape', {
-      query,
-      location,
-      keep_open: false,
-    });
+    // const response = await axios.post('http://127.0.0.1:8001/scrape', {
+    //   query,
+    //   location,
+    //   keep_open: false,
+    // });
     // const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
     //   query,
     //   location,
     //   keep_open: false,
     // });
-    // const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
-    //   query,
-    //   location,
-    //   keep_open: false,
-    // });
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
+      query,
+      location,
+      keep_open: false,
+    });
     console.log('Scraper response:', response.data);
     
     // Validate Perplexity response
@@ -125,16 +125,16 @@ async function callPerplexityScraper(query: string, location: string = 'India') 
 
 async function callGoogleOverviewScraper(query: string, location: string = 'India') {
   try {
-    const response = await axios.post('http://127.0.0.1:8000/scrape', {
-      query,
-      location,
-      max_retries: 3,
-    });
-    // const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
+    // const response = await axios.post('http://127.0.0.1:8000/scrape', {
     //   query,
     //   location,
     //   max_retries: 3,
     // });
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
+      query,
+      location,
+      max_retries: 3,
+    });
     console.log('Google AI Overview scraper response:', response.data);
     
     // Validate Google scraper response
@@ -3082,7 +3082,11 @@ function OptimizePageContent() {
               type="button"
               variant={activeSection === "product" ? "solid" : "outlined"}
               color="neutral"
-              onClick={() => setActiveSection("product")}
+              onClick={() => {
+                setActiveSection("product");
+                setShowSOVCards(false);
+                setShowDeepAnalysis(false);
+              }}
               sx={{
                 backgroundColor: activeSection === "product" ? accentColor : "transparent",
                 color: activeSection === "product" ? "#0D0F14" : textPrimary,
@@ -3104,7 +3108,11 @@ function OptimizePageContent() {
               type="button"
               variant={activeSection === "query" ? "solid" : "outlined"}
               color="neutral"
-              onClick={() => setActiveSection("query")}
+              onClick={() => {
+                setActiveSection("query");
+                setShowSOVCards(false);
+                setShowDeepAnalysis(false);
+              }}
               sx={{
                 backgroundColor: activeSection === "query" ? accentColor : "transparent",
                 color: activeSection === "query" ? "#0D0F14" : textPrimary,
@@ -3130,6 +3138,7 @@ function OptimizePageContent() {
                 setActiveSection("perplexity");
                 setSovCardEngine('perplexity');
                 setShowSOVCards(true);
+                setShowDeepAnalysis(false);
               }}
               sx={{
                 backgroundColor: activeSection === "perplexity" ? accentColor : "transparent",
@@ -3160,6 +3169,7 @@ function OptimizePageContent() {
                 setActiveSection("google");
                 setSovCardEngine('google');
                 setShowSOVCards(true);
+                setShowDeepAnalysis(false);
               }}
               sx={{
                 backgroundColor: activeSection === "google" ? accentColor : "transparent",

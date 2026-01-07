@@ -6,7 +6,7 @@ interface SOVSnapshot {
   product_id: string;
   global_sov_score: number;
   citation_score: number;
-  sentiment_score: number;
+  category_relevance: number;
   total_queries_analyzed: number;
   narrative_summary: string;
   engine: 'google' | 'perplexity';

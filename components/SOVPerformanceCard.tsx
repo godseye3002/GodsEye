@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box, Typography, Card, Chip, Skeleton, Stack, Divider, Button } from "@mui/joy";
+import { Box, Typography, Card, Chip, Skeleton, Stack, Divider, Button, Tooltip, Alert } from "@mui/joy";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import { triggerSovAnalysis } from "@/lib/sovAnalysisApi";
+import { useSovSnapshotListener } from "@/hooks/useSovSnapshotListener";
 
 interface SOVSnapshot {
   id: string;
   product_id: string;
   global_sov_score: number;
   citation_score: number;
-  sentiment_score: number;
+  category_relevance: number;
   total_queries_analyzed: number;
   narrative_summary: string;
   engine: 'google' | 'perplexity';
@@ -29,44 +32,101 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
   const [snapshot, setSnapshot] = useState<SOVSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTriggeringAnalysis, setIsTriggeringAnalysis] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  const {
+    status: liveSovStatus,
+    eventNonce,
+    markProcessing,
+    markCompleted,
+  } = useSovSnapshotListener(productId, engine);
+
+  const fetchSOVData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(
+        `/api/sov?productId=${encodeURIComponent(productId)}&engine=${encodeURIComponent(engine)}`
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setSnapshot(null);
+          setError('No Share of Voice data available for this product.');
+        } else {
+          setSnapshot(null);
+          setError('Failed to load Share of Voice data.');
+        }
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.snapshot) {
+        setSnapshot(data.snapshot);
+        setError(null);
+      } else {
+        setSnapshot(null);
+        setError('No Share of Voice data available for this product.');
+      }
+    } catch (err) {
+      console.error('Error fetching SOV data:', err);
+      setSnapshot(null);
+      setError('Failed to load Share of Voice data.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!productId) return;
-
-    const fetchSOVData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch(`/api/sov?productId=${encodeURIComponent(productId)}&engine=${encodeURIComponent(engine)}`);
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError('No Share of Voice data available for this product.');
-          } else {
-            setError('Failed to load Share of Voice data.');
-          }
-          return;
-        }
-
-        const data = await response.json();
-        
-        if (data.snapshot) {
-          setSnapshot(data.snapshot);
-        } else {
-          setError('No Share of Voice data available for this product.');
-        }
-
-      } catch (err) {
-        console.error('Error fetching SOV data:', err);
-        setError('Failed to load Share of Voice data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchSOVData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, engine]);
+
+  useEffect(() => {
+    if (!productId) return;
+    // Re-fetch when realtime reports a snapshot change for this product+engine
+    fetchSOVData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventNonce]);
+
+  const runSovAnalysis = async () => {
+    if (!productId) return;
+    if (isTriggeringAnalysis || liveSovStatus === 'processing') return;
+
+    setActionError(null);
+    setActionSuccess(null);
+    setIsTriggeringAnalysis(true);
+    markProcessing();
+
+    const result = await triggerSovAnalysis({
+      productId,
+      engine,
+      debug: process.env.NODE_ENV !== 'production',
+    });
+
+    if ('success' in result && result.success) {
+      // If the upstream says no work was needed, show the specific message.
+      if (result.message) {
+        console.log('SOV Analysis message:', result.message);
+        setActionSuccess(result.message + ' (No new queries found to analyze)');
+        markCompleted();
+      } else {
+        // Analysis was accepted. Snapshot update comes via realtime.
+        setActionSuccess('Request submitted successfully. This may take a few minutes.');
+      }
+      setTimeout(() => setActionSuccess(null), 5000);
+    } else {
+      setActionError(result.error || 'Failed to start SOV analysis.');
+      markCompleted();
+    }
+
+    setIsTriggeringAnalysis(false);
+  };
 
   const getRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -115,6 +175,8 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
           backgroundColor: "rgba(17, 19, 24, 0.95)",
           border: "1px solid rgba(46, 212, 122, 0.14)",
           borderRadius: "12px",
+          minWidth: "850px",
+          minHeight: "400px",
         }}
       >
         <Stack spacing={2}>
@@ -140,6 +202,38 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
             <Skeleton variant="text" level="body-sm" sx={{ width: "60%" }} />
           </Box>
         </Stack>
+
+        {actionSuccess && (
+          <Alert
+            variant="soft"
+            color="success"
+            sx={{
+              mt: 2,
+              backgroundColor: "rgba(46, 212, 122, 0.1)",
+              color: "#2ED47A",
+              border: "1px solid rgba(46, 212, 122, 0.3)",
+              borderRadius: "8px",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {actionSuccess}
+          </Alert>
+        )}
+
+        {actionError && (
+          <Alert
+            variant="soft"
+            color="danger"
+            sx={{
+              mt: 2,
+              border: "1px solid rgba(243, 91, 100, 0.35)",
+              backgroundColor: "rgba(243, 91, 100, 0.08)",
+            }}
+          >
+            {actionError}
+          </Alert>
+        )}
       </Card>
     );
   }
@@ -158,9 +252,76 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
         <Typography level="h3" sx={{ color: "#F35B64", mb: 2 }}>
           Share of Voice Data Unavailable
         </Typography>
-        <Typography level="body-sm" sx={{ color: "rgba(162, 167, 180, 0.88)" }}>
+        <Typography level="body-sm" sx={{ color: "rgba(162, 167, 180, 0.88)", mb: 1 }}>
           {error || 'No Share of Voice data available for this product.'}
         </Typography>
+        
+        <Typography level="body-sm" sx={{ color: "rgba(162, 167, 180, 0.7)", mb: 3, fontStyle: 'italic' }}>
+          Start SOV Analysis to see the Share Of Voice of your product
+        </Typography>
+        
+        <Stack spacing={2}>
+          <Button
+            variant="solid"
+            color="danger"
+            startDecorator={<AnalyticsIcon />}
+            onClick={runSovAnalysis}
+            disabled={isTriggeringAnalysis || liveSovStatus === 'processing'}
+            sx={{
+              width: "100%",
+              backgroundColor: "#F35B64",
+              color: "#0D0F14",
+              "&:hover": {
+                backgroundColor: "#E5494A",
+                boxShadow: "0 6px 20px rgba(243, 91, 100, 0.3)",
+              },
+              fontWeight: 600,
+              py: 1.5,
+              fontSize: "1rem",
+            }}
+          >
+            {liveSovStatus === 'processing' ? 'Analyzing…' : isTriggeringAnalysis ? 'Starting…' : 'Start SOV Analysis'}
+          </Button>
+          
+          <Tooltip 
+            title="Do 'Start SOV Analysis' to enable Deep Analysis" 
+            placement="top"
+            arrow
+            enterDelay={100}
+            leaveDelay={100}
+          >
+            <span style={{ width: "100%", display: "inline-block" }}>
+              <Button
+                variant="outlined"
+                color="neutral"
+                startDecorator={<TrendingUpIcon />}
+                disabled
+                sx={{
+                  width: "100%",
+                  borderColor: "rgba(46, 212, 122, 0.36)",
+                  color: "#F2F5FA",
+                  backgroundColor: "transparent",
+                  cursor: "not-allowed",
+                  fontWeight: 600,
+                  py: 1.5,
+                  fontSize: "1rem",
+                  "&:disabled": {
+                    borderColor: "rgba(46, 212, 122, 0.2)",
+                    color: "rgba(162, 167, 180, 0.5)",
+                    backgroundColor: "transparent",
+                  },
+                  "&:hover": {
+                    backgroundColor: "transparent",
+                    borderColor: "rgba(46, 212, 122, 0.2)",
+                    color: "rgba(162, 167, 180, 0.5)",
+                  },
+                }}
+              >
+                Deep Analysis
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
       </Card>
     );
   }
@@ -278,7 +439,7 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
           </Box>
         </Stack>
 
-        {/* Metric 3: Reputation (Sentiment) */}
+        {/* Metric 3: Category Relevance */}
         <Stack spacing={1} sx={{ flex: 1, alignItems: 'center' }}>
           <Typography level="body-sm" sx={{ 
             color: "rgba(162, 167, 180, 0.88)",
@@ -286,16 +447,16 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
             fontWeight: 500,
             textAlign: "center",
           }}>
-            Sentiment Score
+            Category Relevance
           </Typography>
           <Typography level="h1" sx={{ 
-            color: getReputationColor(snapshot.sentiment_score),
+            color: getReputationColor(snapshot.category_relevance),
             fontSize: "2.5rem",
             fontWeight: 700,
             lineHeight: 1,
             textAlign: "center",
           }}>
-            {snapshot.sentiment_score}%
+            {snapshot.category_relevance}%
           </Typography>
           <Box sx={{ 
             width: "100%", 
@@ -305,9 +466,9 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
             overflow: "hidden",
           }}>
             <Box sx={{ 
-              width: `${snapshot.sentiment_score}%`,
+              width: `${snapshot.category_relevance}%`,
               height: "100%",
-              backgroundColor: getReputationColor(snapshot.sentiment_score),
+              backgroundColor: getReputationColor(snapshot.category_relevance),
               borderRadius: "2px",
             }} />
           </Box>
@@ -323,6 +484,7 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
           backgroundColor: "rgba(46, 212, 122, 0.05)",
           border: "1px solid rgba(46, 212, 122, 0.1)",
           borderRadius: "8px",
+          minWidth: "850px",
         }}>
           <Typography level="body-md" sx={{ 
             color: "#F2F5FA",
@@ -368,6 +530,8 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
             variant="solid"
             color="success"
             startDecorator={<RefreshIcon />}
+            onClick={runSovAnalysis}
+            disabled={isTriggeringAnalysis || liveSovStatus === 'processing'}
             sx={{
               flex: 1,
               backgroundColor: "#2ED47A",
@@ -378,14 +542,47 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
               },
               fontWeight: 600,
               py: 1.2,
-            }}
-            onClick={() => {
-              console.log('Refresh Analysis clicked - placeholder for now');
+              "&:disabled": {
+                cursor: "not-allowed",
+                opacity: 0.6,
+              },
             }}
           >
-            Refresh Analysis
+            {liveSovStatus === 'processing' ? 'Analyzing…' : isTriggeringAnalysis ? 'Starting…' : 'Refresh Analysis'}
           </Button>
         </Stack>
+
+        {actionSuccess && (
+          <Alert
+            variant="soft"
+            color="success"
+            sx={{
+              mt: 2,
+              backgroundColor: "rgba(46, 212, 122, 0.1)",
+              color: "#2ED47A",
+              border: "1px solid rgba(46, 212, 122, 0.3)",
+              borderRadius: "8px",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {actionSuccess}
+          </Alert>
+        )}
+
+        {actionError && (
+          <Alert
+            variant="soft"
+            color="danger"
+            sx={{
+              mt: 2,
+              border: "1px solid rgba(243, 91, 100, 0.35)",
+              backgroundColor: "rgba(243, 91, 100, 0.08)",
+            }}
+          >
+            {actionError}
+          </Alert>
+        )}
         
         <Typography level="body-xs" sx={{ 
           color: "rgba(162, 167, 180, 0.75)",

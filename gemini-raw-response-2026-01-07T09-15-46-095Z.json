@@ -1,0 +1,76 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes established Mobile Measurement Partners (MMPs) that are explicitly named on authoritative third-party review sites and brand domains focused on comprehensive mobile attribution.",
+    "strategic_analogy": "This is like trying to enter a professional basketball game wearing soccer cleats. While you are an athlete (a marketing tool), you are not equipped or positioned for this specific game (MMP software), and the referees (the AI) are only letting in players with the right gear (MMP-specific features and terminology)."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name in the AI's overview text or cited in the source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI's narrative is centered on defining and recommending established Mobile Measurement Partner (MMP) platforms as the primary solution for ROI tracking in mobile marketing. It emphasizes a specific suite of features including mobile attribution, ROAS calculation, fraud prevention, and deep linking.",
+    "key_decision_factors": [
+      "Explicitly identified as an MMP (Mobile Measurement Partner)",
+      "Features like end-to-end attribution, ROAS insights, and fraud prevention",
+      "Mention on third-party 'best of' lists for MMPs",
+      "Source authority from established brand domains in the mobile measurement space",
+      "Solutions for mobile-specific challenges like iOS/Android privacy changes"
+    ],
+    "trusted_source_analysis": "The AI trusts a combination of direct brand websites of major MMP players (Singular, Branch, Apptrove) and authoritative third-party blogs that publish comparative reviews and 'best of' lists for the MMP category (MobileAction, SplitMetrics)."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Singular",
+      "reason_for_inclusion": "Positioned as a top provider offering 'end-to-end attribution with granular ROAS at source and keyword levels, surpassing legacy MMPs'.",
+      "source_of_mention": "https://www.singular.net/mmp/"
+    },
+    {
+      "competitor_name": "AppsFlyer",
+      "reason_for_inclusion": "Highlighted as a leading MMP that provides 'real-time dashboards, fraud prevention, and cross-platform tracking for campaign optimization'.",
+      "source_of_mention": "https://www.mobileaction.co/blog/best-mobile-measurement-partners-mmp/"
+    },
+    {
+      "competitor_name": "Adjust",
+      "reason_for_inclusion": "Mentioned alongside AppsFlyer for delivering 'real-time dashboards, fraud prevention, and cross-platform tracking for campaign optimization'.",
+      "source_of_mention": "https://splitmetrics.com/blog/best-mobile-measurement-partners-2022/"
+    },
+    {
+      "competitor_name": "Branch",
+      "reason_for_inclusion": "Cited as a provider that 'Excel in deep links, retargeting, and claiming missed conversions for full ROI visibility'.",
+      "source_of_mention": "https://www.branch.io/universal-ads/"
+    },
+    {
+      "competitor_name": "Apptrove",
+      "reason_for_inclusion": "Mentioned with Branch as a tool that excels in 'deep links, retargeting, and claiming missed conversions for full ROI visibility'.",
+      "source_of_mention": "https://apptrove.com"
+    },
+    {
+      "competitor_name": "Proof Analytics",
+      "reason_for_inclusion": "Included as a complementary MRM/MMM tool that 'enhance predictive forecasting beyond MMP mobile focus', showing the AI's ability to understand adjacent categories.",
+      "source_of_mention": "https://www.proofanalytics.ai/marketing-roi-software"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The core reason for Linkrunner's exclusion is a strategic positioning and terminology gap. The AI is specifically answering a query for 'MMP software,' a distinct and established category of marketing technology. Linkrunner is positioned as a 'Link Tracking and Analytics Tool' and a 'Onelink alternative,' which, while related, does not align with the AI's understanding of what an MMP is or the specific features it expects from one.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Linkrunner was excluded because its online presence and product description do not use the industry-standard term 'Mobile Measurement Partner (MMP)'. Competitors are winning because they are explicitly identified as MMPs and are featured on third-party 'best of' lists for that specific software category, which the AI uses as authoritative sources.",
+      "path_to_inclusion": "To be included, Linkrunner must align its product marketing with MMP terminology. This involves updating website copy to include terms like 'MMP', 'mobile attribution', 'ROAS tracking', and 'fraud prevention'. The long-term strategy requires securing mentions and positive reviews on industry blogs and software comparison sites that list 'best MMP software'."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure and Category Alignment",
+      "action": "On key landing pages, create dedicated sections for 'Mobile Attribution', 'ROI Tracking Features', and 'Why We Are a Modern MMP'. Use structured data (Schema.org) for 'SoftwareApplication' to clearly define your product's category and features for search engines."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Integrate core MMP-related keywords such as 'Mobile Measurement Partner', 'ROAS', 'cohort analysis', 'deep linking', and 'attribution modeling' into your product's homepage, feature pages, and blog content. Frame existing features using this industry-standard language."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Proactively engage with technology blogs and software review sites like MobileAction and SplitMetrics. Pitch Linkrunner for inclusion in their next 'Best MMPs' roundup, highlighting features that compete directly with the incumbents like Singular and AppsFlyer."
+    }
+  ]
+}
