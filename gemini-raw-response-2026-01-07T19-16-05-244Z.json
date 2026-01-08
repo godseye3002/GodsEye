@@ -1,0 +1,86 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes well-established, market-leading platforms that are clearly segmented into either 'Marketing Attribution Platforms' or 'Product & User Behavior Analytics Tools'.",
+    "strategic_analogy": "This is like trying to get a new artist played on a radio station with only two shows: 'Classic Rock' and 'Top 40 Pop'. Your product is a promising indie artist that doesn't fit neatly into these rigid categories, so it's being overlooked for the established headliners."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name or brand in the AI overview text or in any of the cited source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is building a narrative that solving this problem requires choosing between two distinct categories of tools: 1) broad, high-level Marketing Attribution Platforms that connect marketing spend to revenue, and 2) granular, specialized Product Analytics Tools that analyze user behavior within the application during onboarding. It presents a structured market map rather than a simple list.",
+    "key_decision_factors": [
+      "Clear Market Categorization (Marketing Attribution vs. Product/Behavioral Analytics)",
+      "Brand Recognition and Authority (e.g., Google, HubSpot, Mixpanel)",
+      "Specific, Differentiated Features (e.g., 'closed-loop' attribution, 'autocapture' of events, visual heatmaps)",
+      "Source Authority (direct brand websites of market leaders and third-party 'best of' listicles)",
+      "Platform Scope (e.g., all-in-one, mobile-specific, web-focused)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in a combination of direct brand websites for market leaders (Google, HubSpot, Hotjar) and authoritative third-party content from other B2B SaaS companies and marketing blogs that publish 'best tools' roundups (e.g., chameleon.io, cometly.com, usermaven.com)."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Google Analytics 4 (GA4)",
+      "reason_for_inclusion": "Positioned as a free, powerful, event-based platform with machine learning-driven attribution and strong cross-platform capabilities.",
+      "source_of_mention": "https://www.google.com/"
+    },
+    {
+      "competitor_name": "HubSpot Marketing Hub",
+      "reason_for_inclusion": "Highlighted as an all-in-one platform with an integrated CRM, making it ideal for B2B companies wanting to tie marketing directly to sales.",
+      "source_of_mention": "https://www.hubspot.com/"
+    },
+    {
+      "competitor_name": "Ruler Analytics",
+      "reason_for_inclusion": "Included for its specific focus on 'closed-loop' attribution, which tracks leads from first touch to final sale, including offline conversions.",
+      "source_of_mention": "https://usermaven.com/blog/marketing-attribution-tools"
+    },
+    {
+      "competitor_name": "AppsFlyer / Singular",
+      "reason_for_inclusion": "Mentioned as leading platforms specifically designed for mobile app attribution, a key niche within the broader market.",
+      "source_of_mention": "https://www.cometly.com/post/best-attribution-modeling-for-marketing"
+    },
+    {
+      "competitor_name": "Mixpanel",
+      "reason_for_inclusion": "Featured as a leading product analytics tool for tracking specific user actions to understand behavior that correlates with retention.",
+      "source_of_mention": "https://www.chameleon.io/blog/user-onboarding-metrics#:~:text=Get%20user%20onboarding%20data%20where%20you%20need%20it&text=To%20help%20you%20analyze%20the,Amplitude%2C%20Mixpanel%2C%20Heap%2C%20Fullstory"
+    },
+    {
+      "competitor_name": "Heap (by Contentsquare)",
+      "reason_for_inclusion": "Included for its unique feature of automatically capturing all user interactions without manual tagging, allowing for retroactive analysis.",
+      "source_of_mention": "https://www.chameleon.io/blog/user-onboarding-metrics#:~:text=Get%20user%20onboarding%20data%20where%20you%20need%20it&text=To%20help%20you%20analyze%20the,Amplitude%2C%20Mixpanel%2C%20Heap%2C%20Fullstory"
+    },
+    {
+      "competitor_name": "Amplitude",
+      "reason_for_inclusion": "Highlighted for its focus on user journey analysis, funnels, and cohort analysis to identify bottlenecks in onboarding.",
+      "source_of_mention": "https://www.chameleon.io/blog/user-onboarding-metrics#:~:text=Get%20user%20onboarding%20data%20where%20you%20need%20it&text=To%20help%20you%20analyze%20the,Amplitude%2C%20Mixpanel%2C%20Heap%2C%20Fullstory"
+    },
+    {
+      "competitor_name": "Hotjar",
+      "reason_for_inclusion": "Positioned as a complementary tool that provides qualitative visual insights like heatmaps and session recordings.",
+      "source_of_mention": "https://www.hotjar.com/"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "Linkrunner's absence is due to a combination of lower brand authority compared to the mentioned giants and a product positioning that doesn't fit cleanly into the AI's defined categories of 'Marketing Attribution' or 'Product Analytics'. The AI is rewarding established players with clearly defined, often specialized, roles in the marketing tech stack.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was not mentioned because: 1. It lacks the brand authority and market penetration of competitors like Google, HubSpot, and Mixpanel. 2. Its positioning as a 'Link Tracking and Analytics' tool is too general and doesn't align with the specific, high-level categories the AI has created. 3. It is not featured in the authoritative third-party 'best of' listicles that the AI is using as trusted sources.",
+      "path_to_inclusion": "To get featured, Linkrunner must sharpen its market positioning to align with an established category (e.g., 'The simplest attribution tool for growth marketers') or create a new, specific niche (e.g., 'The only tool for tracking onboarding impact from social channels'). The most critical path is to pursue a digital PR strategy to gain mentions and reviews on the types of marketing tech blogs the AI is citing, as this builds the necessary third-party validation."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Sharpen Market Positioning and Messaging",
+      "action": "Refine your homepage and product page copy to clearly position Linkrunner within one of the AI's preferred categories or as a specialized solution for a specific niche (e.g., 'A specialized product analytics tool for tracking the first user journey'). Use headings like 'Marketing Attribution for Mobile Marketers' or 'User Onboarding Analytics' to align with the AI's structure."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Incorporate the specific terminology the AI uses to describe winning products into your content. This includes phrases like 'user journey analysis', 'multi-touch attribution models', 'user behavior funnels', and 'pinpoint bottlenecks in the onboarding process', provided they accurately reflect your product's capabilities."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Create a target list of marketing and SaaS review blogs (like Usermaven, Chameleon, Salesmate, etc.) and launch a proactive outreach campaign to be included in their existing or upcoming 'best of' listicles for marketing analytics, attribution, or link tracking tools. This is the most direct path to gaining the AI's trust."
+    }
+  ]
+}

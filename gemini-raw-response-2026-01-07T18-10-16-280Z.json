@@ -1,0 +1,81 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes platforms that explicitly promote advanced capabilities like multi-touch attribution, direct CRM integration, and server-side tracking to prove marketing ROI.",
+    "strategic_analogy": "This is like entering a professional auto race with a well-built go-kart. While your product is functional and solves a core need (tracking), the competition is being judged on high-performance features like engine horsepower (CRM integration), aerodynamics (multi-touch attribution), and advanced telemetry (AI-powered insights), which are not currently part of your product's public narrative."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name or brand in any of the AI-generated overviews across the analyzed set of queries."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is building a narrative that modern growth marketing requires moving beyond simple link tracking to comprehensive analytics solutions that can prove ROI. The 'best' tools are framed as those that connect marketing activities directly to sales revenue through features like multi-touch attribution, deep CRM integration, and accurate, privacy-resilient data collection (e.g., server-side tracking).",
+    "key_decision_factors": [
+      "Specific, named features (e.g., 'Multi-Touch Attribution Models', 'Server-side tracking', 'CRM Integration')",
+      "Solutions for proving business value (e.g., 'prove ROI', 'closed-loop reporting', 'track revenue')",
+      "Categorization by user need (e.g., 'All-in-One Platforms', 'Dedicated Attribution Platforms', 'Product Analytics')",
+      "Use of advanced technology (e.g., 'AI-Powered Insights', 'Machine learning', 'Cookieless tracking')",
+      "Source authority (e.g., direct brand sites of major players, high-authority marketing tech blogs, specialist product blogs)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in a mix of sources: 1) The official websites of major, well-established platforms (e.g., HubSpot, Google Analytics). 2) The content blogs of specialized, up-and-coming competitors who write authoritatively on the topic (e.g., Cometly, RedTrack). 3) Third-party marketing technology blogs and agency websites that publish 'best of' lists and reviews (e.g., Cleverly.co, AgencyAnalytics.com)."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Cometly",
+      "reason_for_inclusion": "Positioned as a top choice for its use of modern, accurate tracking methods like 'AI-driven, server-side tracking' to ensure data reliability despite browser privacy changes.",
+      "source_of_mention": "https://www.cometly.com/post/attribution-software"
+    },
+    {
+      "competitor_name": "HubSpot Marketing Hub",
+      "reason_for_inclusion": "Frequently mentioned as a leading 'all-in-one' platform that excels at connecting marketing activities to sales outcomes through its powerful, integrated CRM, enabling 'closed-loop reporting'.",
+      "source_of_mention": "https://www.hubspot.com/"
+    },
+    {
+      "competitor_name": "Google Analytics 4",
+      "reason_for_inclusion": "Consistently framed as the essential, foundational, and often free tool for any digital marketer, offering robust event-based tracking and built-in data-driven attribution models.",
+      "source_of_mention": "https://marketingplatform.google.com/about/analytics/"
+    },
+    {
+      "competitor_name": "Ruler Analytics",
+      "reason_for_inclusion": "Highlighted for its specialty in 'closed-loop' attribution, particularly its ability to connect online marketing efforts to offline conversions like phone calls, which is crucial for service-based businesses.",
+      "source_of_mention": "https://www.cometly.com/post/attribution-software"
+    },
+    {
+      "competitor_name": "RedTrack",
+      "reason_for_inclusion": "Included as a specialized tool for performance marketers, noted for its focus on 'cookieless and server-side tracking' to provide accurate data for paid ad campaigns.",
+      "source_of_mention": "https://www.redtrack.io/#:~:text=RedTrack%20is%20an%20all%2Din,and%20media%20buying%20automations%20toolkit."
+    },
+    {
+      "competitor_name": "Mixpanel",
+      "reason_for_inclusion": "Recognized as a leader in 'product and user behavior analytics', it's included for its ability to go beyond traffic sources to analyze how users engage with a product post-acquisition.",
+      "source_of_mention": "https://vwo.com/blog/digital-analytics-tools/#:~:text=Web%20&%20mobile%20analytics%20tools,for%20web%20and%20mobile%20app"
+    },
+    {
+      "competitor_name": "Salesforce Marketing Cloud",
+      "reason_for_inclusion": "Positioned as an enterprise-level, all-in-one platform for complex marketing strategies, linking marketing data with sales outcomes via its deep CRM integration.",
+      "source_of_mention": "https://www.salesforce.com/marketing/digital-marketing/best-software/"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "Linkrunner's absence from the AI overviews stems from a language and feature positioning gap. The AI is rewarding platforms that speak the language of advanced marketing analytics—'attribution', 'ROI', and 'CRM integration'—while Linkrunner's current messaging focuses on more foundational tracking of 'clicks, downloads, and onboarding'. Competitors are winning by framing themselves as solutions to a core business problem (proving marketing's value), not just a technical one (tracking links).",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was not mentioned because its public-facing descriptions lack the key terminology and feature sets the AI has identified as critical. Specifically, there is no mention of 'multi-touch attribution models', 'CRM integration', 'server-side tracking', or a direct connection to calculating 'marketing ROI', which are the dominant themes in the AI's recommendations.",
+      "path_to_inclusion": "To get featured, you must align your product's narrative with the AI's decision factors. Revise your website and product pages to prominently feature and detail your attribution capabilities. Create dedicated content (e.g., blog posts, landing pages) around topics like 'How to Prove Channel ROI' and 'Multi-Touch Attribution for Growth Marketers'. Securing mentions or reviews on authoritative marketing blogs that compare you favorably against the featured competitors would also build the necessary third-party validation."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On your primary product and feature pages, create dedicated, easily scannable sections using H2/H3 tags for 'Attribution Modeling', 'Key Integrations (CRM, etc.)', and 'ROI Reporting'. This makes your advanced capabilities explicit and easily parsable for AI crawlers."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Integrate the specific, high-value phrases the AI rewards into your marketing copy. Go beyond 'click tracking' to use terms like 'granular event-based tracking', 'full-funnel attribution', 'connect marketing spend to revenue', and 'multi-touch attribution' to describe your product's value."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Develop an outreach strategy to be included in 'best of' lists and reviews on the marketing tech blogs cited by the AI (e.g., Cleverly.co, AgencyAnalytics, etc.). Create content that directly compares Linkrunner to competitors like Cometly and RedTrack on the features the AI values, aiming to rank for those comparison queries."
+    }
+  ]
+}

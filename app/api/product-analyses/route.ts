@@ -18,6 +18,23 @@ export async function POST(request: Request) {
       google_raw_serp_results,
     } = body || {};
 
+    if (String(process.env.NODE_ENV) === 'debug') {
+      const perplexitySerpCount = Array.isArray(perplexity_raw_serp_results)
+        ? perplexity_raw_serp_results.length
+        : 0;
+      const googleSerpCount = Array.isArray(google_raw_serp_results)
+        ? google_raw_serp_results.length
+        : 0;
+
+      console.log('[DEBUG][product-analyses] payload received', {
+        product_id,
+        optimization_query,
+        google_search_query,
+        perplexitySerpCount,
+        googleSerpCount,
+      });
+    }
+
     if (!product_id) {
       return NextResponse.json(
         { error: 'product_id is required' },

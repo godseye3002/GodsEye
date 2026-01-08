@@ -1,0 +1,76 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner - 2",
+    "status_overview": "Your product was not featured, as the AI prioritizes competitors with clearly defined specializations (e.g., eCommerce, mobile), transparent pricing, and mentions on authoritative third-party review websites.",
+    "strategic_analogy": "This is like entering a car show where every winning vehicle has its specs—horsepower, 0-60 time, price—clearly displayed. Your product is in the parking lot without a spec sheet, making it invisible to the judges who are looking for specific, comparable data points."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Your product, Linkrunner - 2, was not mentioned in the AI's overview text or cited in any of the source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is creating a curated list of top marketing attribution software, segmenting them by specialization (e.g., AI-powered, eCommerce, mobile) and providing key decision-making data like pricing, core features, and target audience.",
+    "key_decision_factors": [
+      "Specific features (e.g., 'AI-powered ad tracking', 'first-party data tracking', 'fraud prevention')",
+      "Defined target market (e.g., 'eCommerce businesses', 'mobile marketing')",
+      "Transparent pricing information (e.g., '$99/month')",
+      "Source authority (mentions on third-party software review sites)",
+      "Specific attribution models mentioned (e.g., '7 attribution models')"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in third-party software review and comparison websites (smbguide.com, ruleranalytics.com) and also considers well-structured content marketing from competitors (salesmate.io)."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Hyros",
+      "reason_for_inclusion": "Positioned as a leading choice with 'AI-powered ad tracking', 'highly accurate tracking capabilities', and a specific starting price of '$99/month'.",
+      "source_of_mention": "https://www.smbguide.com/best-marketing-attribution-software/"
+    },
+    {
+      "competitor_name": "Salesmate",
+      "reason_for_inclusion": "Highlighted as an 'all-in-one solution' that combines CRM with marketing automation and 'multi-touch attribution features' for 'full-funnel visibility'.",
+      "source_of_mention": "https://www.salesmate.io/blog/marketing-attribution-software/"
+    },
+    {
+      "competitor_name": "Triple Whale",
+      "reason_for_inclusion": "Featured as a specialized solution 'specifically designed for eCommerce businesses' with 'first-party data tracking', 'automated rules for ad spend optimization', and a starting price of '$129/month'.",
+      "source_of_mention": "https://www.smbguide.com/best-marketing-attribution-software/"
+    },
+    {
+      "competitor_name": "Impact.com",
+      "reason_for_inclusion": "Included for its 'Altitude' solution which offers 'real-time' data processing, 'transparent attribution modeling', and 'product-level attribution'.",
+      "source_of_mention": "https://www.smbguide.com/best-marketing-attribution-software/"
+    },
+    {
+      "competitor_name": "AnyTrack",
+      "reason_for_inclusion": "Mentioned as a 'cost-effective' option starting at '$50/month' that combines 'conversion tracking and marketing analytics' with automatic first-party data collection.",
+      "source_of_mention": "https://www.smbguide.com/best-marketing-attribution-software/"
+    },
+    {
+      "competitor_name": "Singular",
+      "reason_for_inclusion": "Profiled as a specialist in 'mobile marketing', offering unified data, 'fraud prevention', and 'SKAdNetwork support'.",
+      "source_of_mention": "https://www.ruleranalytics.com/blog/analytics/marketing-attribution-software/"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "Linkrunner - 2 is not visible because its online messaging lacks the specificity and data points the AI engine is actively seeking. The AI prioritizes products that clearly state their niche, features, and pricing, and are validated by third-party sources. Linkrunner's current description is too general to compete against the highly specialized and transparent positioning of its competitors.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "The primary reasons for exclusion are: 1) Lack of a clearly defined niche (unlike competitors focusing on 'eCommerce' or 'mobile'). 2) Absence of public pricing information, a key data point the AI extracts. 3) Vague feature descriptions ('AI-Driven Insights') compared to competitors' specific claims ('SKAdNetwork support', '7 attribution models'). 4) No presence in the authoritative third-party review sites the AI uses as trusted sources.",
+      "path_to_inclusion": "To get featured, focus on two fronts: 1) On-Page: Revise your product page to explicitly state target markets, list specific, tangible features (e.g., 'multi-touch attribution models', 'LTV analysis'), and add a pricing page or section. 2) Off-Page: Prioritize getting Linkrunner - 2 reviewed and listed on software comparison sites like SMBGuide or featured in industry blogs similar to RulerAnalytics."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On linkrunner.io, create dedicated sections with H2/H3 tags for 'Target Audience' (e.g., 'For B2B SaaS', 'For Mobile Apps'), 'Key Features' (listing specific capabilities like 'first-party data tracking'), and 'Pricing'. This structured data is easier for AI to parse."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Integrate industry-standard terms that competitors are being rewarded for, such as 'multi-touch attribution', 'full-funnel visibility', 'ROI measurement', and 'LTV metrics', into your product descriptions and marketing copy."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Launch a targeted outreach campaign to be included in 'best marketing attribution software' listicles on sites like G2, Capterra, and industry blogs like the ones cited by the AI (smbguide.com, ruleranalytics.com). This external validation is a critical ranking factor."
+    }
+  ]
+}

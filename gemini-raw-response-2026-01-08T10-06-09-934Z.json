@@ -1,0 +1,74 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner - 2",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes established platforms that are explicitly named in authoritative third-party marketing technology blogs and listicles.",
+    "strategic_analogy": "This is like trying to get into an exclusive club. The AI is the bouncer, and its guest list is created from trusted sources like WebFX. To get in, you need to be on that list; having a great product isn't enough on its own."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "The client's product, Linkrunner - 2, was not mentioned by name or brand in the AI's overview text or in any of the cited source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a narrative that provides a curated list of trusted, specialized platforms for marketing ROI measurement. It frames the solution as a choice between different tools, each with a distinct strength, such as being free (Google Analytics), B2B-focused (HockeyStack), or enterprise-grade (Measured).",
+    "key_decision_factors": [
+      "Explicit mention in third-party listicles",
+      "Specific, named features (e.g., 'multi-touch attribution', 'media mix modeling', 'incrementality testing')",
+      "Clear target market definition (e.g., 'B2B-focused', 'enterprise')",
+      "Association with core industry metrics (e.g., 'ROAS', 'CLV')",
+      "Source authority (direct brand sites and marketing blogs)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in a mix of authoritative third-party content sites that publish 'best of' lists (WebFX, Ruler Analytics' blog) and the direct websites of the platforms themselves (HockeyStack, Measured). This indicates a reliance on both external validation and clear, first-party product marketing."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Google Analytics",
+      "reason_for_inclusion": "Positioned as the free, foundational tool for basic website traffic and conversion tracking, making it a common entry point for ROI measurement.",
+      "source_of_mention": "https://www.ruleranalytics.com/blog/analytics/marketing-roi-tool/"
+    },
+    {
+      "competitor_name": "HockeyStack",
+      "reason_for_inclusion": "Highlighted as a specialized solution for a specific niche: a 'B2B-focused platform with multi-touch attribution and real-time revenue tracking.'",
+      "source_of_mention": "https://www.hockeystack.com/blog-posts/how-to-measure-b2b-marketing-roi"
+    },
+    {
+      "competitor_name": "Ruler Analytics",
+      "reason_for_inclusion": "Included for its specific capability of connecting marketing campaigns directly to sales data by 'linking marketing efforts to CRM revenue.'",
+      "source_of_mention": "https://www.webfx.com/blog/marketing/marketing-roi-tools/"
+    },
+    {
+      "competitor_name": "Measured",
+      "reason_for_inclusion": "Featured as a high-end, technologically advanced option, described as an 'AI-powered solution for enterprise media mix modeling and incrementality testing.'",
+      "source_of_mention": "https://www.measured.com"
+    },
+    {
+      "competitor_name": "Cyfe",
+      "reason_for_inclusion": "Mentioned for its strength in data aggregation and visualization, offering 'customizable dashboards integrating multiple data sources for holistic ROI monitoring.'",
+      "source_of_mention": "https://www.webfx.com/blog/marketing/marketing-roi-tools/"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary gap is not one of product features but of market presence and third-party validation. The AI's selection process is heavily influenced by a product's inclusion in pre-existing, authoritative online content. Linkrunner's absence from these key sources is the main reason for its exclusion.",
+    "if_featured": {
+      "current_positioning": "",
+      "opportunities_for_improvement": ""
+    },
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was excluded because it is not mentioned in the high-authority third-party sources (like webfx.com) that the AI is using as its primary reference for building this list of platforms. Competitors have successfully secured mentions in these key listicles, which acts as a ticket to inclusion.",
+      "path_to_inclusion": "The most direct path to inclusion is to secure features and mentions on the same types of authoritative marketing blogs and software review sites that the AI trusts. Additionally, refining on-site messaging to explicitly include keywords like 'multi-touch attribution' and 'ROAS calculation' will improve alignment with the AI's understanding of the topic."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Develop a targeted outreach strategy to get Linkrunner - 2 featured, reviewed, or listed on authoritative marketing technology blogs and publications, specifically those that publish 'Best ROI Measurement Platforms' or similar comparative articles. Prioritize targets like WebFX, MarTech, and Capterra."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Audit and update your product page and marketing materials to prominently feature the specific terminology the AI has rewarded, such as 'multi-touch attribution', 'return on ad spend (ROAS)', 'customer lifetime value (CLV)', and 'CRM integration'. Frame your features using these industry-standard terms."
+    },
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On your primary product page, implement a clear, scannable structure using H2/H3 tags for sections like 'Key Features', 'Integrations', and 'Use Cases'. Use bullet points to list functionalities, making it easy for AI crawlers to parse and understand your core value proposition relative to competitors."
+    }
+  ]
+}

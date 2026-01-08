@@ -1,0 +1,70 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes comprehensive 'marketing attribution' platforms that highlight specific features like multi-touch models and CRM integrations on their own or third-party marketing blogs.",
+    "strategic_analogy": "This is like entering a 'best car' competition with a high-performance motorcycle. While your product is excellent for its specific purpose (link tracking), it's not being recognized because the AI is judging based on criteria for a different, broader product category (comprehensive attribution suites)."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name in the AI's overview text or included in any of the source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a narrative that defines marketing attribution and showcases comprehensive software solutions that offer deep, multi-touch analysis of the customer journey, integrate with core business systems like CRMs, and provide clear ROI insights for marketers.",
+    "key_decision_factors": [
+      "Explicitly defined as 'Marketing Attribution Software'",
+      "Specific features mentioned (e.g., multi-touch attribution, visitor-level tracking, CRM integration)",
+      "Solutions for B2B or e-commerce use cases",
+      "Source authority from brand-owned blogs and third-party 'best of' listicles."
+    ],
+    "trusted_source_analysis": "The AI trusts a mix of brand-owned content marketing (blogs from Ruler Analytics and HockeyStack) and third-party comparative listicles from other industry players (Usermaven, Cleverly). This indicates that both self-positioning and external validation are critical for inclusion."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Ruler Analytics",
+      "reason_for_inclusion": "Highlighted for specific features like visitor-level tracking, multi-touch attribution, and CRM integrations for precise revenue insights.",
+      "source_of_mention": "https://www.ruleranalytics.com/blog/analytics/marketing-attribution-software/"
+    },
+    {
+      "competitor_name": "LeadsRx",
+      "reason_for_inclusion": "Mentioned for providing real-time, unbiased data via its Universal Conversion Tracking Pixel for comprehensive journey views.",
+      "source_of_mention": "https://usermaven.com/blog/marketing-attribution-tools"
+    },
+    {
+      "competitor_name": "HockeyStack",
+      "reason_for_inclusion": "Featured for B2B-specific capabilities like contact timeline tracking and goal-based attribution.",
+      "source_of_mention": "https://www.hockeystack.com/blog-posts/best-marketing-attribution-software"
+    },
+    {
+      "competitor_name": "Attribution",
+      "reason_for_inclusion": "Listed as one of the 'popular options' in the initial overview, establishing its presence in the category.",
+      "source_of_mention": "https://www.ruleranalytics.com/blog/analytics/marketing-attribution-software/"
+    },
+    {
+      "competitor_name": "Windsor.ai",
+      "reason_for_inclusion": "Included as a tool that unifies data from CRMs and ad platforms for customizable attribution.",
+      "source_of_mention": "https://www.hockeystack.com/blog-posts/best-marketing-attribution-software"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The core issue is a positioning and keyword mismatch. Linkrunner is framed as a 'Link Tracking' tool, while the AI's response is tailored to the broader, more complex 'Marketing Attribution' query. The winning competitors are either dedicated attribution platforms or have successfully positioned themselves within this narrative through targeted content.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Linkrunner was excluded because its product description and online content do not use the term 'marketing attribution'. The AI is rewarding competitors who explicitly align with this query and detail features like multi-touch models and CRM integration, which are not highlighted in your product data.",
+      "path_to_inclusion": "Create dedicated landing pages or blog posts targeting 'marketing attribution software' that explain how Linkrunner's features solve this problem. Reframe 'performance tracking' to include attribution-specific terminology. Pursue inclusion in third-party software comparison articles, as the AI heavily relies on these for validation."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content and Positioning Expansion",
+      "action": "On the Linkrunner website, create a new solutions page or a detailed blog post titled 'Marketing Attribution with Linkrunner'. Use H2/H3 tags for 'Multi-Touch Attribution', 'Customer Journey Tracking', and 'ROI Analysis'. Clearly explain how your link tracking data feeds into a broader attribution model."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Update your homepage and product descriptions to incorporate keywords like 'marketing attribution', 'multi-touch attribution', and 'customer journey analysis'. Frame Linkrunner not just as a link tracker, but as a crucial component of a modern marketing attribution stack."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Initiate an outreach campaign to be included in 'best marketing attribution software' listicles on marketing tech blogs like the ones cited by the AI (e.g., Usermaven, Cleverly). Securing placement in these articles is a direct path to being cited and building authority."
+    }
+  ]
+}

@@ -62,6 +62,7 @@ interface ProductStoreState {
   sourceLinks: any[];
   currentProductId: string | null;
   selectedPipeline: "perplexity" | "google_overview" | "all";
+  isNewProductSession: boolean;
   setFormData: (updater: FormUpdater) => void;
   setOriginalScrapedData: (data: ProductFormData | null) => void;
   setMissingFields: (fields: string[]) => void;
@@ -94,9 +95,9 @@ interface ProductStoreState {
   deleteProduct: (productId: string) => void;
   resetForm: () => void;
   loadProductsFromSupabase: (userId: string) => Promise<void>;
-  saveProductToSupabase: (product: OptimizedProduct, userId: string, generatedQuery?: string | null) => Promise<string | null>;
+  saveProductToSupabase: (product: OptimizedProduct, userId: string, generatedQueryOverride?: string | null) => Promise<string | null>;
   deleteProductFromSupabase: (productId: string, userId: string) => Promise<void>;
-  updateProductInSupabase: (productId: string, userId: string) => Promise<void>;
+  updateProductInSupabase: (productId: string, userId: string, generatedQueryOverride?: string | null) => Promise<void>;
   setUserInfo: (info: UserInfoState | null) => void;
   setUserCredits: (credits: number | null) => void;
   adjustUserCredits: (delta: number) => void;
@@ -104,6 +105,7 @@ interface ProductStoreState {
   setSourceLinks: (links: any[]) => void;
   setCurrentProductId: (id: string | null) => void;
   setSelectedPipeline: (pipeline: "perplexity" | "google_overview" | "all") => void;
+  setIsNewProductSession: (value: boolean) => void;
 }
 
 export const useProductStore = create<ProductStoreState>()(
@@ -140,6 +142,7 @@ export const useProductStore = create<ProductStoreState>()(
       sourceLinks: [],
       currentProductId: null,
       selectedPipeline: "all",
+      isNewProductSession: false,
       setFormData: (updater) =>
         set((state) => ({
           formData:
@@ -190,6 +193,7 @@ export const useProductStore = create<ProductStoreState>()(
             optimizationAnalysis: product.analysis ?? null,
             googleOverviewAnalysis: product.googleOverviewAnalysis ?? null,
             currentProductId: productId,
+            isNewProductSession: false,
           };
         }),
       deleteProduct: (productId) =>
@@ -215,11 +219,17 @@ export const useProductStore = create<ProductStoreState>()(
           isAnalyzing: false,
           products: state.products,
           currentProductId: null,
+          isNewProductSession: true,
           // Reset query arrays
           allPerplexityQueries: [],
           allGoogleQueries: [],
           selectedPerplexityQueries: [],
           selectedGoogleQueries: [],
+          usedPerplexityQueries: [],
+          usedGoogleQueries: [],
+          queryData: null,
+          sourceLinks: [],
+          processedSources: [],
         })),
       loadProductsFromSupabase: async (userId: string) => {
         try {
@@ -422,7 +432,7 @@ export const useProductStore = create<ProductStoreState>()(
           console.error('Error loading products from Supabase:', error);
         }
       },
-      saveProductToSupabase: async (product: OptimizedProduct, userId: string) => {
+      saveProductToSupabase: async (product: OptimizedProduct, userId: string, generatedQueryOverride?: string | null) => {
         try {
           const specs = product.formData.specifications || {};
           const generalType = product.formData.general_product_type || specs.general_product_type || '';
@@ -430,7 +440,9 @@ export const useProductStore = create<ProductStoreState>()(
           
           // Generate query data for saving
           let generatedQuery = null;
-          if (product.analysis) {
+          if (generatedQueryOverride !== undefined) {
+            generatedQuery = generatedQueryOverride;
+          } else if (product.analysis) {
             // Generate query data from analysis for backward compatibility
             generatedQuery = JSON.stringify({
               root_topic: product.formData.product_name || 'Untitled Product',
@@ -471,6 +483,7 @@ export const useProductStore = create<ProductStoreState>()(
               ...state.products.filter((p) => p.id !== savedProduct.id),
             ].slice(0, 10),
             currentProductId: savedProduct.id,
+            isNewProductSession: false,
           }));
           
           return savedProduct.id; // Return product ID for analysis_history
@@ -479,7 +492,7 @@ export const useProductStore = create<ProductStoreState>()(
           throw error;
         }
       },
-      updateProductInSupabase: async (productId: string, userId: string) => {
+      updateProductInSupabase: async (productId: string, userId: string, generatedQueryOverride?: string | null) => {
         try {
           const state = get();
           const specs = state.formData.specifications || {};
@@ -501,7 +514,10 @@ export const useProductStore = create<ProductStoreState>()(
               problem_product_is_solving: state.formData.problem_product_is_solving || '',
               general_product_type: generalType,
               specific_product_type: specificType,
-              generated_query: state.generatedQuery || null,
+              generated_query:
+                generatedQueryOverride !== undefined
+                  ? generatedQueryOverride
+                  : state.generatedQuery || null,
             }),
           });
 
@@ -589,8 +605,13 @@ export const useProductStore = create<ProductStoreState>()(
         }),
       setProcessedSources: (sources) => set({ processedSources: sources }),
       setSourceLinks: (links) => set({ sourceLinks: links }),
-      setCurrentProductId: (id) => set({ currentProductId: id }),
+      setCurrentProductId: (id) =>
+        set((state) => ({
+          currentProductId: id,
+          isNewProductSession: id ? false : state.isNewProductSession,
+        })),
       setSelectedPipeline: (pipeline) => set({ selectedPipeline: pipeline }),
+      setIsNewProductSession: (value) => set({ isNewProductSession: value }),
       
       // Helper functions for query data management
       saveQueriesToSupabase: async (userId: string) => {
@@ -697,6 +718,7 @@ export const useProductStore = create<ProductStoreState>()(
         googleOverviewAnalysis: state.googleOverviewAnalysis,
         generatedQuery: state.generatedQuery,
         currentProductId: state.currentProductId,
+        isNewProductSession: state.isNewProductSession,
         missingFields: state.missingFields,
         ignoredMissingFields: state.ignoredMissingFields,
         selectedPipeline: state.selectedPipeline,

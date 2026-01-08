@@ -1,0 +1,77 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes competitors that explicitly market advanced features like A/B testing, cookieless tracking, and direct ROI attribution, and are mentioned in authoritative third-party marketing blogs.",
+    "strategic_analogy": "This is like entering a professional auto race with a reliable family car. While your car is functional and solves a core need (transportation), the judges and audience are rewarding high-performance features like 'turbochargers' (A/B testing) and 'advanced aerodynamics' (cookieless tracking) that competitors are showcasing prominently."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name or brand in the ai_overview_text or source_links across any of the five analyzed queries related to link tracking, attribution, and marketing analytics."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is building a narrative that modern link tracking is not just about counting clicks, but about providing a comprehensive marketing intelligence and attribution solution. The story is centered on tools that help marketers prove financial return (ROI/ROAS), navigate privacy changes (cookieless tracking), and optimize campaigns with sophisticated features (A/B testing, fraud detection).",
+    "key_decision_factors": [
+      "Advanced Feature Sets (e.g., A/B testing, fraud detection, real-time analytics)",
+      "Technical Tracking Methods (e.g., cookieless tracking, server-side tracking, first-party cookies)",
+      "Specific Use Cases (e.g., affiliate marketing, multi-channel ad campaigns, eCommerce)",
+      "Financial Metrics (e.g., ROI tracking, ROAS calculation)",
+      "Integrations (e.g., Google Analytics, Facebook Pixel, CRMs)",
+      "Source Authority (e.g., direct brand sites, reputable third-party marketing tech blogs)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in a mix of direct-to-consumer brand websites (dub.co, redtrack.io, hyros.com), their associated blogs (redtrack.io/blog), and authoritative third-party content sites that publish 'best of' listicles and reviews (waltervoronovic.com, knock.app, userpilot.com)."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "ClickMagick",
+      "reason_for_inclusion": "Positioned as a top tool for marketers due to a robust feature set including real-time analytics, A/B testing, and fraud detection. It is repeatedly mentioned across multiple queries.",
+      "source_of_mention": "https://waltervoronovic.com/business-software-reviews/best-link-trackers/"
+    },
+    {
+      "competitor_name": "RedTrack",
+      "reason_for_inclusion": "Highlighted for its modern, privacy-compliant tracking methods, specifically cookieless and server-side tracking, making it relevant for tracking across major ad platforms like Meta and Google.",
+      "source_of_mention": "https://www.redtrack.io"
+    },
+    {
+      "competitor_name": "AnyTrack.io",
+      "reason_for_inclusion": "Included for its focus on affiliate marketers, its no-code setup, and its ability to handle modern tracking challenges like cookieless tracking and identity resolution.",
+      "source_of_mention": "https://anytrack.io"
+    },
+    {
+      "competitor_name": "Dub",
+      "reason_for_inclusion": "Featured as a leading platform for attribution, unifying short links with real-time analytics and conversion tracking, making it ideal for measuring marketing outcomes.",
+      "source_of_mention": "https://dub.co"
+    },
+    {
+      "competitor_name": "Hyros",
+      "reason_for_inclusion": "Stands out for its focus on advanced, long-term value tracking and custom attribution models, with a specific claim of boosting ROI by up to 15%.",
+      "source_of_mention": "https://hyros.com"
+    },
+    {
+      "competitor_name": "Google Analytics",
+      "reason_for_inclusion": "Consistently mentioned as the leading free option for tracking website traffic, user behavior, and multi-channel funnels, making it a baseline competitor.",
+      "source_of_mention": "https://marketingplatform.google.com/about/analytics/"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "Linkrunner's absence from the AI's answers stems from a misalignment between its current marketing language and the specific, feature-rich terminology the AI has identified as critical for this product category. Competitors are winning by explicitly detailing advanced capabilities and their direct impact on marketing ROI, while Linkrunner's messaging remains more general.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was excluded because its online content likely lacks the specific keywords the AI prioritizes, such as 'A/B testing,' 'cookieless tracking,' 'server-side tracking,' 'fraud detection,' and 'ROI attribution.' Your features, while valuable ('Onboarding Tracking'), are not framed in the language of campaign optimization and financial return that competitors use effectively. Furthermore, you are likely not featured in the third-party review articles the AI is using as primary sources.",
+      "path_to_inclusion": "Revise your website and product pages to explicitly name and describe advanced features that compete with the market leaders. Frame 'Onboarding Tracking' as a tool for measuring post-click conversion and customer lifetime value (LTV). Develop a content strategy around topics like 'marketing attribution' and 'ROI tracking,' and execute a digital PR campaign to secure mentions and reviews on authoritative marketing tech blogs like those cited by the AI."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On your primary product page, implement a clear, scannable structure using H2/H3 tags for 'Key Features,' 'Use Cases for Growth Marketers,' and 'Integrations.' Use bullet points to list features like 'Granular Click-to-Onboarding Attribution,' making the information easily parsable for AI crawlers."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Integrate the specific terminology the AI is rewarding into your marketing copy. Phrases like 'A/B testing for links,' 'cookieless attribution,' 'real-time campaign analytics,' and 'ROI tracking software' should be prominent on your site to align with user search intent and AI selection criteria."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Develop a strategy to get Linkrunner reviewed or listed on the types of authoritative domains the AI is citing (e.g., marketing software review sites, tech blogs). Feature comparisons like 'Linkrunner vs. ClickMagick' or guest posts on attribution can build the external trust signals the AI is looking for."
+    }
+  ]
+}

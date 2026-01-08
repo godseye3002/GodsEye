@@ -1,0 +1,71 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes well-established competitors that are mentioned in authoritative third-party 'best of' software listicles.",
+    "strategic_analogy": "This is like trying to get into an exclusive party where the bouncer is only checking a specific guest list. The AI's 'guest list' is compiled from popular industry blogs, and your product needs to get its name on those lists to be allowed in."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Your product, Linkrunner, was not mentioned by name or brand in the AI's overview text or cited in the source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a listicle-style answer, first defining the software category and then presenting a curated list of popular tools. Each tool is summarized with its core function (e.g., heatmaps, link shortening, conversion tracking) and pricing model.",
+    "key_decision_factors": [
+      "Specific, identifiable tool features (e.g., 'click maps', 'heatmaps', 'A/B testing', 'funnels')",
+      "Clear pricing models (e.g., 'free tier', 'starts at $29/month')",
+      "Brand recognition within the marketing tech space",
+      "Inclusion in third-party software review articles and listicles",
+      "Direct association with a specific function (e.g., link shortening vs. heatmapping)"
+    ],
+    "trusted_source_analysis": "The AI relies on a mix of direct brand websites (ClickMagick, Linkly) and authoritative competitor blogs that publish 'best of' listicles (vwo.com, fullsession.io, 500apps.com). This indicates high trust in both brand authority and third-party industry content for product discovery."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Hotjar",
+      "reason_for_inclusion": "Mentioned for providing specific features like 'click maps, heatmaps, and session recordings' along with a clear pricing model ('free tier for basic use, paid from $32/month').",
+      "source_of_mention": "https://vwo.com/blog/click-tracking-software/"
+    },
+    {
+      "competitor_name": "Crazy Egg",
+      "reason_for_inclusion": "Included for its distinct features such as 'overlay maps and scrollmaps for clicks, plus A/B testing' and its starting price point.",
+      "source_of_mention": "https://vwo.com/blog/click-tracking-software/"
+    },
+    {
+      "competitor_name": "Plerdy",
+      "reason_for_inclusion": "Highlighted for its ability to track 'click sequences, elements, and downloads with funnels' and for offering a 'free limited plan'.",
+      "source_of_mention": "https://www.fullsession.io/blog/best-click-tracking-software/"
+    },
+    {
+      "competitor_name": "ClickMagick",
+      "reason_for_inclusion": "Featured for its focus on 'link clicks and conversions, including post-download tracking', positioning it as a specialized tool.",
+      "source_of_mention": "https://www.clickmagick.com"
+    },
+    {
+      "competitor_name": "Linkly",
+      "reason_for_inclusion": "Included as a 'Free URL shortener with click, device, and geo-tracking', which directly addresses a sub-category of the user's query.",
+      "source_of_mention": "https://linklyhq.com"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary reason for Linkrunner's exclusion is its absence from the key third-party 'best of' listicles that the AI is using to identify and validate market leaders. The AI rewards established brands with easily digestible, feature-specific descriptions, a niche Linkrunner can capture with strategic content adjustments and outreach.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Linkrunner was excluded because it is not mentioned in the authoritative third-party listicles (from vwo.com, fullsession.io, etc.) that the AI uses as its primary source for identifying key market players. Competitors are being rewarded for being featured on these domains and for having very specific, easily summarized features (e.g., 'heatmaps').",
+      "path_to_inclusion": "The most direct path to inclusion is to secure mentions and reviews on high-authority marketing tech blogs and software comparison sites, mirroring the sources the AI currently trusts. Concurrently, refining website copy to explicitly feature keywords like 'click tracking,' 'download funnels,' and 'conversion analytics' will make Linkrunner's capabilities more parsable and align them with the features the AI is highlighting."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Initiate an outreach campaign targeting marketing and SaaS review blogs (like vwo.com, fullsession.io, and similar) to have Linkrunner included in their 'best of' listicles for click tracking and marketing analytics software. This external validation is the key factor for AI inclusion."
+    },
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On the Linkrunner homepage and feature pages, use distinct sections with H2/H3 tags for 'Click Tracking,' 'Download Analytics,' and 'Onboarding Funnels.' Use bullet points within these sections to detail specific capabilities, making them easy for AI to parse and classify."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Incorporate phrases like 'click and download tracking software,' 'link analytics,' and 'conversion tracking' into your website's metadata, headlines, and body copy to directly align with user queries and the AI's current vocabulary."
+    }
+  ]
+}

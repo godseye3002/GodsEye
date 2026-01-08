@@ -1,0 +1,52 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI's response focuses on enterprise-level software for physical supply chain and inventory management, while your product is tailored for digital marketing and link tracking.",
+    "strategic_analogy": "This is like bringing a high-performance race car to a freight-hauling competition. While your product is excellent for speed and agility in digital marketing, the AI is currently judging based on cargo capacity and logistics integration (ERP, supply chain), which is a different race entirely."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name in the AI's overview text or cited in the source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing an educational guide for businesses seeking enterprise-grade software to manage and analyze physical distribution channels (wholesalers, retailers). The narrative centers on integrating data from core business systems like ERP and CRM to optimize supply chain, inventory, pricing, and partner performance.",
+    "key_decision_factors": [
+      "Integration with enterprise systems (ERP, CRM, POS)",
+      "Supply chain and inventory insights (stock levels, lead times)",
+      "Partner performance management (distributor reliability)",
+      "Pricing and promotion analytics (rebate programs)",
+      "Forecasting and demand planning",
+      "Source authority from B2B software provider blogs"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in authoritative, long-form content from a B2B software vendor (Phocas Software) who is a direct player in the market. The source acts as a definitional guide for the entire software category."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Phocas Software",
+      "reason_for_inclusion": "Phocas Software was not mentioned in the AI's main text, but its blog is the sole source cited. The AI has used this article as the foundational source to define the software category and its key features, establishing Phocas as a topical authority.",
+      "source_of_mention": "https://www.phocassoftware.com/resources/blog/what-is-distributor-analytics-software"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The core issue is a mismatch between the AI's interpretation of the query and your product's market position. The AI understands 'distribution channel analytics' in a traditional B2B supply chain context, focusing on physical goods and enterprise systems. Linkrunner addresses digital distribution channels for marketers. This fundamental difference in definition is the primary reason for exclusion.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was excluded because it serves a different market (digital growth marketing) than the one the AI's answer addresses (B2B supply chain management). The AI is prioritizing features like ERP/CRM integration, inventory insights, and wholesaler management, which are not core to your product's link-tracking functionality.",
+      "path_to_inclusion": "To be included for this specific query, you would need to create content that repositions your product to include B2B supply chain terminology. A more effective strategy is to target more specific, relevant queries like 'marketing channel performance tracking' or 'digital attribution software'. Creating authoritative content that defines 'distribution channel analytics for marketers' could also carve out a niche and educate the AI on this sub-category."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Targeted Query Refinement",
+      "action": "Focus AEO and content efforts on more specific long-tail keywords that align with your product's core value proposition, such as 'growth marketing analytics platform', 'onelink.to alternative', or 'mobile app link tracking software'. The current target query is too broad and misaligned."
+    },
+    {
+      "recommendation": "Content Strategy Pivot",
+      "action": "Develop authoritative blog posts and guides that define and explain 'distribution channel analytics' specifically for the digital marketing and app developer audience. Use titles like 'A Marketer's Guide to Distribution Channel Analytics' to differentiate from the supply chain narrative."
+    },
+    {
+      "recommendation": "Feature Language Alignment",
+      "action": "Review your website copy. While you track 'distribution channels', ensure you qualify this with terms like 'digital', 'mobile', 'affiliate', and 'social' to clearly signal your domain to AI crawlers and avoid confusion with physical logistics software."
+    }
+  ]
+}

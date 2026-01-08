@@ -15,7 +15,7 @@ Note: The price or any data related to price should not be included in the JSON 
 
 Here is the text content:
 ---
-The smarter Onelink.to alternative, built for growth marketers
+Turn customer data into powerful insights with an AI driven MMP
 
 Track your top-performing distribution channels down to every click, download and onboard
 ---

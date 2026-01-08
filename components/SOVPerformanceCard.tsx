@@ -8,6 +8,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { triggerSovAnalysis } from "@/lib/sovAnalysisApi";
 import { useSovSnapshotListener } from "@/hooks/useSovSnapshotListener";
+import { OptimizedProduct } from "@/app/optimize/types";
 
 interface SOVSnapshot {
   id: string;
@@ -26,9 +27,10 @@ interface SOVPerformanceCardProps {
   engine: 'google' | 'perplexity';
   onDeepAnalysisClick?: () => void;
   isDeepAnalysisActive?: boolean;
+  product?: OptimizedProduct | null;
 }
 
-export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisClick, isDeepAnalysisActive }: SOVPerformanceCardProps) {
+export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisClick, isDeepAnalysisActive, product }: SOVPerformanceCardProps) {
   const [snapshot, setSnapshot] = useState<SOVSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -257,7 +259,10 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
         </Typography>
         
         <Typography level="body-sm" sx={{ color: "rgba(162, 167, 180, 0.7)", mb: 3, fontStyle: 'italic' }}>
-          Start SOV Analysis to see the Share Of Voice of your product
+          {!product?.analyses || product.analyses.length === 0 
+            ? "You must first complete at least one Google or Perplexity analysis before running SOV analysis."
+            : "Start SOV Analysis to see the Share Of Voice of your product"
+          }
         </Typography>
         
         <Stack spacing={2}>
@@ -266,7 +271,7 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
             color="danger"
             startDecorator={<AnalyticsIcon />}
             onClick={runSovAnalysis}
-            disabled={isTriggeringAnalysis || liveSovStatus === 'processing'}
+            disabled={isTriggeringAnalysis || liveSovStatus === 'processing' || (!product?.analyses || product.analyses.length === 0)}
             sx={{
               width: "100%",
               backgroundColor: "#F35B64",
@@ -278,6 +283,11 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
               fontWeight: 600,
               py: 1.5,
               fontSize: "1rem",
+              "&:disabled": {
+                backgroundColor: "rgba(243, 91, 100, 0.2)",
+                color: "rgba(162, 167, 180, 0.5)",
+                cursor: "not-allowed",
+              },
             }}
           >
             {liveSovStatus === 'processing' ? 'Analyzing…' : isTriggeringAnalysis ? 'Starting…' : 'Start SOV Analysis'}

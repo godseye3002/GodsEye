@@ -8,6 +8,23 @@ export interface StrategicAnalysisRequest {
   clientProductJson: any;
 }
 
+function normalizeAiSearch(aiSearchJson: unknown) {
+  if (Array.isArray(aiSearchJson)) return aiSearchJson;
+  if (!aiSearchJson) return [];
+  return [aiSearchJson];
+}
+
+function flattenSourceLinks(aiSearchItems: any[]) {
+  const out: any[] = [];
+  for (const item of aiSearchItems) {
+    const links = item?.source_links;
+    if (Array.isArray(links)) {
+      out.push(...links);
+    }
+  }
+  return out;
+}
+
 export interface StrategicAnalysisResult {
   executive_summary?: {
     title: string;
@@ -71,11 +88,14 @@ export async function POST(request: NextRequest) {
     //   ... (legacy prompt omitted for brevity)
     // `;
 
+    const normalizedAiSearchJson = normalizeAiSearch(aiSearchJson);
+
     const basePrompt = `Act as a world-class AEO (Answer Engine Optimization) Strategist and Competitive Analyst who analyzes the response of Perplexity AI (The AI Search Engine). Your expertise is in deconstructing AI-generated search responses to provide clients with a decisive competitive advantage.
 
             You will be provided with two JSON objects:
 
-            [AI_SEARCH_JSON]: The scraped data from an AI search engine's answer for a specific query.
+            [AI_SEARCH_JSON]: The scraped data from an AI search engine's answer.
+            This may be a single object or an array of objects (multiple queries). If it is an array, you MUST analyze them together and provide a consolidated result.
 
             [CLIENT_PRODUCT_JSON]: The data for your client's product.
 
@@ -106,7 +126,7 @@ export async function POST(request: NextRequest) {
 
             Here is the [AI_SEARCH_JSON]:
 
-            ${JSON.stringify(aiSearchJson, null, 2)}
+            ${JSON.stringify(normalizedAiSearchJson.length === 1 ? normalizedAiSearchJson[0] : normalizedAiSearchJson, null, 2)}
 
             Here is the [CLIENT_PRODUCT_JSON]:
 
@@ -325,102 +345,72 @@ export async function POST(request: NextRequest) {
       
       // Validate required structure
       if (!analysisResult.executive_summary || !analysisResult.client_product_visibility) {
-        throw new Error('Invalid analysis structure: missing required fields');
-      }
-      
-      // Populate sources_ai_used from original source_links to avoid token limit issues
-      const aiSearchAny = aiSearchJson as any;
-      if (Array.isArray(aiSearchAny?.source_links) && (!analysisResult.sources_ai_used || analysisResult.sources_ai_used.length === 0)) {
-        analysisResult.sources_ai_used = aiSearchAny.source_links.map((src: any) => ({
-          source_snippet: src.snippet || src.text || 'Snippet not clearly available in provided text.',
-          reason_for_inclusion: `Source was included in the AI search results${src.related_to ? ` and is related to ${src.related_to}` : ''}. Position: ${src.position || 'Unknown'}.`,
-          source_of_mention: src.url || 'Unknown source',
-        }));
-        
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`[DEBUG] Populated sources_ai_used from source_links: ${analysisResult.sources_ai_used?.length || 0} sources`);
-        }
-      }
-      
-      // DEBUG: Log the final parsed result to verify sources_ai_used presence
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Strategic analysis parsed successfully');
-        console.log(`[DEBUG] Final analysis result for ${pipeline || 'unknown'}:`, {
-          hasExecutiveSummary: !!analysisResult.executive_summary,
-          hasClientProductVisibility: !!analysisResult.client_product_visibility,
-          hasCompetitiveLandscape: !!analysisResult.competitive_landscape_analysis,
-          competitiveLandscapeCount: Array.isArray(analysisResult.competitive_landscape_analysis) ? analysisResult.competitive_landscape_analysis.length : 0,
-          hasSourcesUsed: !!analysisResult.sources_ai_used,
-          sourcesUsedCount: Array.isArray(analysisResult.sources_ai_used) ? analysisResult.sources_ai_used.length : 0,
-          sourcesUsedPreview: Array.isArray(analysisResult.sources_ai_used) ? analysisResult.sources_ai_used.slice(0, 2) : null,
-          fullAnalysisKeys: Object.keys(analysisResult),
-          // Log the full object in development for deep inspection
-          fullAnalysisResult: analysisResult
-        });
-      }
-    } catch (parseError) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('Error parsing strategic analysis response:', parseError);
-        console.error('Raw response (first 500 chars):', text.substring(0, 500));
-        const cleanedPreview = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        console.error('Cleaned text (first 500 chars):', cleanedPreview.substring(0, 500));
-      }
+        const aiSearchAny = aiSearchJson as any;
+        const mergedSourceLinks = Array.isArray(aiSearchAny)
+          ? flattenSourceLinks(aiSearchAny)
+          : Array.isArray(aiSearchAny?.source_links)
+            ? aiSearchAny.source_links
+            : [];
 
-      // Fallback: construct a minimal but valid StrategicAnalysisResult
-      const aiSearchAny = aiSearchJson as any;
-      const fallbackSources: StrategicAnalysisResult["sources_ai_used"] =
-        Array.isArray(aiSearchAny?.source_links)
-          ? aiSearchAny.source_links.map((src: any) => ({
-              source_snippet:
-                typeof src === 'string'
-                  ? src.slice(0, 200)
-                  : 'Snippet not clearly available in provided text.',
-              reason_for_inclusion:
-                'Source was included in the AI search JSON but the structured analysis could not be fully parsed.',
-              source_of_mention:
-                (typeof src === 'string' ? src : src.url) || 'Unknown source',
-            }))
-          : [];
+        const fallbackSources: StrategicAnalysisResult["sources_ai_used"] =
+          Array.isArray(mergedSourceLinks)
+            ? mergedSourceLinks.map((src: any) => ({
+                source_snippet: src.snippet || src.text || 'Snippet not clearly available in provided text.',
+                reason_for_inclusion: 'Mentioned in AI response sources',
+                source_of_mention: src.url || src.source || 'Unknown source',
+              }))
+            : [];
 
-      const fallback: StrategicAnalysisResult = {
-        executive_summary: {
-          title: 'AEO Competitive Analysis (Fallback)',
-          status_overview:
-            'The AI analysis service returned an unexpected format. This is an automatically generated fallback summary.',
-          strategic_analogy:
-            'Think of this as receiving raw research notes without a clean report. The data is there, but the structure had to be approximated.',
-        },
-        client_product_visibility: {
-          status: 'Not Featured',
-          details:
-            'The detailed structured visibility analysis could not be parsed from the AI response. Please rerun the analysis later or contact support if this persists.',
-        },
-        ai_answer_deconstruction: {
-          dominant_narrative: 'The AI response could not be properly parsed to extract the dominant narrative. This may be due to formatting issues in the AI output.',
-          key_decision_factors: [
-            'AI response parsing failed - unable to extract decision factors',
-            'Consider rerunning the analysis for complete results',
-            'Raw response data has been preserved for reference'
-          ],
-          trusted_source_analysis: 'Due to parsing difficulties, trusted source analysis could not be extracted. Please refer to the source links provided below for raw information.',
-          raw_response_preview: text.substring(0, 500),
-        },
-        competitive_landscape_analysis: [],
-        sources_ai_used: fallbackSources,
-        strategic_gap_and_opportunity_analysis: {
-          analysis_summary:
-            'Due to a formatting issue in the AI output, a full gap and opportunity analysis could not be generated. However, the source links have been preserved for manual review.',
-        },
-        actionable_recommendations: [],
-      } as any;
+        const fallback: StrategicAnalysisResult = {
+          executive_summary: {
+            title: 'AEO Competitive Analysis (Fallback)',
+            status_overview:
+              'The AI analysis service returned an unexpected format. This is an automatically generated fallback summary.',
+            strategic_analogy:
+              'Think of this as receiving raw research notes without a clean report. The data is there, but the structure had to be approximated.',
+          },
+          client_product_visibility: {
+            status: 'Not Featured',
+            details:
+              'The detailed structured visibility analysis could not be parsed from the AI response. Please rerun the analysis later or contact support if this persists.',
+          },
+          ai_answer_deconstruction: {
+            dominant_narrative:
+              'The AI response could not be properly parsed to extract the dominant narrative. This may be due to formatting issues in the AI output.',
+            key_decision_factors: [
+              'AI response parsing failed - unable to extract decision factors',
+              'Consider rerunning the analysis for complete results',
+              'Raw response data has been preserved for reference',
+            ],
+            trusted_source_analysis:
+              'Due to parsing difficulties, trusted source analysis could not be extracted. Please refer to the source links provided below for raw information.',
+            raw_response_preview: text.substring(0, 500),
+          },
+          competitive_landscape_analysis: [],
+          sources_ai_used: fallbackSources,
+          strategic_gap_and_opportunity_analysis: {
+            analysis_summary:
+              'Due to a formatting issue in the AI output, a full gap and opportunity analysis could not be generated. However, the source links have been preserved for manual review.',
+          },
+          actionable_recommendations: [],
+        };
 
-      return NextResponse.json(fallback);
-    }
+        return NextResponse.json(fallback);
+      }
 
     return NextResponse.json(analysisResult);
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
       console.error('[Strategic Analysis] Error:', error);
+    }
+    return NextResponse.json(
+      { error: 'Failed to perform strategic analysis' },
+      { status: 500 }
+    );
+  }
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Strategic Analysis] Handler Error:', error);
     }
     return NextResponse.json(
       { error: 'Failed to perform strategic analysis' },

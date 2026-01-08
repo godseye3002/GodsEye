@@ -1,0 +1,81 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner - 2",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes well-established, category-defining platforms (like Google Analytics, HubSpot, SEMrush) that are consistently cited in authoritative marketing technology listicles.",
+    "strategic_analogy": "This is like being a specialized artisan coffee bean provider at a supermarket where shoppers are only asking for 'instant coffee' or 'espresso pods.' The AI is organizing its answer by broad, familiar categories, and our specialized product isn't being recognized within that framework yet."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner - 2 was not mentioned by name or brand in the AI's overview text or referenced in any of the source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a narrative of building a complete 'marketing measurement stack.' It guides the user by breaking down the complex ecosystem into distinct, functional categories (Web Analytics, CRM, SEO, etc.) and recommending the most recognized leader in each category.",
+    "key_decision_factors": [
+      "Categorization by specific function (e.g., Foundational Analytics, User Behavior, CRM, SEO)",
+      "Strong brand recognition and market leadership within those categories",
+      "Source authority from marketing tech blogs, company guides, and educational content",
+      "Inclusion in 'best of' tool lists and guides",
+      "Provision of a clear starting point (free tools like Google Analytics) before suggesting specialized platforms"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in authoritative third-party content, specifically marketing technology blogs (Funnel.io, AgencyAnalytics), educational institutions (IMD, EDHEC), professional networking platforms (LinkedIn), and guides published by competitors themselves (Contentsquare). These sources provide curated lists and definitions that the AI heavily relies on to structure its answer."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Google Analytics / Google Search Console",
+      "reason_for_inclusion": "Positioned as the essential, free, foundational tool for tracking website traffic and organic search performance, making it the recommended starting point.",
+      "source_of_mention": "https://funnel.io/blog/essential-marketing-measurement-tools-for-effective-campaigns#:~:text=Google%20Analytics,lesser%2Dknown%20Chappell%20Roan%20hit?"
+    },
+    {
+      "competitor_name": "HubSpot / Salesforce",
+      "reason_for_inclusion": "Included as top-tier 'All-in-One & CRM Suites' that provide a complete view of the customer journey from lead acquisition to conversion.",
+      "source_of_mention": "https://www.imd.org/blog/marketing/marketing-analytics/#:~:text=Customer%20relationship%20management%20(CRM)%20platforms%20like%20HubSpot,valuable%20customer%20data%20throughout%20the%20sales%20funnel."
+    },
+    {
+      "competitor_name": "Mixpanel / Heap",
+      "reason_for_inclusion": "Highlighted as specialized 'User Behavior & Conversion Platforms' for gaining deep insights into product usage and conversion funnels.",
+      "source_of_mention": "https://productled.com/blog/customer-acquisition-strategies#:~:text=Google%20Analytics%20is%20a%20great%20free%20option,more%20insights%20into%20the%20entire%20customer%20journey."
+    },
+    {
+      "competitor_name": "SEMrush / Ahrefs",
+      "reason_for_inclusion": "Featured as crucial tools for the 'SEO & Competitive Intelligence' category, essential for understanding and improving organic acquisition channels.",
+      "source_of_mention": "https://agencyanalytics.com/blog/best-marketing-analytics-tools#:~:text=Cons,make%20data%2Ddriven%20decisions%20quickly."
+    },
+    {
+      "competitor_name": "Hotjar / Contentsquare",
+      "reason_for_inclusion": "Mentioned for providing visual user behavior insights like heatmaps and session recordings, which help identify friction points in the acquisition process.",
+      "source_of_mention": "https://contentsquare.com/guides/customer-acquisition/tools/#:~:text=10%20best%20customer%20acquisition%20tools%20and%20software%20to%20attract%20and,Last%20UpdatedDecember%2014%2C%202025"
+    },
+    {
+      "competitor_name": "Tableau / Looker Studio",
+      "reason_for_inclusion": "Included in the 'Data Integration & Visualization' category for their ability to unify data from disparate sources into a single dashboard for ROI analysis.",
+      "source_of_mention": "https://online.edhec.edu/en/blog/marketing-analytics-benefits-tools-and-strategies/#:~:text=Solution:%20Use%20integrated%20marketing%20dashboards%20(e.g.%2C%20Google,from%20different%20sources%20for%20a%20unified%20view."
+    },
+    {
+      "competitor_name": "Meltwater",
+      "reason_for_inclusion": "Mentioned as a comprehensive tool for media monitoring and measuring social media performance across various channels.",
+      "source_of_mention": "https://www.linkedin.com/business/marketing/blog/measurement/tools-measure-digital-marketing-performance"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary barrier to inclusion is not a lack of features, but a lack of visibility and categorization within the authoritative third-party sources the AI uses for its knowledge base. The AI is rewarding established brands that fit neatly into predefined marketing tech categories, and Linkrunner - 2 has not yet penetrated this ecosystem.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was excluded because it lacks mentions in the high-authority marketing blogs and 'best of' listicles that form the AI's source material. Furthermore, its positioning as a specialized 'MMP' doesn't align with the broad, functional categories (Web Analytics, CRM, SEO) the AI uses to structure its answer, making it difficult for the AI to classify and recommend.",
+      "path_to_inclusion": "The most direct path to inclusion is to secure mentions and features on the types of domains the AI trusts (e.g., AgencyAnalytics, Funnel.io, Contentsquare's blog). Additionally, create on-site content (blog posts, comparison pages) that explicitly positions Linkrunner - 2 in relation to the mentioned competitors (e.g., 'A modern alternative to Google Analytics for channel attribution') to help the AI understand your product's place in the market."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Third-Party Validation and Content Outreach",
+      "action": "Prioritize a digital PR and content marketing strategy focused on getting Linkrunner - 2 featured, reviewed, or listed on authoritative marketing technology blogs like those cited by the AI. Target 'Best Marketing Measurement Platforms' and 'Customer Acquisition Tools' listicles."
+    },
+    {
+      "recommendation": "Strategic Content Creation",
+      "action": "Develop a series of on-site articles and comparison pages that frame Linkrunner - 2 against the market leaders mentioned in the AI overview. Use titles like 'Linkrunner vs. Mixpanel for User Journey Analysis' or 'How to Integrate Linkrunner with HubSpot' to build semantic associations for AI crawlers."
+    },
+    {
+      "recommendation": "Refine On-Page Terminology",
+      "action": "On your product and landing pages, expand beyond 'MMP'. Incorporate the broader category terms the AI uses, such as 'Customer Acquisition Analytics,' 'Marketing Attribution Platform,' and 'User Journey Tracking,' to align with the language the AI understands and rewards."
+    }
+  ]
+}

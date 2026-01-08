@@ -23,6 +23,27 @@ function getKey(productId: string, engine: SovEngine) {
   return productId ? `${engine}:${productId}` : '';
 }
 
+async function fetchCurrentSovStatus(productId: string, engine: SovEngine): Promise<SovListenerStatus> {
+  try {
+    const { data, error } = await supabase
+      .from('sov_product_snapshots')
+      .select('status')
+      .eq('product_id', productId)
+      .eq('engine', engine)
+      .eq('status', 'processing')
+      .single();
+    
+    if (error || !data) {
+      return 'completed';
+    }
+    
+    return 'processing';
+  } catch (err) {
+    console.warn('[useSovSnapshotListener] Error fetching current status', err);
+    return 'completed';
+  }
+}
+
 export function useSovSnapshotListener(productId: string, engine: SovEngine) {
   const key = useMemo(() => getKey(productId, engine), [productId, engine]);
 
@@ -46,8 +67,17 @@ export function useSovSnapshotListener(productId: string, engine: SovEngine) {
   useEffect(() => {
     if (!productId) return;
 
+    // First check cache, then fetch current status from database
     const cached = key ? STATUS_CACHE.get(key) : undefined;
-    setStatus(cached ?? 'completed');
+    if (cached) {
+      setStatus(cached);
+    } else {
+      // If no cache, fetch from database to ensure correct initial state
+      fetchCurrentSovStatus(productId, engine).then((dbStatus) => {
+        setStatus(dbStatus);
+        if (key) STATUS_CACHE.set(key, dbStatus);
+      });
+    }
 
     const channel = supabase
       .channel(`sov-snapshot-${engine}-${productId}`)

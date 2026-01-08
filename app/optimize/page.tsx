@@ -46,158 +46,217 @@ import {
 } from "./types";
 
 // Function to call the Perplexity scraper API
-async function callPerplexityScraper(query: string, location: string = 'India') {
-  try {
-    // const response = await axios.post('http://127.0.0.1:8001/scrape', {
-    //   query,
-    //   location,
-    //   keep_open: false,
-    // });
-    // const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
-    //   query,
-    //   location,
-    //   keep_open: false,
-    // });
-    const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
-      query,
-      location,
-      keep_open: false,
-    });
-    console.log('Scraper response:', response.data);
+// Rate limiting utility with exponential backoff
+const createRateLimitedScraper = (baseDelay: number = 1000) => {
+  let lastCall = 0;
+  return async function <T>(scraperCall: () => Promise<T>): Promise<T> {
+    const maxRetries = 3;
+    let retryCount = 0;
     
-    // Validate Perplexity response
-    const data = response.data;
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid Perplexity scraper response format');
-    }
-    
-    // Check if ai_overview_text is empty or too short
-    if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
-      throw new Error('Perplexity scraper returned empty or insufficient content');
-    }
-    
-    return data;
-  } catch (error: any) {
-    let status: number | undefined;
-    let humanMessage = 'We were unable to reach the AI-powered scraping service. Please try again in a moment.';
-    let technicalDetails: unknown = error;
-
-    if (axios.isAxiosError(error)) {
-      status = error.response?.status;
-      technicalDetails = error.response?.data ?? error.message;
-
-      const responseData = error.response?.data;
-      if (responseData && typeof responseData === 'object' && 'error' in responseData) {
-        const apiMessage = (responseData as { error?: string }).error;
-        if (apiMessage && apiMessage.trim().length > 0) {
-          humanMessage = apiMessage;
+    while (retryCount < maxRetries) {
+      try {
+        const now = Date.now();
+        const timeSinceLastCall = now - lastCall;
+        const delay = Math.max(0, baseDelay - timeSinceLastCall);
+        
+        if (delay > 0) {
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
-      } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
-        humanMessage = responseData.trim();
-      } else if (status === 404) {
-        humanMessage = 'Scraper endpoint was not found. Ensure the local scraper service is running.';
-      } else if (status === 429) {
-        humanMessage = 'The scraping service is receiving too many requests. Please wait a bit before retrying.';
-      } else if (status === 500) {
-        humanMessage = 'The scraping service encountered an internal error. Please try again shortly.';
+        
+        lastCall = Date.now();
+        return await scraperCall();
+      } catch (error: any) {
+        retryCount++;
+        
+        // Only retry on rate limiting (429) or server errors (5xx)
+        const isRetryable = error.status === 429 || (error.status >= 500 && error.status < 600);
+        
+        if (!isRetryable || retryCount >= maxRetries) {
+          throw error;
+        }
+        
+        // Exponential backoff: 1s, 2s, 4s
+        const backoffDelay = Math.pow(2, retryCount - 1) * 1000;
+        console.warn(`Rate limit hit, retrying in ${backoffDelay}ms (attempt ${retryCount}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
       }
-    } else if (error instanceof Error) {
-      humanMessage = error.message;
     }
+    
+    throw new Error('Max retries exceeded');
+  };
+};
 
-    const logPayload: Record<string, unknown> = {
-      status,
-      message: humanMessage,
-    };
+// Create rate-limited versions of scrapers
+const rateLimitedPerplexityScraper = createRateLimitedScraper(800); // 800ms between calls
+const rateLimitedGoogleScraper = createRateLimitedScraper(1200); // 1.2s between calls
 
-    if (!(technicalDetails && typeof technicalDetails === 'object' && Object.keys(technicalDetails as Record<string, unknown>).length === 0)) {
-      logPayload.details = technicalDetails;
+async function callPerplexityScraper(query: string, location: string = 'India') {
+  return rateLimitedPerplexityScraper(async () => {
+    try {
+      // const response = await axios.post('http://127.0.0.1:8001/scrape', {
+      //   query,
+      //   location,
+      //   keep_open: false,
+      // });
+      // const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
+      //   query,
+      //   location,
+      //   keep_open: false,
+      // });
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
+        query,
+        location,
+        keep_open: false,
+      });
+      console.log('Scraper response:', response.data);
+      
+      // Validate Perplexity response
+      const data = response.data;
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid scraper response format');
+      }
+      
+      // Check if success is false
+      if (data.success === false) {
+        throw new Error(data.error_message || 'Scraper failed to get results');
+      }
+      
+      // Check if answer is empty or too short
+      if (!data.answer || data.answer.length <= 1) {
+        throw new Error('Scraper returned empty or insufficient content');
+      }
+      
+      return data;
+    } catch (error: any) {
+      let status: number | undefined;
+      let humanMessage = 'We were unable to reach the AI-powered scraping service. Please try again in a moment.';
+      let technicalDetails: unknown = error;
+
+      if (axios.isAxiosError(error)) {
+        status = error.response?.status;
+        technicalDetails = error.response?.data ?? error.message;
+
+        const responseData = error.response?.data;
+        if (responseData && typeof responseData === 'object' && 'error' in responseData) {
+          const apiMessage = (responseData as { error?: string }).error;
+          if (apiMessage && apiMessage.trim().length > 0) {
+            humanMessage = apiMessage;
+          }
+        } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
+          humanMessage = responseData.trim();
+        } else if (status === 404) {
+          humanMessage = 'Scraper endpoint was not found. Ensure the local scraper service is running.';
+        } else if (status === 429) {
+          humanMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
+        } else if (status && status >= 500) {
+          humanMessage = 'Scraper service is temporarily unavailable. Please try again in a moment.';
+        }
+      }
+
+      // Enhanced error logging for debugging
+      console.error('Perplexity scraper error:', {
+        status,
+        message: humanMessage,
+        technicalDetails,
+        responseData: error.response?.data,
+        query: query.substring(0, 50) + '...',
+      });
+
+      const scraperError = new Error(humanMessage);
+      scraperError.name = 'ScraperError';
+      (scraperError as any).status = status;
+      throw scraperError;
     }
+  });
+}
 
-    console.error('Perplexity scraper error:', logPayload);
+function parsePositiveInt(value: unknown, fallback: number) {
+  const num = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value);
+  if (!Number.isFinite(num) || num <= 0) return fallback;
+  return Math.floor(num);
+}
 
-    const scraperError = new Error(humanMessage);
-    scraperError.name = 'ScraperError';
-    (scraperError as any).status = status;
-    throw scraperError;
-  }
+function serializeQueriesForHistory(queries: string[]) {
+  const cleaned = queries
+    .map((q) => (typeof q === 'string' ? q.trim() : ''))
+    .filter((q) => q.length > 0);
+  if (cleaned.length <= 1) return cleaned[0] || null;
+  return JSON.stringify(cleaned);
 }
 
 async function callGoogleOverviewScraper(query: string, location: string = 'India') {
-  try {
-    // const response = await axios.post('http://127.0.0.1:8000/scrape', {
-    //   query,
-    //   location,
-    //   max_retries: 3,
-    // });
-    const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
-      query,
-      location,
-      max_retries: 3,
-    });
-    console.log('Google AI Overview scraper response:', response.data);
-    
-    // Validate Google scraper response
-    const data = response.data;
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid Google scraper response format');
-    }
-    
-    // Check if success is false
-    if (data.success === false) {
-      throw new Error(data.error_message || 'Google scraper failed to get AI Overview');
-    }
-    
-    // Check if ai_overview_text is empty or too short
-    if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
-      throw new Error('Google scraper returned empty or insufficient content');
-    }
-    
-    return data;
-  } catch (error: any) {
-    let status: number | undefined;
-    let humanMessage = 'We were unable to reach the Google AI Overview scraping service. Please try again in a moment.';
-    let technicalDetails: unknown = error;
-
-    if (axios.isAxiosError(error)) {
-      status = error.response?.status;
-      technicalDetails = error.response?.data ?? error.message;
-
-      const responseData = error.response?.data;
-      if (responseData && typeof responseData === 'object' && 'error' in responseData) {
-        const apiMessage = (responseData as { error?: string }).error;
-        if (apiMessage && apiMessage.trim().length > 0) {
-          humanMessage = apiMessage;
-        }
-      } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
-        humanMessage = responseData.trim();
-      } else if (status === 404) {
-        humanMessage = 'Google AI Overview scraper endpoint was not found. Ensure the scraper service is running.';
-      } else if (status === 429) {
-        humanMessage = 'The Google AI Overview scraping service is receiving too many requests. Please wait a bit before retrying.';
-      } else if (status === 500) {
-        humanMessage = 'The Google AI Overview scraping service encountered an internal error. Please try again shortly.';
+  return rateLimitedGoogleScraper(async () => {
+    try {
+      // const response = await axios.post('http://127.0.0.1:8000/scrape', {
+      //   query,
+      //   location,
+      //   max_retries: 3,
+      // });
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
+        query,
+        location,
+        max_retries: 3,
+      });
+      console.log('Google AI Overview scraper response:', response.data);
+      
+      // Validate Google scraper response
+      const data = response.data;
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid Google scraper response format');
       }
-    } else if (error instanceof Error) {
-      humanMessage = error.message;
+      
+      // Check if success is false
+      if (data.success === false) {
+        throw new Error(data.error_message || 'Google scraper failed to get AI Overview');
+      }
+      
+      // Check if ai_overview_text is empty or too short
+      if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
+        throw new Error('Google scraper returned empty or insufficient content');
+      }
+      
+      return data;
+    } catch (error: any) {
+      let status: number | undefined;
+      let humanMessage = 'We were unable to reach the Google AI Overview scraping service. Please try again in a moment.';
+      let technicalDetails: unknown = error;
+
+      if (axios.isAxiosError(error)) {
+        status = error.response?.status;
+        technicalDetails = error.response?.data ?? error.message;
+
+        const responseData = error.response?.data;
+        if (responseData && typeof responseData === 'object' && 'error' in responseData) {
+          const apiMessage = (responseData as { error?: string }).error;
+          if (apiMessage && apiMessage.trim().length > 0) {
+            humanMessage = apiMessage;
+          }
+        } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
+          humanMessage = responseData.trim();
+        } else if (status === 404) {
+          humanMessage = 'Google AI Overview scraper endpoint was not found. Ensure the scraper service is running.';
+        } else if (status === 429) {
+          humanMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
+        } else if (status && status >= 500) {
+          humanMessage = 'Google scraper service is temporarily unavailable. Please try again in a moment.';
+        }
+      }
+
+      // Enhanced error logging for debugging
+      console.error('Google AI Overview scraper error:', {
+        status,
+        message: humanMessage,
+        technicalDetails,
+        responseData: error.response?.data,
+        query: query.substring(0, 50) + '...',
+      });
+
+      const scraperError = new Error(humanMessage);
+      scraperError.name = 'ScraperError';
+      (scraperError as any).status = status;
+      throw scraperError;
     }
-
-    const logPayload: Record<string, unknown> = {
-      status,
-      message: humanMessage,
-    };
-
-    if (!(technicalDetails && typeof technicalDetails === 'object' && Object.keys(technicalDetails as Record<string, unknown>).length === 0)) {
-      logPayload.details = technicalDetails;
-    }
-
-    console.error('Google AI Overview scraper error:', logPayload);
-
-    const scraperError = new Error(humanMessage);
-    scraperError.name = 'GoogleAIScraperError';
-    (scraperError as any).status = status;
-    throw scraperError;
-  }
+  });
 }
 
 const analyzingDotPulse = keyframes`
@@ -284,6 +343,8 @@ function OptimizePageContent() {
     selectedPipeline,
     setSelectedPipeline,
     setCurrentProductId,
+    isNewProductSession,
+    setIsNewProductSession,
     products,
   } = useProductStore();
 
@@ -307,6 +368,9 @@ function OptimizePageContent() {
   
   // Deep Analysis state management
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
+
+  const maxPerplexityQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_PERPLEXITY_QUERIES, 1);
+  const maxGoogleQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_GOOGLE_QUERIES, 1);
 
   const formatSpecificationKeyForDisplay = useCallback((key: string) =>
     key
@@ -450,6 +514,41 @@ function OptimizePageContent() {
       processedSources: processedSources || [],
     };
   };
+
+  async function persistProductWithGeneratedQueries(queryData: QueryData) {
+    if (!user) return;
+    const queryDataString = JSON.stringify(queryData);
+
+    try {
+      if (currentProductId) {
+        await updateProductInSupabase(currentProductId, user.id, queryDataString);
+      } else {
+        const productRecord = createProductRecord(null, null);
+        const newProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+        if (newProductId) {
+          setCurrentProductId(newProductId);
+        }
+      }
+    } catch (error: any) {
+      const isNotFound =
+        error?.message === 'PRODUCT_NOT_FOUND' || (typeof error?.status === 'number' && error.status === 404);
+
+      if (isNotFound) {
+        try {
+          const productRecord = createProductRecord(null, null);
+          const newProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+          if (newProductId) {
+            setCurrentProductId(newProductId);
+          }
+        } catch (creationError) {
+          console.error('[Persist Queries] Failed to create product after not found:', creationError);
+        }
+        return;
+      }
+
+      console.error('[Persist Queries] Failed to persist product with queries:', error);
+    }
+  }
 
   const accentColor = "#2ED47A";
   const accentSoft = "rgba(46, 212, 122, 0.1)";
@@ -1171,6 +1270,7 @@ function OptimizePageContent() {
             },
           };
           setQueryData(queryData);
+          await persistProductWithGeneratedQueries(queryData);
           
           // Return both queries for use in scraping
           return { perplexityQuery: perplexityResult.topQuery, googleQuery: googleResult.topQuery };
@@ -1244,7 +1344,7 @@ function OptimizePageContent() {
   // Supabase is the source of truth for generated queries on reload.
   useEffect(() => {
     const loadQueryData = async () => {
-      if (!user || queryData) return;
+      if (!user || queryData || isNewProductSession) return;
 
       setIsLoadingQueries(true);
       try {
@@ -1283,7 +1383,20 @@ function OptimizePageContent() {
     };
 
     loadQueryData();
-  }, [user, queryData, loadQueryDataFromSupabase, setAllPerplexityQueries, setAllGoogleQueries, setSelectedPerplexityQueries, setSelectedGoogleQueries, setUsedPerplexityQueries, setUsedGoogleQueries, setQueryData, setGeneratedQuery]);
+  }, [
+    user,
+    queryData,
+    isNewProductSession,
+    loadQueryDataFromSupabase,
+    setAllPerplexityQueries,
+    setAllGoogleQueries,
+    setSelectedPerplexityQueries,
+    setSelectedGoogleQueries,
+    setUsedPerplexityQueries,
+    setUsedGoogleQueries,
+    setQueryData,
+    setGeneratedQuery,
+  ]);
   
   // Helper function for backwards compatibility with existing query data format
   const parseQueryData = (generatedQuery: string | null): QueryData | null => {
@@ -1374,19 +1487,29 @@ function OptimizePageContent() {
   };
   const handleQuerySelection = (query: string, pipeline: 'perplexity' | 'google_overview') => {
     if (pipeline === 'perplexity') {
-      // Toggle selection: if already selected, deselect; otherwise select
       if (selectedPerplexityQueries.includes(query)) {
-        setSelectedPerplexityQueries([]);
-      } else {
-        setSelectedPerplexityQueries([query]);
+        setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q) => q !== query));
+        return;
       }
+
+      if (selectedPerplexityQueries.length >= maxPerplexityQueries) {
+        setServerError(`You can select up to ${maxPerplexityQueries} Perplexity quer${maxPerplexityQueries === 1 ? 'y' : 'ies'} at a time.`);
+        return;
+      }
+
+      setSelectedPerplexityQueries([...selectedPerplexityQueries, query]);
     } else {
-      // Toggle selection: if already selected, deselect; otherwise select
       if (selectedGoogleQueries.includes(query)) {
-        setSelectedGoogleQueries([]);
-      } else {
-        setSelectedGoogleQueries([query]);
+        setSelectedGoogleQueries(selectedGoogleQueries.filter((q) => q !== query));
+        return;
       }
+
+      if (selectedGoogleQueries.length >= maxGoogleQueries) {
+        setServerError(`You can select up to ${maxGoogleQueries} Google quer${maxGoogleQueries === 1 ? 'y' : 'ies'} at a time.`);
+        return;
+      }
+
+      setSelectedGoogleQueries([...selectedGoogleQueries, query]);
     }
   };
   
@@ -1699,8 +1822,25 @@ function OptimizePageContent() {
       return;
     }
 
-    // 1) Check credits for a single analysis
-    const requiredCredits = 1;
+    // 2) Get the selected query for this pipeline
+    const selectedQueries = pipeline === 'perplexity' ? selectedPerplexityQueries : selectedGoogleQueries;
+    const validQueries = selectedQueries.filter(q => q && q.trim().length > 0);
+
+    if (validQueries.length === 0) {
+      setQueryGenerationError(`No valid ${pipeline === 'perplexity' ? 'Perplexity' : 'Google'} queries selected.`);
+      return;
+    }
+
+    const maxForPipeline = pipeline === 'perplexity' ? maxPerplexityQueries : maxGoogleQueries;
+    const queriesToRun = validQueries.slice(0, maxForPipeline);
+
+    const primaryQuery = queriesToRun[0];
+
+    // Update the current query for analysis (legacy: store first query)
+    setGeneratedQuery(primaryQuery);
+
+    // 1) Check credits for this analysis (scaled by query count)
+    const requiredCredits = queriesToRun.length;
     try {
       const creditCheckResponse = await fetch('/api/analyze/check-credits', {
         method: 'POST',
@@ -1730,24 +1870,13 @@ function OptimizePageContent() {
       return;
     }
 
-    // 2) Get the selected query for this pipeline
-    const selectedQueries = pipeline === 'perplexity' ? selectedPerplexityQueries : selectedGoogleQueries;
-    const validQueries = selectedQueries.filter(q => q && q.trim().length > 0);
-
-    if (validQueries.length === 0) {
-      setQueryGenerationError(`No valid ${pipeline === 'perplexity' ? 'Perplexity' : 'Google'} queries selected.`);
-      return;
-    }
-
-    const firstQuery = validQueries[0];
-
-    // Update the current query for analysis
-    setGeneratedQuery(firstQuery);
-
     // 3) Prepare current form data for analysis
     const aiReadyData = prepareDataForAI(formData);
 
     let scraperResponse: any = null;
+    let successfulQueriesRun: string[] = [];
+    let savedGoogleAnalysisId: string | null = null;
+    let savedPerplexityAnalysisId: string | null = null;
 
     setIsAnalyzing(true);
     if (pipeline === 'perplexity') {
@@ -1757,130 +1886,125 @@ function OptimizePageContent() {
     }
 
     try {
-      // 4) Run the appropriate scraper
-      if (pipeline === 'perplexity') {
-        scraperResponse = await callPerplexityScraper(firstQuery, selectedLocation);
-      } else {
-        scraperResponse = await callGoogleOverviewScraper(firstQuery, selectedLocation);
-      }
+      // 4) Mirror old behavior per query (run in parallel): scrape -> analyze (+sources)
+      // NOTE: We only insert DB rows after we have a saved product_id.
+      const perQuerySettled = await Promise.allSettled(
+        queriesToRun.map(async (q) => {
+          const scrapeData = pipeline === 'perplexity'
+            ? await callPerplexityScraper(q, selectedLocation)
+            : await callGoogleOverviewScraper(q, selectedLocation);
 
-      // 5) Call strategic-analysis (and process-sources for Perplexity) similar to the main pipeline
-      const analysisPromises: Promise<Response>[] = [];
-      let analysisIndex: number | null = null;
-      let sourcesIndex: number | null = null;
+          const scrapeWithQuery = { query: q, ...scrapeData };
 
-      analysisIndex = analysisPromises.length;
-      analysisPromises.push(
-        fetch('/api/strategic-analysis', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            aiSearchJson: scraperResponse,
-            clientProductJson: aiReadyData,
-            analysisId: undefined,
-            pipeline,
-          }),
-        })
-      );
-
-      if (pipeline === 'perplexity') {
-        // Also process sources for Perplexity
-        sourcesIndex = analysisPromises.length;
-        analysisPromises.push(
-          fetch('/api/process-sources', {
+          const analysisResp = await fetch('/api/strategic-analysis', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              sourceLinks: scraperResponse.source_links || [],
+              aiSearchJson: scrapeWithQuery,
+              clientProductJson: aiReadyData,
               analysisId: undefined,
-              pipeline: 'perplexity',
+              pipeline,
             }),
-          })
-        );
-      }
+          });
 
-      const results = await Promise.all(analysisPromises);
-
-      const getResponse = (index: number | null): Response | null =>
-        index !== null ? (results[index] as Response) : null;
-
-      const analysisResponse = getResponse(analysisIndex);
-      const sourcesResponse = getResponse(sourcesIndex);
-
-      // Handle processed sources (Perplexity only)
-      if (sourcesResponse && sourcesResponse.ok) {
-        try {
-          const sourcesData = await sourcesResponse.json();
-          if (sourcesData.success && sourcesData.sources) {
-            setProcessedSources(sourcesData.sources);
-            console.log(`[Process Sources] Stored ${sourcesData.sources.length} processed sources`);
+          if (!analysisResp.ok) {
+            const analysisError = await analysisResp.json().catch(() => ({}));
+            const userMessage = (analysisError as any)?.error || 'Failed to perform strategic analysis';
+            throw new Error(userMessage);
           }
-        } catch (sourcesError) {
-          console.error('[Process Sources] Failed to parse response:', sourcesError);
-        }
-      } else if (sourcesResponse) {
-        console.error('[Process Sources] API call failed:', sourcesResponse.status);
+
+          const analysisData = await analysisResp.json();
+          if (!analysisData || typeof analysisData !== 'object') {
+            throw new Error('Received invalid analysis data from server');
+          }
+
+          let processedSourcesForRow: any[] | null = null;
+          if (pipeline === 'perplexity') {
+            try {
+              const sourcesResp = await fetch('/api/process-sources', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  sourceLinks: (scrapeWithQuery as any)?.source_links || [],
+                  analysisId: undefined,
+                  pipeline: 'perplexity',
+                }),
+              });
+
+              if (sourcesResp.ok) {
+                const sourcesData = await sourcesResp.json().catch(() => null);
+                if (sourcesData && sourcesData.success && Array.isArray(sourcesData.sources)) {
+                  processedSourcesForRow = sourcesData.sources;
+                }
+              }
+            } catch (e) {
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn('[Process Sources] Per-query failed:', e);
+              }
+            }
+          }
+
+          return {
+            query: q,
+            scrapeWithQuery,
+            analysisData,
+            processedSourcesForRow,
+          };
+        })
+      );
+
+      const perQuerySuccess = perQuerySettled
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+        .map((r) => r.value);
+
+      if (perQuerySuccess.length === 0) {
+        throw new Error('All selected queries failed. Please try again.');
       }
 
-      if (!analysisResponse) {
-        throw new Error('No successful analysis results were produced');
+      const perQueryFailures = perQuerySettled
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map((r) => r.reason);
+
+      if (perQueryFailures.length > 0 && process.env.NODE_ENV !== 'production') {
+        console.warn('[Multi-query] Some per-query runs failed:', perQueryFailures);
       }
 
-      // 6) Parse strategic analysis and update state
+      successfulQueriesRun = perQuerySuccess
+        .map((r: any) => (typeof r?.query === 'string' ? r.query : ''))
+        .filter((q: string) => q && q.trim().length > 0);
+
+      scraperResponse = perQuerySuccess[0]?.scrapeWithQuery ?? null;
+
+      const primaryResult = perQuerySuccess[0];
+      const analysisData = primaryResult?.analysisData;
+
+      // 5) Update UI with a primary analysis (first successful query)
       let perplexityAnalysis: OptimizationAnalysis | null = null;
       let googleAnalysis: OptimizationAnalysis | null = null;
 
-      if (!analysisResponse.ok) {
-        const analysisError = await analysisResponse.json();
-        const userMessage = analysisError.error || 'Failed to perform strategic analysis';
-        console.error('Strategic analysis failed:', analysisError);
-        throw new Error(userMessage);
-      }
-
-      const analysisData = await analysisResponse.json();
-      if (!analysisData || typeof analysisData !== 'object') {
-        throw new Error('Received invalid analysis data from server');
-      }
-
       if (pipeline === 'perplexity') {
-        console.log('Perplexity strategic analysis completed:', analysisData);
         setOptimizationAnalysis(analysisData);
         perplexityAnalysis = analysisData as OptimizationAnalysis;
+        if (Array.isArray(primaryResult?.processedSourcesForRow)) {
+          setProcessedSources(primaryResult.processedSourcesForRow);
+        }
       } else {
-        console.log('Google AI Overview strategic analysis completed:', analysisData);
         setGoogleOverviewAnalysis(analysisData);
         googleAnalysis = analysisData as OptimizationAnalysis;
       }
 
+      // IDs will be set after per-query inserts
+      savedGoogleAnalysisId = null;
+      savedPerplexityAnalysisId = null;
+
       // Clear any previous analysis error since analysis succeeded
       setAnalysisError(null);
 
-      // 7) Deduct credits only after successful analysis
-      try {
-        const creditResponse = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            creditsRequired: requiredCredits,
-          }),
-        });
-
-        const creditData = await creditResponse.json();
-
-        if (!creditData.success) {
-          console.error('Failed to deduct credits after successful analysis');
-        } else {
-          console.log('Credit deducted successfully after analysis completion');
-          adjustUserCredits(-requiredCredits);
-        }
-      } catch (creditError) {
-        console.error('Credit deduction error after analysis:', creditError);
-      }
+      // 7) Credits will be deducted after successful per-query inserts
 
       // 8) Persist the analysis result as a product
       const productRecord = createProductRecord(
@@ -1928,68 +2052,152 @@ function OptimizePageContent() {
         console.error('Failed to save product to Supabase:', saveError);
       }
 
-      // 9) Save analysis to product-analyses table
+      // 9) Insert per-query rows (mirror old system, but parallel)
       let finalQueryData: QueryData | null = null;
       
       if (savedProductId) {
         try {
-          const analysisResponse = await fetch('/api/product-analyses', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          const insertSettled = await Promise.allSettled(
+            perQuerySuccess.map(async (r: any) => {
+              const saveResp = await fetch('/api/product-analyses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  product_id: savedProductId,
+                  optimization_query: pipeline === 'perplexity' ? r.query : null,
+                  google_search_query: pipeline === 'google_overview' ? r.query : null,
+                  optimization_analysis:
+                    pipeline === 'perplexity' ? (r.analysisData as OptimizationAnalysis) : null,
+                  google_overview_analysis:
+                    pipeline === 'google_overview' ? (r.analysisData as OptimizationAnalysis) : null,
+                  combined_analysis: null,
+                  source_links: (productRecord.sourceLinks || []),
+                  processed_sources:
+                    r.processedSourcesForRow ?? (productRecord.processedSources || []),
+                  perplexity_raw_serp_results:
+                    pipeline === 'perplexity' ? r.scrapeWithQuery : null,
+                  google_raw_serp_results:
+                    pipeline === 'google_overview' ? r.scrapeWithQuery : null,
+                }),
+              });
+
+              if (!saveResp.ok) {
+                throw new Error(`Failed to save analysis history (status ${saveResp.status})`);
+              }
+
+              const saveData = await saveResp.json();
+              return {
+                query: r.query,
+                savedGoogleId:
+                  saveData.googleAnalysis?.id || saveData.analysis?.google_analysis_id || null,
+                savedPerplexityId:
+                  saveData.perplexityAnalysis?.id || saveData.analysis?.perplexity_analysis_id || null,
+              };
+            })
+          );
+
+          const insertSuccess = insertSettled
+            .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+            .map((r) => r.value);
+
+          if (insertSuccess.length === 0) {
+            throw new Error('Failed to save any analysis rows. Please try again.');
+          }
+
+          successfulQueriesRun = insertSuccess
+            .map((r: any) => (typeof r?.query === 'string' ? r.query : ''))
+            .filter((q: string) => q && q.trim().length > 0);
+
+          savedGoogleAnalysisId = insertSuccess
+            .map((r: any) => r.savedGoogleId)
+            .filter((id: any) => typeof id === 'string' && id.length > 0)
+            .slice(-1)[0] ?? null;
+
+          savedPerplexityAnalysisId = insertSuccess
+            .map((r: any) => r.savedPerplexityId)
+            .filter((id: any) => typeof id === 'string' && id.length > 0)
+            .slice(-1)[0] ?? null;
+
+          if (String(process.env.NODE_ENV) === 'debug') {
+            console.log('[DEBUG][product-analyses] single-engine per-query inserts', {
+              pipeline,
               product_id: savedProductId,
-              optimization_query: pipeline === 'perplexity' ? firstQuery : null,
-              google_search_query: pipeline === 'google_overview' ? firstQuery : null,
-              optimization_analysis: pipeline === 'perplexity' ? perplexityAnalysis : null,
-              google_overview_analysis: pipeline === 'google_overview' ? googleAnalysis : null,
-              combined_analysis: null,
-              source_links: productRecord.sourceLinks || [],
-              processed_sources: productRecord.processedSources || [],
-              perplexity_raw_serp_results: pipeline === 'perplexity' ? scraperResponse : null,
-              google_raw_serp_results: pipeline === 'google_overview' ? scraperResponse : null,
-            }),
-          });
-          
-          if (analysisResponse.ok) {
-            const analysisData = await analysisResponse.json();
-            console.log('Analysis saved to product_analysis tables with IDs:', {
-              google: analysisData.googleAnalysis?.id,
-              perplexity: analysisData.perplexityAnalysis?.id,
+              queriesToRun,
+              successfulQueriesRun,
+              savedGoogleAnalysisId,
+              savedPerplexityAnalysisId,
+            });
+          }
+
+          // 10) Deduct credits based on successful inserts
+          try {
+            const creditsToDeduct = successfulQueriesRun.length;
+            const creditResponse = await fetch('/api/analyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: user.id,
+                creditsRequired: creditsToDeduct,
+              }),
             });
 
-            // 10) Mark the used query in Supabase ONLY after successful analysis save
-            if (queryDataString) {
-              // Parse the query data that was just saved to ensure consistency
-              let currentQueryData: QueryData | null = null;
-              try {
-                currentQueryData = JSON.parse(queryDataString) as QueryData;
-              } catch (error) {
-                console.warn('Failed to parse saved query data:', error);
-              }
-              
-              if (currentQueryData) {
-                const updatedQueryData: QueryData = {
-                  ...currentQueryData,
-                  used: {
-                    perplexity:
-                      pipeline === 'perplexity'
-                        ? [...new Set([...currentQueryData.used.perplexity, firstQuery])]
-                        : currentQueryData.used.perplexity,
-                    google:
-                      pipeline === 'google_overview'
-                        ? [...new Set([...currentQueryData.used.google, firstQuery])]
-                        : currentQueryData.used.google,
-                  },
-                };
-                await updateQueryDataInSupabase(user.id, updatedQueryData);
-                setQueryData(updatedQueryData);
-                setUsedPerplexityQueries(updatedQueryData.used.perplexity);
-                setUsedGoogleQueries(updatedQueryData.used.google);
-                finalQueryData = updatedQueryData;
-              }
+            const creditData = await creditResponse.json();
+
+            if (!creditData.success) {
+              console.error('Failed to deduct credits after successful analysis');
+            } else {
+              console.log('Credit deducted successfully after analysis completion');
+              adjustUserCredits(-creditsToDeduct);
             }
-          } else {
-            console.error('Failed to save analysis to product_analysis tables. Response not OK:', analysisResponse.status);
+          } catch (creditError) {
+            console.error('Credit deduction error after analysis:', creditError);
+          }
+
+          // 11) Mark the used queries in Supabase ONLY after successful inserts
+          if (queryDataString) {
+            let currentQueryData: QueryData | null = null;
+            try {
+              currentQueryData = JSON.parse(queryDataString) as QueryData;
+            } catch (error) {
+              console.warn('Failed to parse saved query data:', error);
+            }
+
+            if (currentQueryData) {
+              const updatedQueryData: QueryData = {
+                ...currentQueryData,
+                used: {
+                  perplexity:
+                    pipeline === 'perplexity'
+                      ? [...new Set([...currentQueryData.used.perplexity, ...successfulQueriesRun])]
+                      : currentQueryData.used.perplexity,
+                  google:
+                    pipeline === 'google_overview'
+                      ? [...new Set([...currentQueryData.used.google, ...successfulQueriesRun])]
+                      : currentQueryData.used.google,
+                },
+              };
+              await updateQueryDataInSupabase(user.id, updatedQueryData);
+              setQueryData(updatedQueryData);
+              setUsedPerplexityQueries(updatedQueryData.used.perplexity);
+              setUsedGoogleQueries(updatedQueryData.used.google);
+              finalQueryData = updatedQueryData;
+            }
+          }
+
+          // Update analysis_history with product_id and available analysis IDs from the split tables
+          try {
+            await fetch('/api/analyze/update-history', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: user.id,
+                productId: savedProductId,
+                googleAnalysisId: savedGoogleAnalysisId,
+                perplexityAnalysisId: savedPerplexityAnalysisId,
+              }),
+            });
+          } catch (historyError) {
+            console.error('Failed to update analysis history:', historyError);
           }
         } catch (analysisSaveError) {
           console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
@@ -2028,18 +2236,20 @@ function OptimizePageContent() {
       return;
     }
     
-    // Get selected queries for both pipelines
-    const perplexityQuery = selectedPerplexityQueries.find(q => q && q.trim());
-    const googleQuery = selectedGoogleQueries.find(q => q && q.trim());
-    
-    if (!perplexityQuery || !googleQuery) {
+    const perplexityQueries = selectedPerplexityQueries.filter((q) => q && q.trim()).slice(0, maxPerplexityQueries);
+    const googleQueries = selectedGoogleQueries.filter((q) => q && q.trim()).slice(0, maxGoogleQueries);
+
+    const perplexityQuery = perplexityQueries[0] || null;
+    const googleQuery = googleQueries[0] || null;
+
+    if (perplexityQueries.length === 0 || googleQueries.length === 0) {
       setQueryGenerationError('Both Perplexity and Google queries must be selected for combined analysis.');
       return;
     }
     
-    // 1) Check credits for running both analyses
+    // 1) Check credits for running both analyses (scaled by query count)
     try {
-      const requiredCredits = 2; // One for each analysis
+      const requiredCredits = perplexityQueries.length + googleQueries.length;
       const creditCheckResponse = await fetch('/api/analyze/check-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2073,194 +2283,168 @@ function OptimizePageContent() {
 
     let perplexityScraperResponse: any = null;
     let googleScraperResponse: any = null;
+    let perplexityScrapesForHistory: any[] = [];
+    let googleScrapesForHistory: any[] = [];
+    let perplexityQueriesRun: string[] = [];
+    let googleQueriesRun: string[] = [];
 
     setIsAnalyzing(true);
     setIsPerplexityScraping(true);
     setIsGoogleScraping(true);
 
     try {
-      // 3) Run both scrapers concurrently
-      const [perplexityResult, googleResult] = await Promise.all([
-        callPerplexityScraper(perplexityQuery, selectedLocation),
-        callGoogleOverviewScraper(googleQuery, selectedLocation),
+      // 3) Mirror old behavior per query (run in parallel): scrape -> analyze (+sources)
+      const [perplexityPerQuery, googlePerQuery] = await Promise.all([
+        Promise.allSettled(
+          perplexityQueries.map(async (q) => {
+            const scrapeData = await callPerplexityScraper(q, selectedLocation);
+            const scrapeWithQuery = { query: q, ...scrapeData };
+
+            const analysisResp = await fetch('/api/strategic-analysis', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                aiSearchJson: scrapeWithQuery,
+                clientProductJson: aiReadyData,
+                analysisId: undefined,
+                pipeline: 'perplexity',
+              }),
+            });
+
+            if (!analysisResp.ok) {
+              const analysisError = await analysisResp.json().catch(() => ({}));
+              const userMessage = (analysisError as any)?.error || 'Failed to perform strategic analysis';
+              throw new Error(userMessage);
+            }
+
+            const analysisData = await analysisResp.json();
+            if (!analysisData || typeof analysisData !== 'object') {
+              throw new Error('Received invalid Perplexity analysis data from server');
+            }
+
+            let processedSourcesForRow: any[] | null = null;
+            try {
+              const sourcesResp = await fetch('/api/process-sources', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  sourceLinks: (scrapeWithQuery as any)?.source_links || [],
+                  analysisId: undefined,
+                  pipeline: 'perplexity',
+                }),
+              });
+
+              if (sourcesResp.ok) {
+                const sourcesData = await sourcesResp.json().catch(() => null);
+                if (sourcesData && sourcesData.success && Array.isArray(sourcesData.sources)) {
+                  processedSourcesForRow = sourcesData.sources;
+                }
+              }
+            } catch (e) {
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn('[Process Sources] Per-query failed:', e);
+              }
+            }
+
+            return {
+              query: q,
+              scrapeWithQuery,
+              analysisData,
+              processedSourcesForRow,
+            };
+          })
+        ),
+        Promise.allSettled(
+          googleQueries.map(async (q) => {
+            const scrapeData = await callGoogleOverviewScraper(q, selectedLocation);
+            const scrapeWithQuery = { query: q, ...scrapeData };
+
+            const analysisResp = await fetch('/api/strategic-analysis', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                aiSearchJson: scrapeWithQuery,
+                clientProductJson: aiReadyData,
+                analysisId: undefined,
+                pipeline: 'google_overview',
+              }),
+            });
+
+            if (!analysisResp.ok) {
+              const analysisError = await analysisResp.json().catch(() => ({}));
+              const userMessage = (analysisError as any)?.error || 'Failed to perform strategic analysis';
+              throw new Error(userMessage);
+            }
+
+            const analysisData = await analysisResp.json();
+            if (!analysisData || typeof analysisData !== 'object') {
+              throw new Error('Received invalid Google analysis data from server');
+            }
+
+            return {
+              query: q,
+              scrapeWithQuery,
+              analysisData,
+              processedSourcesForRow: null,
+            };
+          })
+        ),
       ]);
 
-      perplexityScraperResponse = perplexityResult;
-      googleScraperResponse = googleResult;
+      const perplexitySuccess = perplexityPerQuery
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+        .map((r) => r.value);
+      const googleSuccess = googlePerQuery
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+        .map((r) => r.value);
 
-      // 4) Call strategic-analysis and process-sources APIs (same pattern as handleSubmit)
-      const analysisPromises: Promise<Response>[] = [];
-      let perplexityAnalysisIndex: number | null = null;
-      let googleAnalysisIndex: number | null = null;
-      let sourcesIndex: number | null = null;
-
-      if (perplexityScraperResponse) {
-        perplexityAnalysisIndex = analysisPromises.length;
-        analysisPromises.push(
-          fetch('/api/strategic-analysis', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              aiSearchJson: perplexityScraperResponse,
-              clientProductJson: aiReadyData,
-              analysisId: undefined,
-              pipeline: 'perplexity',
-            }),
-          })
-        );
-
-        // Process sources for Perplexity
-        sourcesIndex = analysisPromises.length;
-        analysisPromises.push(
-          fetch('/api/process-sources', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              sourceLinks: perplexityScraperResponse.source_links || [],
-              analysisId: undefined,
-              pipeline: 'perplexity',
-            }),
-          })
-        );
+      if (perplexitySuccess.length === 0 && googleSuccess.length === 0) {
+        throw new Error('No successful analysis results were produced');
       }
 
-      if (googleScraperResponse) {
-        googleAnalysisIndex = analysisPromises.length;
-        analysisPromises.push(
-          fetch('/api/strategic-analysis', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              aiSearchJson: googleScraperResponse,
-              clientProductJson: aiReadyData,
-              analysisId: undefined,
-              pipeline: 'google_overview',
-            }),
-          })
-        );
-      }
+      perplexityScrapesForHistory = perplexitySuccess.map((r: any) => r.scrapeWithQuery);
+      googleScrapesForHistory = googleSuccess.map((r: any) => r.scrapeWithQuery);
+      perplexityQueriesRun = perplexitySuccess.map((r: any) => r.query);
+      googleQueriesRun = googleSuccess.map((r: any) => r.query);
 
-      const results = await Promise.all(analysisPromises);
-
-      const getResponse = (index: number | null): Response | null =>
-        index !== null ? (results[index] as Response) : null;
-
-      const perplexityAnalysisResponse = getResponse(perplexityAnalysisIndex);
-      const sourcesResponse = getResponse(sourcesIndex);
-      const googleAnalysisResponse = getResponse(googleAnalysisIndex);
-
-      // Handle processed sources (Perplexity only)
-      if (sourcesResponse && sourcesResponse.ok) {
-        try {
-          const sourcesData = await sourcesResponse.json();
-          if (sourcesData.success && sourcesData.sources) {
-            setProcessedSources(sourcesData.sources);
-            console.log(`[Process Sources] Stored ${sourcesData.sources.length} processed sources`);
-          }
-        } catch (sourcesError) {
-          console.error('[Process Sources] Failed to parse response:', sourcesError);
-        }
-      } else if (sourcesResponse) {
-        console.error('[Process Sources] API call failed:', sourcesResponse.status);
-      }
+      perplexityScraperResponse = perplexityScrapesForHistory[0] ?? null;
+      googleScraperResponse = googleScrapesForHistory[0] ?? null;
 
       let primaryAnalysis: OptimizationAnalysis | null = null;
       let perplexityAnalysis: OptimizationAnalysis | null = null;
       let googleAnalysis: OptimizationAnalysis | null = null;
 
-      // Perplexity strategic analysis
-      if (perplexityAnalysisResponse) {
-        if (!perplexityAnalysisResponse.ok) {
-          const analysisError = await perplexityAnalysisResponse.json().catch((e) => {
-            console.error('Failed to parse Perplexity error response:', e);
-            return { error: 'Failed to perform strategic analysis' };
-          });
-          const userMessage = analysisError.error || 'Failed to perform strategic analysis';
-          console.error('Perplexity strategic analysis failed:', analysisError);
-          throw new Error(userMessage);
-        }
-        const perplexityData = await perplexityAnalysisResponse.json().catch((e) => {
-          console.error('Failed to parse Perplexity analysis JSON:', e);
-          return null;
-        });
-        if (!perplexityData || typeof perplexityData !== 'object') {
-          throw new Error('Received invalid Perplexity analysis data from server');
-        }
-        console.log('Perplexity strategic analysis completed:', perplexityData);
-        setOptimizationAnalysis(perplexityData);
-        perplexityAnalysis = perplexityData as OptimizationAnalysis;
+      if (perplexitySuccess.length > 0) {
+        setOptimizationAnalysis(perplexitySuccess[0].analysisData);
+        perplexityAnalysis = perplexitySuccess[0].analysisData as OptimizationAnalysis;
         primaryAnalysis = perplexityAnalysis;
-      }
-
-      // Google strategic analysis
-      if (googleAnalysisResponse) {
-        try {
-          if (googleAnalysisResponse.ok) {
-            const googleData = await googleAnalysisResponse.json().catch((e) => {
-              console.error('Failed to parse Google analysis JSON:', e);
-              return null;
-            });
-            if (!googleData || typeof googleData !== 'object') {
-              console.error('Received invalid Google analysis data from server');
-            } else {
-              console.log('Google AI Overview strategic analysis completed:', googleData);
-              setGoogleOverviewAnalysis(googleData);
-              googleAnalysis = googleData as OptimizationAnalysis;
-              if (!primaryAnalysis) {
-                primaryAnalysis = googleAnalysis;
-              }
-            }
-          } else {
-            const googleError = await googleAnalysisResponse.json().catch((e) => {
-              console.error('Failed to parse Google error response:', e);
-              return null;
-            });
-            console.error('Google AI Overview strategic analysis failed:', {
-              status: googleAnalysisResponse.status,
-              error: googleError,
-            });
-          }
-        } catch (googleAnalysisParseError) {
-          console.error('Failed to handle Google AI Overview strategic analysis response:', googleAnalysisParseError);
+        if (Array.isArray(perplexitySuccess[0].processedSourcesForRow)) {
+          setProcessedSources(perplexitySuccess[0].processedSourcesForRow);
         }
       }
 
-      if (!primaryAnalysis) {
-        throw new Error('No successful analysis results were produced');
+      if (googleSuccess.length > 0) {
+        setGoogleOverviewAnalysis(googleSuccess[0].analysisData);
+        googleAnalysis = googleSuccess[0].analysisData as OptimizationAnalysis;
+        if (!primaryAnalysis) {
+          primaryAnalysis = googleAnalysis;
+        }
       }
 
       // Clear any previous analysis error since analysis succeeded
       setAnalysisError(null);
 
-      // 5) Deduct credits only after successful analysis
-      try {
-        const requiredCredits = 2;
-        const creditResponse = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            creditsRequired: requiredCredits,
-          }),
-        });
-
-        const creditData = await creditResponse.json();
-
-        if (!creditData.success) {
-          console.error('Failed to deduct credits after successful analysis');
-        } else {
-          console.log('Credit deducted successfully after analysis completion');
-          adjustUserCredits(-requiredCredits);
-        }
-      } catch (creditError) {
-        console.error('Credit deduction error after analysis:', creditError);
+      if (!primaryAnalysis) {
+        throw new Error('No successful analysis results were produced');
       }
+
+      // 5) Credits will be deducted after successful per-query inserts
 
       // 6) Persist the analysis result as a product, keeping Perplexity and Google separate
       const productRecord = createProductRecord(perplexityAnalysis, googleAnalysis);
@@ -2313,62 +2497,171 @@ function OptimizePageContent() {
       
       if (savedProductId) {
         try {
-          const analysisResponse = await fetch('/api/product-analyses', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          // Insert per-query rows for each engine
+          const [googleInsertSettled, perplexityInsertSettled] = await Promise.all([
+            Promise.allSettled(
+              googleSuccess.map(async (r: any) => {
+                const saveResp = await fetch('/api/product-analyses', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    product_id: savedProductId,
+                    optimization_query: null,
+                    google_search_query: r.query,
+                    optimization_analysis: null,
+                    google_overview_analysis: r.analysisData as OptimizationAnalysis,
+                    combined_analysis: null,
+                    source_links: productRecord.sourceLinks || [],
+                    processed_sources: productRecord.processedSources || [],
+                    google_raw_serp_results: r.scrapeWithQuery,
+                    perplexity_raw_serp_results: null,
+                  }),
+                });
+
+                if (!saveResp.ok) {
+                  throw new Error(`Failed to save Google analysis history (status ${saveResp.status})`);
+                }
+
+                const saveData = await saveResp.json();
+                return {
+                  query: r.query,
+                  savedGoogleId:
+                    saveData.googleAnalysis?.id || saveData.analysis?.google_analysis_id || null,
+                };
+              })
+            ),
+            Promise.allSettled(
+              perplexitySuccess.map(async (r: any) => {
+                const saveResp = await fetch('/api/product-analyses', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    product_id: savedProductId,
+                    optimization_query: r.query,
+                    google_search_query: null,
+                    optimization_analysis: r.analysisData as OptimizationAnalysis,
+                    google_overview_analysis: null,
+                    combined_analysis: null,
+                    source_links: productRecord.sourceLinks || [],
+                    processed_sources:
+                      r.processedSourcesForRow ?? (productRecord.processedSources || []),
+                    perplexity_raw_serp_results: r.scrapeWithQuery,
+                    google_raw_serp_results: null,
+                  }),
+                });
+
+                if (!saveResp.ok) {
+                  throw new Error(`Failed to save Perplexity analysis history (status ${saveResp.status})`);
+                }
+
+                const saveData = await saveResp.json();
+                return {
+                  query: r.query,
+                  savedPerplexityId:
+                    saveData.perplexityAnalysis?.id || saveData.analysis?.perplexity_analysis_id || null,
+                };
+              })
+            ),
+          ]);
+
+          const googleInsertSuccess = googleInsertSettled
+            .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+            .map((r) => r.value);
+          const perplexityInsertSuccess = perplexityInsertSettled
+            .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+            .map((r) => r.value);
+
+          googleQueriesRun = googleInsertSuccess.map((r: any) => r.query);
+          perplexityQueriesRun = perplexityInsertSuccess.map((r: any) => r.query);
+
+          savedGoogleAnalysisId = googleInsertSuccess
+            .map((r: any) => r.savedGoogleId)
+            .filter((id: any) => typeof id === 'string' && id.length > 0)
+            .slice(-1)[0] ?? null;
+          savedPerplexityAnalysisId = perplexityInsertSuccess
+            .map((r: any) => r.savedPerplexityId)
+            .filter((id: any) => typeof id === 'string' && id.length > 0)
+            .slice(-1)[0] ?? null;
+
+          if (String(process.env.NODE_ENV) === 'debug') {
+            console.log('[DEBUG][product-analyses] combined per-query inserts', {
               product_id: savedProductId,
-              optimization_query: perplexityQuery || null,
-              google_search_query: googleQuery || null,
-              optimization_analysis: perplexityAnalysis || null,
-              google_overview_analysis: googleAnalysis || null,
-              combined_analysis:
-                perplexityAnalysis && googleAnalysis
-                  ? { perplexity: perplexityAnalysis, google: googleAnalysis }
-                  : null,
-              source_links: productRecord.sourceLinks || [],
-              processed_sources: productRecord.processedSources || [],
-              perplexity_raw_serp_results: perplexityScraperResponse || null,
-              google_raw_serp_results: googleScraperResponse || null,
-            }),
-          });
-          
-          if (analysisResponse.ok) {
-            const analysisData = await analysisResponse.json();
-            savedGoogleAnalysisId = analysisData.googleAnalysis?.id || analysisData.analysis?.google_analysis_id || null;
-            savedPerplexityAnalysisId = analysisData.perplexityAnalysis?.id || analysisData.analysis?.perplexity_analysis_id || null;
-            console.log('Analysis saved to product_analysis tables with IDs:', {
-              google: savedGoogleAnalysisId,
-              perplexity: savedPerplexityAnalysisId,
+              perplexityQueries,
+              googleQueries,
+              perplexityQueriesRun,
+              googleQueriesRun,
+              savedGoogleAnalysisId,
+              savedPerplexityAnalysisId,
+            });
+          }
+
+          // Deduct credits based on successful inserts
+          try {
+            const creditsToDeduct = perplexityQueriesRun.length + googleQueriesRun.length;
+            const creditResponse = await fetch('/api/analyze', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: user.id,
+                creditsRequired: creditsToDeduct,
+              }),
             });
 
-            // 7) Mark queries as used in queryData ONLY after successful analysis save
-            if (queryDataString) {
-              // Parse the query data that was just saved to ensure consistency
-              let currentQueryData: QueryData | null = null;
-              try {
-                currentQueryData = JSON.parse(queryDataString) as QueryData;
-              } catch (error) {
-                console.warn('Failed to parse saved query data:', error);
-              }
+            const creditData = await creditResponse.json();
 
-              if (currentQueryData) {
-                const updatedQueryData: QueryData = {
-                  ...currentQueryData,
-                  used: {
-                    perplexity: perplexityQuery ? [...new Set([...currentQueryData.used.perplexity, perplexityQuery])] : currentQueryData.used.perplexity,
-                    google: googleQuery ? [...new Set([...currentQueryData.used.google, googleQuery])] : currentQueryData.used.google,
-                  },
-                };
-                await updateQueryDataInSupabase(user.id, updatedQueryData);
-                setQueryData(updatedQueryData);
-                setUsedPerplexityQueries(updatedQueryData.used.perplexity);
-                setUsedGoogleQueries(updatedQueryData.used.google);
-                finalQueryData = updatedQueryData;
-              }
+            if (!creditData.success) {
+              console.error('Failed to deduct credits after successful analysis');
+            } else {
+              console.log('Credit deducted successfully after analysis completion');
+              adjustUserCredits(-creditsToDeduct);
             }
-          } else {
-            console.error('Failed to save analysis to product_analysis tables. Response not OK:', analysisResponse.status);
+          } catch (creditError) {
+            console.error('Credit deduction error after analysis:', creditError);
+          }
+
+          // Mark queries as used in queryData ONLY after successful inserts
+          if (queryDataString) {
+            let currentQueryData: QueryData | null = null;
+            try {
+              currentQueryData = JSON.parse(queryDataString) as QueryData;
+            } catch (error) {
+              console.warn('Failed to parse saved query data:', error);
+            }
+
+            if (currentQueryData) {
+              const updatedQueryData: QueryData = {
+                ...currentQueryData,
+                used: {
+                  perplexity: perplexityQueriesRun.length > 0
+                    ? [...new Set([...currentQueryData.used.perplexity, ...perplexityQueriesRun])]
+                    : currentQueryData.used.perplexity,
+                  google: googleQueriesRun.length > 0
+                    ? [...new Set([...currentQueryData.used.google, ...googleQueriesRun])]
+                    : currentQueryData.used.google,
+                },
+              };
+              await updateQueryDataInSupabase(user.id, updatedQueryData);
+              setQueryData(updatedQueryData);
+              setUsedPerplexityQueries(updatedQueryData.used.perplexity);
+              setUsedGoogleQueries(updatedQueryData.used.google);
+              finalQueryData = updatedQueryData;
+            }
+          }
+
+          // Update analysis_history with product_id and available analysis IDs from the split tables
+          try {
+            await fetch('/api/analyze/update-history', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: user.id,
+                productId: savedProductId,
+                googleAnalysisId: savedGoogleAnalysisId,
+                perplexityAnalysisId: savedPerplexityAnalysisId,
+              }),
+            });
+          } catch (historyError) {
+            console.error('Failed to update analysis history:', historyError);
           }
         } catch (analysisSaveError) {
           console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
@@ -2900,13 +3193,35 @@ function OptimizePageContent() {
               // Also persist this specific analysis run into the split analysis tables for history
               if (savedProductId) {
                 try {
+                  const boundedPerplexityQueries = selectedPerplexityQueries
+                    .map((q) => (typeof q === 'string' ? q.trim() : ''))
+                    .filter((q) => q.length > 0)
+                    .slice(0, maxPerplexityQueries);
+                  const boundedGoogleQueries = selectedGoogleQueries
+                    .map((q) => (typeof q === 'string' ? q.trim() : ''))
+                    .filter((q) => q.length > 0)
+                    .slice(0, maxGoogleQueries);
+
+                  const serializedPerplexity = serializeQueriesForHistory(boundedPerplexityQueries);
+                  const serializedGoogle = serializeQueriesForHistory(boundedGoogleQueries);
+
+                  if (String(process.env.NODE_ENV) === 'debug') {
+                    console.log('[DEBUG][product-analyses] handleSubmit save', {
+                      product_id: savedProductId,
+                      boundedPerplexityQueries,
+                      boundedGoogleQueries,
+                      serializedPerplexity,
+                      serializedGoogle,
+                    });
+                  }
+
                   const analysisResponse = await fetch('/api/product-analyses', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       product_id: savedProductId,
-                      optimization_query: selectedPerplexityQueries.length > 0 ? selectedPerplexityQueries[0] : null,
-                      google_search_query: selectedGoogleQueries.length > 0 ? selectedGoogleQueries[0] : null,
+                      optimization_query: serializedPerplexity,
+                      google_search_query: serializedGoogle,
                       optimization_analysis: perplexityAnalysis || null,
                       google_overview_analysis: googleAnalysis || null,
                       combined_analysis:
@@ -4670,7 +4985,7 @@ function OptimizePageContent() {
                     🔍 Perplexity Search Queries
                   </Typography>
                   <Chip size="sm" variant="soft" sx={{ backgroundColor: "rgba(46, 212, 122, 0.12)", color: "#2ED47A" }}>
-                    {selectedPerplexityQueries.length} selected
+                    {selectedPerplexityQueries.length}/{maxPerplexityQueries} selected
                   </Chip>
                 </Box>
                 <Stack spacing={2}>
@@ -4841,7 +5156,7 @@ function OptimizePageContent() {
                     🌐 Google AI Overview Queries
                   </Typography>
                   <Chip size="sm" variant="soft" sx={{ backgroundColor: "rgba(46, 212, 122, 0.12)", color: "#2ED47A" }}>
-                    {selectedGoogleQueries.length} selected
+                    {selectedGoogleQueries.length}/{maxGoogleQueries} selected
                   </Chip>
                 </Box>
                 <Stack spacing={2}>
@@ -5284,6 +5599,7 @@ function OptimizePageContent() {
               engine={sovCardEngine}
               onDeepAnalysisClick={() => setShowDeepAnalysis(!showDeepAnalysis)}
               isDeepAnalysisActive={showDeepAnalysis}
+              product={products.find((p) => p.id === currentProductId)}
             />
             
             {/* Deep Analysis Card */}
@@ -5309,7 +5625,7 @@ function OptimizePageContent() {
             )}
           </Box>
         )}
-              </Box>
+      </Box>
     </Box>
   );
 }

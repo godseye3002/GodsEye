@@ -1,0 +1,66 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI's response prioritizes foundational marketing techniques (like UTMs) and well-established category leaders (Google Analytics, Bitly) rather than providing a list of alternative tracking tools.",
+    "strategic_analogy": "This is like trying to sell a specific brand of power drill in a workshop where the customer is asking 'How do I build a bookshelf?'. The AI is providing a step-by-step guide, mentioning generic tool types and only naming the most famous brands as examples. Your tool needs to be presented as an essential part of that 'how-to' process."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name in the AI overview text or referenced in any of the provided source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a 'how-to' guide for marketers seeking deeper insights. It's not recommending a single best tool but rather a comprehensive strategy involving techniques (UTMs, attribution models) and categories of tools (URL shorteners, web analytics), using well-known brands as examples to illustrate these points.",
+    "key_decision_factors": [
+      "Core techniques (UTM Parameters, Attribution Models)",
+      "Tool categories (URL Shorteners, Web/App Analytics)",
+      "Brand recognition within a category (Bitly, Google Analytics, Amplitude)",
+      "Specific benefits (branded links, ROI focus, journey mapping, granular tracking)",
+      "Source authority (brand blogs, third-party analytics blogs, marketing publications)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in a mix of authoritative brand-owned content (Bitly's blog), third-party instructional blogs explaining a specific process (adasight.com on Amplitude), and broader marketing strategy guides from educational or B2B sites (IMD, Cognism)."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Google Analytics",
+      "reason_for_inclusion": "Positioned as the essential, foundational tool for utilizing UTM parameters to achieve granular tracking of sources, mediums, and campaigns.",
+      "source_of_mention": "https://www.google.com/search?q=UTM+Parameters+%28Google+Analytics%29&sca_esv=5de84945538fbbc7&source=hp&ei=sbBeafurBcyvseMP3v3U4QI&iflsig=AFdpzrgAAAAAaV6-wShrEzpWgHQPo_ukvvcmawOues8K&ved=2ahUKEwjAg_zikfqRAxVTTGwGHa1PAlIQgK4QegQIAxAB&uact=5&oq=Recommendations+for+link+tracking+analytics+to+gain+deeper+insight+into+marketing+channel+performance%3F&gs_lp=Egdnd3Mtd2l6ImZSZWNvbW1lbmRhdGlvbnMgZm9yIGxpbmsgdHJhY2tpbmcgYW5hbHl0aWNzIHRvIGdhaW4gZGVlcGVyIGluc2lnaHQgaW50byBtYXJrZXRpbmcgY2hhbm5lbCBwZXJmb3JtYW5jZT9Ikx5QAFioG3AAeACQAQCYAaMHoAGvG6oBAzYtNLgBA8gBAPgBAZgCAKACAJgDAJIHAKAH2gOyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAgmKXg7Lgr2DHjdG1sTaR-gFRLaLkKc-wN4jlEQ_piR3wtM4ytyTrGrcFNUkbQcCo7bcnJTIyz05gY7ewdSwgKJx3ag26YeLRsQndQlqxI1E7OwnhUSSmv-5mnKUuutU&csui=3"
+    },
+    {
+      "competitor_name": "Bitly",
+      "reason_for_inclusion": "Mentioned as a primary example of a URL shortener that simplifies long URLs, offers branded links, and tracks basic engagement metrics like clicks and referrers.",
+      "source_of_mention": "https://bitly.com/blog/link-tracking-software/#:~:text=Focus%20on%20ROI,help%20you%20adjust%20strategies%20quickly?"
+    },
+    {
+      "competitor_name": "Rebrandly",
+      "reason_for_inclusion": "Cited alongside Bitly as a representative tool within the 'URL Shorteners' category, reinforcing the AI's approach of recommending tool types with examples.",
+      "source_of_mention": "https://www.google.com/search?q=URL+Shorteners&sca_esv=5de84945538fbbc7&source=hp&ei=sbBeafurBcyvseMP3v3U4QI&iflsig=AFdpzrgAAAAAaV6-wShrEzpWgHQPo_ukvvcmawOues8K&ved=2ahUKEwjAg_zikfqRAxVTTGwGHa1PAlIQgK4QegQIAxAD&uact=5&oq=Recommendations+for+link+tracking+analytics+to+gain+deeper+insight+into+marketing+channel+performance%3F&gs_lp=Egdnd3Mtd2l6ImZSZWNvbW1lbmRhdGlvbnMgZm9yIGxpbmsgdHJhY2tpbmcgYW5hbHl0aWNzIHRvIGdhaW4gZGVlcGVyIGluc2lnaHQgaW50byBtYXJrZXRpbmcgY2hhbm5lbCBwZXJmb3JtYW5jZT9Ikx5QAFioG3AAeACQAQCYAaMHoAGvG6oBAzYtNLgBA8gBAPgBAZgCAKACAJgDAJIHAKAH2gOyBwC4BwDCBwDIBwCACAA&sclient=gws-wiz&mstk=AUtExfAgmKXg7Lgr2DHjdG1sTaR-gFRLaLkKc-wN4jlEQ_piR3wtM4ytyTrGrcFNUkbQcCo7bcnJTIyz05gY7ewdSwgKJx3ag26YeLRsQndQlqxI1E7OwnhUSSmv-5mnKUuutU&csui=3"
+    },
+    {
+      "competitor_name": "Amplitude",
+      "reason_for_inclusion": "Highlighted as an example of a Web/App Analytics platform used to track user behavior, traffic sources, and engagement at scale.",
+      "source_of_mention": "https://www.adasight.com/blog/track-marketing-channels-campaigns-amplitude-analytics#:~:text=and%20Twitter%20ads.-,Using%20Traffic%20by%20Channel%20Feature%20for%20Deeper%20Insights,to%20allocate%20resources%20more%20efficiently."
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary gap is not in product features but in content strategy and brand association. The AI is rewarding brands that are synonymous with the marketing techniques themselves. To get included, Linkrunner must create content that positions it as an essential tool for executing the very strategies the AI is recommending.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Linkrunner was excluded because the AI's answer focuses on foundational techniques and well-known tool categories, only naming the most established brands (Bitly, Google Analytics) as examples. Your product, while relevant, lacks the widespread brand recognition and the type of third-party content that would position it as a primary example for these techniques.",
+      "path_to_inclusion": "Create authoritative content that explicitly connects Linkrunner to the core concepts the AI values, such as 'UTM parameter management', 'multi-channel attribution', and 'ROI analysis'. Pursue features on marketing analytics blogs that explain *how* to use Linkrunner to solve these specific problems, mirroring the type of content cited for competitors like Amplitude and Bitly."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Strategy Reframing",
+      "action": "Develop a series of blog posts and guides centered on the AI's key themes, such as 'The Ultimate Guide to UTM Tracking with Linkrunner' or 'How to Measure Channel ROI for Deeper Insights'. This directly associates your brand with the solution's narrative."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Revise your primary product and feature pages to explicitly use the terminology rewarded by the AI. Ensure phrases like 'granular tracking with UTMs', 'full customer journey mapping', 'branded links', and 'multi-channel attribution' are prominent in your copy."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Target marketing and analytics blogs for guest posts or product reviews that showcase Linkrunner as a powerful tool for implementing the strategies outlined in the AI's answer. A feature on a site that compares link tracking tools could be highly effective."
+    }
+  ]
+}

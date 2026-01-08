@@ -50,7 +50,7 @@ export function useAnalysisListener<T = any>(productId: string, source: Analysis
 
     // Restore last known state for this product+source (prevents losing state on engine switch)
     setData(((key && DATA_CACHE.get(key)) as T | undefined) ?? null);
-    setStatus((key && STATUS_CACHE.get(key)) ?? 'completed');
+    setStatus(key ? (STATUS_CACHE.get(key) ?? 'completed') : 'completed');
 
     const channel = supabase
       .channel(`analysis-${source}-${productId}`)
