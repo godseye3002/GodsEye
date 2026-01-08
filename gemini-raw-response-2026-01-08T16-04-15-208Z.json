@@ -1,0 +1,77 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for AI driven MMP",
+    "status_overview": "Your product was not featured, as the AI exclusively prioritizes established MMPs with significant brand recognition and mentions across authoritative industry listicles.",
+    "strategic_analogy": "This is like trying to join a televised presidential debate without first participating in the primary elections. The AI's stage is reserved for candidates (products) who have already established their presence and credibility on the campaign trail (authoritative industry websites)."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "The client's product 'AI driven MMP' (Linkrunner.io) was not mentioned in the AI overview text or in any of the cited source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a guide for businesses to select an MMP by categorizing established market leaders into tiers and matching their unique strengths (like deep linking, gaming focus, or enterprise scale) to specific user needs. The narrative emphasizes choice based on specific, well-defined business goals.",
+    "key_decision_factors": [
+      "Established brand recognition",
+      "Specialization in a specific use case (e.g., deep linking, gaming, enterprise)",
+      "Core MMP features (attribution, analytics, fraud prevention, cost aggregation)",
+      "Source authority from mentions in third-party 'best of' listicles",
+      "Data privacy and security features",
+      "User-friendly interfaces and robust feature sets"
+    ],
+    "trusted_source_analysis": "The AI trusts a combination of direct Google search results for major brand names (indicating entity recognition) and numerous third-party industry blogs and software review sites that publish comparative listicles (e.g., businessofapps.com, mobileaction.co, sourceforge.net). This blend indicates a reliance on both brand authority and third-party validation."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "AppsFlyer",
+      "reason_for_inclusion": "Positioned as a top-tier market leader for enterprise-scale clients, praised for comprehensive analytics, strong fraud detection, and extensive network integrations.",
+      "source_of_mention": "https://www.google.com/search?q=AppsFlyer&sca_esv=727911a362dc4a92&source=hp&ei=G9Vfabu7N5mUseMP5YSgsQI&iflsig=AFdpzrgAAAAAaV_jKz5dJSKuSAjjlNFfQ92QT2WSODwI&mstk=AUtExfB_xweeXPOe93IwxgXfDIDOkoe8TLXmx_A7dL4n9MzrL2A8OYq6TIpXaEw1wGek7svnImvy_wNc7f6CBat0oJzQnbvTtTz6juesmuU8Jn6UYm5pB76bksgm4SppqdL6_Ns&csui=3&ved=2ahUKEwjW4s3cqPyRAxUB1zgGHeyoKPAQgK4QegQIAxAB"
+    },
+    {
+      "competitor_name": "Adjust",
+      "reason_for_inclusion": "Highlighted as a top-tier choice for its strength in attribution, fraud prevention, raw data access, and a strong focus on user privacy and security.",
+      "source_of_mention": "https://www.google.com/search?q=Adjust&sca_esv=727911a362dc4a92&source=hp&ei=G9Vfabu7N5mUseMP5YSgsQI&iflsig=AFdpzrgAAAAAaV_jKz5dJSKuSAjjlNFfQ92QT2WSODwI&mstk=AUtExfB_xweeXPOe93IwxgXfDIDOkoe8TLXmx_A7dL4n9MzrL2A8OYq6TIpXaEw1wGek7svnImvy_wNc7f6CBat0oJzQnbvTtTz6juesmuU8Jn6UYm5pB76bksgm4SppqdL6_Ns&csui=3&ved=2ahUKEwjW4s3cqPyRAxUB1zgGHeyoKPAQgK4QegQIAxAD"
+    },
+    {
+      "competitor_name": "Branch",
+      "reason_for_inclusion": "Included as the definitive leader and go-to solution for deep linking, web-to-app experiences, and cross-device tracking.",
+      "source_of_mention": "https://www.google.com/search?q=Branch&sca_esv=727911a362dc4a92&source=hp&ei=G9Vfabu7N5mUseMP5YSgsQI&iflsig=AFdpzrgAAAAAaV_jKz5dJSKuSAjjlNFfQ92QT2WSODwI&mstk=AUtExfB_xweeXPOe93IwxgXfDIDOkoe8TLXmx_A7dL4n9MzrL2A8OYq6TIpXaEw1wGek7svnImvy_wNc7f6CBat0oJzQnbvTtTz6juesmuU8Jn6UYm5pB76bksgm4SppqdL6_Ns&csui=3&ved=2ahUKEwjW4s3cqPyRAxUB1zgGHeyoKPAQgK4QegQIAxAF"
+    },
+    {
+      "competitor_name": "Singular",
+      "reason_for_inclusion": "Featured for its unique value proposition of combining attribution with cost aggregation to provide unified marketing performance insights.",
+      "source_of_mention": "https://www.google.com/search?q=Singular&sca_esv=727911a362dc4a92&source=hp&ei=G9Vfabu7N5mUseMP5YSgsQI&iflsig=AFdpzrgAAAAAaV_jKz5dJSKuSAjjlNFfQ92QT2WSODwI&mstk=AUtExfB_xweeXPOe93IwxgXfDIDOkoe8TLXmx_A7dL4n9MzrL2A8OYq6TIpXaEw1wGek7svnImvy_wNc7f6CBat0oJzQnbvTtTz6juesmuU8Jn6UYm5pB76bksgm4SppqdL6_Ns&csui=3&ved=2ahUKEwjW4s3cqPyRAxUB1zgGHeyoKPAQgK4QegQIAxAH"
+    },
+    {
+      "competitor_name": "Kochava",
+      "reason_for_inclusion": "Mentioned as a top-tier option offering end-to-end analytics and attribution for comprehensive campaign measurement.",
+      "source_of_mention": "https://www.google.com/search?q=Kochava&sca_esv=727911a362dc4a92&source=hp&ei=G9Vfabu7N5mUseMP5YSgsQI&iflsig=AFdpzrgAAAAAaV_jKz5dJSKuSAjjlNFfQ92QT2WSODwI&mstk=AUtExfB_xweeXPOe93IwxgXfDIDOkoe8TLXmx_A7dL4n9MzrL2A8OYq6TIpXaEw1wGek7svnImvy_wNc7f6CBat0oJzQnbvTtTz6juesmuU8Jn6UYm5pB76bksgm4SppqdL6_Ns&csui=3&ved=2ahUKEwjW4s3cqPyRAxUB1zgGHeyoKPAQgK4QegQIAxAJ"
+    },
+    {
+      "competitor_name": "Tenjin",
+      "reason_for_inclusion": "Specifically recommended for gaming developers due to its cost-effectiveness, lightweight SDK, and focus on UA and monetization analytics.",
+      "source_of_mention": "https://sourceforge.net/software/mobile-measurement-partners-mmp/india/#:~:text=Tenjin&text=Tenjin%20is%20a%20mobile%20measurement,maximize%20ROI%20and%20user%20engagement."
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary gap between your product and the competitors featured by the AI is brand authority and market presence. The AI's response is a reflection of the existing digital landscape, which is dominated by established players who are consistently featured in industry roundups. Your product's unique selling point, 'AI-driven insights', is not currently a primary decision factor for the AI, which prefers to categorize products by use case (gaming, deep linking) and core features (attribution, fraud prevention).",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was not mentioned due to: 1) A lack of brand recognition in the MMP space. 2) An absence from the authoritative third-party listicles and reviews that the AI uses as its primary information sources. 3) Competitors are being rewarded for clear specialization in established categories (e.g., Branch for deep linking), a niche your product has not yet defined for itself in its public-facing content.",
+      "path_to_inclusion": "The most effective path to inclusion is to build third-party validation by securing features and reviews on the same types of industry blogs the AI cites. Concurrently, refine your website's messaging to align with the AI's classification structure. Frame your 'AI-driven insights' as a superior way to achieve recognized goals like 'fraud prevention' or 'LTV optimization' and clearly define the ideal customer or use case you serve."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Launch a targeted outreach campaign to be included in articles on sites like Business of Apps, MobileAction, and SplitMetrics. Offer demos and case studies to journalists and bloggers who cover the mobile marketing and analytics space to build the external trust signals the AI is looking for."
+    },
+    {
+      "recommendation": "Content and Niche Alignment",
+      "action": "On your website, clearly define your market niche. Instead of being a general MMP, position Linkrunner.io as 'The AI-Powered MMP for E-commerce Apps' or 'The Predictive Analytics MMP for Gaming'. This aligns with the AI's tendency to recommend specialized solutions."
+    },
+    {
+      "recommendation": "Feature and Keyword Integration",
+      "action": "Revise your product pages to explicitly use industry-standard terms like 'Mobile Attribution', 'Fraud Prevention Suite', 'Cost Aggregation', and 'SKAdNetwork Support'. Create a 'Features' section that details how your AI technology enhances each of these core MMP functions, making the benefits tangible and easily parsable for AI crawlers."
+    }
+  ]
+}

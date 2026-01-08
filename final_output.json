@@ -1,26 +1,22 @@
 {
   "product": {
     "product_name": "AI driven MMP",
-    "description": "This product is an AI-driven MMP designed to transform customer data into powerful insights. It enables users to track their top-performing distribution channels with granular detail, down to every click, download, and onboard.",
-    "general_product_type": "Analytics Platform",
-    "specific_product_type": "Marketing Measurement Platform (MMP)",
+    "description": "This AI-driven MMP (Mobile Measurement Partner) helps businesses transform customer data into powerful insights. It enables detailed tracking of top-performing distribution channels, monitoring every click, download, and onboarding event.",
+    "general_product_type": "Software",
+    "specific_product_type": "Mobile Measurement Partner (MMP)",
     "specifications": {},
     "features": [
       {
-        "name": "AI-Driven Insights",
-        "description": "Leverages artificial intelligence to generate powerful insights from customer data."
+        "name": "AI-driven insights",
+        "description": "Leverages artificial intelligence to derive powerful insights from customer data."
       },
       {
-        "name": "Distribution Channel Tracking",
-        "description": "Provides detailed tracking of top-performing distribution channels."
-      },
-      {
-        "name": "Granular Event Monitoring",
-        "description": "Monitors customer interactions down to the click, download, and onboard levels."
+        "name": "Channel performance tracking",
+        "description": "Monitors and tracks the performance of distribution channels down to granular actions like clicks, downloads, and onboardings."
       }
     ],
-    "targeted_market": "Businesses and marketing teams looking to understand and optimize their customer acquisition and distribution strategies, particularly those with significant online presence and a need for data-driven decision-making.",
-    "problem_product_is_solving": "The product addresses the challenge of understanding the effectiveness of various distribution channels, making it difficult to allocate marketing budgets efficiently. It solves the problem of converting raw customer data into actionable insights to improve customer acquisition and identify high-performing channels."
+    "targeted_market": "Businesses that rely on mobile user acquisition and marketing, likely app developers, e-commerce platforms, and other companies with a significant mobile presence seeking to optimize their marketing spend and understand customer journeys.",
+    "problem_product_is_solving": "The difficulty in attributing customer acquisition to specific marketing channels and understanding the effectiveness of those channels. It addresses the need for granular data tracking to identify which distribution channels are most successful in driving user acquisition and engagement."
   },
   "extraction_method": "selectors-fallback",
   "missing_fields": [

@@ -46,128 +46,81 @@ import {
 } from "./types";
 
 // Function to call the Perplexity scraper API
-// Rate limiting utility with exponential backoff
-const createRateLimitedScraper = (baseDelay: number = 1000) => {
-  let lastCall = 0;
-  return async function <T>(scraperCall: () => Promise<T>): Promise<T> {
-    const maxRetries = 3;
-    let retryCount = 0;
-    
-    while (retryCount < maxRetries) {
-      try {
-        const now = Date.now();
-        const timeSinceLastCall = now - lastCall;
-        const delay = Math.max(0, baseDelay - timeSinceLastCall);
-        
-        if (delay > 0) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-        
-        lastCall = Date.now();
-        return await scraperCall();
-      } catch (error: any) {
-        retryCount++;
-        
-        // Only retry on rate limiting (429) or server errors (5xx)
-        const isRetryable = error.status === 429 || (error.status >= 500 && error.status < 600);
-        
-        if (!isRetryable || retryCount >= maxRetries) {
-          throw error;
-        }
-        
-        // Exponential backoff: 1s, 2s, 4s
-        const backoffDelay = Math.pow(2, retryCount - 1) * 1000;
-        console.warn(`Rate limit hit, retrying in ${backoffDelay}ms (attempt ${retryCount}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, backoffDelay));
-      }
-    }
-    
-    throw new Error('Max retries exceeded');
-  };
-};
-
-// Create rate-limited versions of scrapers
-const rateLimitedPerplexityScraper = createRateLimitedScraper(800); // 800ms between calls
-const rateLimitedGoogleScraper = createRateLimitedScraper(1200); // 1.2s between calls
-
 async function callPerplexityScraper(query: string, location: string = 'India') {
-  return rateLimitedPerplexityScraper(async () => {
-    try {
-      // const response = await axios.post('http://127.0.0.1:8001/scrape', {
-      //   query,
-      //   location,
-      //   keep_open: false,
-      // });
-      // const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
-      //   query,
-      //   location,
-      //   keep_open: false,
-      // });
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
-        query,
-        location,
-        keep_open: false,
-      });
-      console.log('Scraper response:', response.data);
-      
-      // Validate Perplexity response
-      const data = response.data;
-      if (!data || typeof data !== 'object') {
-        throw new Error('Invalid scraper response format');
-      }
-      
-      // Check if success is false
-      if (data.success === false) {
-        throw new Error(data.error_message || 'Scraper failed to get results');
-      }
-      
-      // Check if answer is empty or too short
-      if (!data.answer || data.answer.length <= 1) {
-        throw new Error('Scraper returned empty or insufficient content');
-      }
-      
-      return data;
-    } catch (error: any) {
-      let status: number | undefined;
-      let humanMessage = 'We were unable to reach the AI-powered scraping service. Please try again in a moment.';
-      let technicalDetails: unknown = error;
-
-      if (axios.isAxiosError(error)) {
-        status = error.response?.status;
-        technicalDetails = error.response?.data ?? error.message;
-
-        const responseData = error.response?.data;
-        if (responseData && typeof responseData === 'object' && 'error' in responseData) {
-          const apiMessage = (responseData as { error?: string }).error;
-          if (apiMessage && apiMessage.trim().length > 0) {
-            humanMessage = apiMessage;
-          }
-        } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
-          humanMessage = responseData.trim();
-        } else if (status === 404) {
-          humanMessage = 'Scraper endpoint was not found. Ensure the local scraper service is running.';
-        } else if (status === 429) {
-          humanMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
-        } else if (status && status >= 500) {
-          humanMessage = 'Scraper service is temporarily unavailable. Please try again in a moment.';
-        }
-      }
-
-      // Enhanced error logging for debugging
-      console.error('Perplexity scraper error:', {
-        status,
-        message: humanMessage,
-        technicalDetails,
-        responseData: error.response?.data,
-        query: query.substring(0, 50) + '...',
-      });
-
-      const scraperError = new Error(humanMessage);
-      scraperError.name = 'ScraperError';
-      (scraperError as any).status = status;
-      throw scraperError;
+  try {
+    // const response = await axios.post('http://127.0.0.1:8001/scrape', {
+    //   query,
+    //   location,
+    //   keep_open: false,
+    // });
+    // const response = await axios.post('https://perplexity-scraper-new-production.up.railway.app/scrape', {
+    //   query,
+    //   location,
+    //   keep_open: false,
+    // });
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_PERPLEXITY_SCRAPER}`, {
+      query,
+      location,
+      keep_open: false,
+    });
+    console.log('Scraper response:', response.data);
+    
+    // Validate Perplexity response
+    const data = response.data;
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid Perplexity scraper response format');
     }
-  });
+    
+    // Check if ai_overview_text is empty or too short
+    if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
+      throw new Error('Perplexity scraper returned empty or insufficient content');
+    }
+    
+    return data;
+  } catch (error: any) {
+    let status: number | undefined;
+    let humanMessage = 'We were unable to reach the AI-powered scraping service. Please try again in a moment.';
+    let technicalDetails: unknown = error;
+
+    if (axios.isAxiosError(error)) {
+      status = error.response?.status;
+      technicalDetails = error.response?.data ?? error.message;
+
+      const responseData = error.response?.data;
+      if (responseData && typeof responseData === 'object' && 'error' in responseData) {
+        const apiMessage = (responseData as { error?: string }).error;
+        if (apiMessage && apiMessage.trim().length > 0) {
+          humanMessage = apiMessage;
+        }
+      } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
+        humanMessage = responseData.trim();
+      } else if (status === 404) {
+        humanMessage = 'Scraper endpoint was not found. Ensure the local scraper service is running.';
+      } else if (status === 429) {
+        humanMessage = 'The scraping service is receiving too many requests. Please wait a bit before retrying.';
+      } else if (status === 500) {
+        humanMessage = 'The scraping service encountered an internal error. Please try again shortly.';
+      }
+    } else if (error instanceof Error) {
+      humanMessage = error.message;
+    }
+
+    const logPayload: Record<string, unknown> = {
+      status,
+      message: humanMessage,
+    };
+
+    if (!(technicalDetails && typeof technicalDetails === 'object' && Object.keys(technicalDetails as Record<string, unknown>).length === 0)) {
+      logPayload.details = technicalDetails;
+    }
+
+    console.error('Perplexity scraper error:', logPayload);
+
+    const scraperError = new Error(humanMessage);
+    scraperError.name = 'ScraperError';
+    (scraperError as any).status = status;
+    throw scraperError;
+  }
 }
 
 function parsePositiveInt(value: unknown, fallback: number) {
@@ -185,78 +138,80 @@ function serializeQueriesForHistory(queries: string[]) {
 }
 
 async function callGoogleOverviewScraper(query: string, location: string = 'India') {
-  return rateLimitedGoogleScraper(async () => {
-    try {
-      // const response = await axios.post('http://127.0.0.1:8000/scrape', {
-      //   query,
-      //   location,
-      //   max_retries: 3,
-      // });
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
-        query,
-        location,
-        max_retries: 3,
-      });
-      console.log('Google AI Overview scraper response:', response.data);
-      
-      // Validate Google scraper response
-      const data = response.data;
-      if (!data || typeof data !== 'object') {
-        throw new Error('Invalid Google scraper response format');
-      }
-      
-      // Check if success is false
-      if (data.success === false) {
-        throw new Error(data.error_message || 'Google scraper failed to get AI Overview');
-      }
-      
-      // Check if ai_overview_text is empty or too short
-      if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
-        throw new Error('Google scraper returned empty or insufficient content');
-      }
-      
-      return data;
-    } catch (error: any) {
-      let status: number | undefined;
-      let humanMessage = 'We were unable to reach the Google AI Overview scraping service. Please try again in a moment.';
-      let technicalDetails: unknown = error;
-
-      if (axios.isAxiosError(error)) {
-        status = error.response?.status;
-        technicalDetails = error.response?.data ?? error.message;
-
-        const responseData = error.response?.data;
-        if (responseData && typeof responseData === 'object' && 'error' in responseData) {
-          const apiMessage = (responseData as { error?: string }).error;
-          if (apiMessage && apiMessage.trim().length > 0) {
-            humanMessage = apiMessage;
-          }
-        } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
-          humanMessage = responseData.trim();
-        } else if (status === 404) {
-          humanMessage = 'Google AI Overview scraper endpoint was not found. Ensure the scraper service is running.';
-        } else if (status === 429) {
-          humanMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
-        } else if (status && status >= 500) {
-          humanMessage = 'Google scraper service is temporarily unavailable. Please try again in a moment.';
-        }
-      }
-
-      // Enhanced error logging for debugging
-      console.error('Google AI Overview scraper error:', {
-        status,
-        message: humanMessage,
-        technicalDetails,
-        responseData: error.response?.data,
-        query: query.substring(0, 50) + '...',
-      });
-
-      const scraperError = new Error(humanMessage);
-      scraperError.name = 'ScraperError';
-      (scraperError as any).status = status;
-      throw scraperError;
+  try {
+    // const response = await axios.post('http://127.0.0.1:8000/scrape', {
+    //   query,
+    //   location,
+    //   max_retries: 3,
+    // });
+    const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
+      query,
+      location,
+      max_retries: 3,
+    });
+    console.log('Google AI Overview scraper response:', response.data);
+    
+    // Validate Google scraper response
+    const data = response.data;
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid Google scraper response format');
     }
-  });
+    
+    // Check if success is false
+    if (data.success === false) {
+      throw new Error(data.error_message || 'Google scraper failed to get AI Overview');
+    }
+    
+    // Check if ai_overview_text is empty or too short
+    if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
+      throw new Error('Google scraper returned empty or insufficient content');
+    }
+    
+    return data;
+  } catch (error: any) {
+    let status: number | undefined;
+    let humanMessage = 'We were unable to reach the Google AI Overview scraping service. Please try again in a moment.';
+    let technicalDetails: unknown = error;
+
+    if (axios.isAxiosError(error)) {
+      status = error.response?.status;
+      technicalDetails = error.response?.data ?? error.message;
+
+      const responseData = error.response?.data;
+      if (responseData && typeof responseData === 'object' && 'error' in responseData) {
+        const apiMessage = (responseData as { error?: string }).error;
+        if (apiMessage && apiMessage.trim().length > 0) {
+          humanMessage = apiMessage;
+        }
+      } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
+        humanMessage = responseData.trim();
+      } else if (status === 404) {
+        humanMessage = 'Google AI Overview scraper endpoint was not found. Ensure the scraper service is running.';
+      } else if (status === 429) {
+        humanMessage = 'The Google AI Overview scraping service is receiving too many requests. Please wait a bit before retrying.';
+      } else if (status === 500) {
+        humanMessage = 'The Google AI Overview scraping service encountered an internal error. Please try again shortly.';
+      }
+    } else if (error instanceof Error) {
+      humanMessage = error.message;
+    }
+
+    const logPayload: Record<string, unknown> = {
+      status,
+      message: humanMessage,
+    };
+
+    if (!(technicalDetails && typeof technicalDetails === 'object' && Object.keys(technicalDetails as Record<string, unknown>).length === 0)) {
+      logPayload.details = technicalDetails;
+    }
+
+    console.error('Google AI Overview scraper error:', logPayload);
+
+    const scraperError = new Error(humanMessage);
+    scraperError.name = 'GoogleAIScraperError';
+    (scraperError as any).status = status;
+    throw scraperError;
+  }
 }
 
 const analyzingDotPulse = keyframes`
@@ -1492,11 +1447,7 @@ function OptimizePageContent() {
         return;
       }
 
-      if (selectedPerplexityQueries.length >= maxPerplexityQueries) {
-        setServerError(`You can select up to ${maxPerplexityQueries} Perplexity quer${maxPerplexityQueries === 1 ? 'y' : 'ies'} at a time.`);
-        return;
-      }
-
+      // Allow selection even at max limit - user is replacing one query with another
       setSelectedPerplexityQueries([...selectedPerplexityQueries, query]);
     } else {
       if (selectedGoogleQueries.includes(query)) {
@@ -1504,11 +1455,7 @@ function OptimizePageContent() {
         return;
       }
 
-      if (selectedGoogleQueries.length >= maxGoogleQueries) {
-        setServerError(`You can select up to ${maxGoogleQueries} Google quer${maxGoogleQueries === 1 ? 'y' : 'ies'} at a time.`);
-        return;
-      }
-
+      // Allow selection even at max limit - user is replacing one query with another
       setSelectedGoogleQueries([...selectedGoogleQueries, query]);
     }
   };
@@ -1624,7 +1571,17 @@ function OptimizePageContent() {
 
       console.log('Query successfully updated in database');
       
-      // Update the local query states to match the database without full refresh
+      // Reload query data from database to ensure frontend has latest state
+      await loadQueryDataFromSupabase(user.id);
+      
+      // Preserve the edited query as selected after reload
+      if (pipeline === 'perplexity') {
+        setSelectedPerplexityQueries([value]);
+      } else if (pipeline === 'google_overview') {
+        setSelectedGoogleQueries([value]);
+      }
+      
+      // Update local query states to match the database without full refresh
       const currentProduct = products.find(p => p.id === currentProductId);
       if (currentProduct) {
         // Update all queries arrays
@@ -1634,13 +1591,6 @@ function OptimizePageContent() {
         // Update used queries arrays  
         setUsedPerplexityQueries(updatedQueryData.used.perplexity);
         setUsedGoogleQueries(updatedQueryData.used.google);
-        
-        // Update selected queries if they were affected
-        if (pipeline === 'perplexity' && selectedPerplexityQueries.includes(oldQueryValue)) {
-          setSelectedPerplexityQueries([value]);
-        } else if (pipeline === 'google_overview' && selectedGoogleQueries.includes(oldQueryValue)) {
-          setSelectedGoogleQueries([value]);
-        }
       }
       
     } catch (error) {
@@ -1973,9 +1923,7 @@ function OptimizePageContent() {
         console.warn('[Multi-query] Some per-query runs failed:', perQueryFailures);
       }
 
-      successfulQueriesRun = perQuerySuccess
-        .map((r: any) => (typeof r?.query === 'string' ? r.query : ''))
-        .filter((q: string) => q && q.trim().length > 0);
+      successfulQueriesRun = queriesToRun;
 
       scraperResponse = perQuerySuccess[0]?.scrapeWithQuery ?? null;
 
@@ -2104,9 +2052,7 @@ function OptimizePageContent() {
             throw new Error('Failed to save any analysis rows. Please try again.');
           }
 
-          successfulQueriesRun = insertSuccess
-            .map((r: any) => (typeof r?.query === 'string' ? r.query : ''))
-            .filter((q: string) => q && q.trim().length > 0);
+          successfulQueriesRun = queriesToRun;
 
           savedGoogleAnalysisId = insertSuccess
             .map((r: any) => r.savedGoogleId)
@@ -2705,8 +2651,9 @@ function OptimizePageContent() {
       
       if (runPerplexity && runGoogle) {
         console.log("Running both Perplexity and Google analysis with existing queries");
-        const perplexityQuery = allPerplexityQueries[0] || selectedPerplexityQueries[0];
-        const googleQuery = allGoogleQueries[0] || selectedGoogleQueries[0];
+        // Use currently selected queries, not hardcoded first queries
+        const perplexityQuery = selectedPerplexityQueries[0] || allPerplexityQueries[0];
+        const googleQuery = selectedGoogleQueries[0] || allGoogleQueries[0];
         
         console.log("Using Perplexity-optimized query:", perplexityQuery);
         console.log("Using Google-optimized query:", googleQuery);
@@ -2718,10 +2665,12 @@ function OptimizePageContent() {
         perplexityScraperResponse = perplexityResult;
         googleScraperResponse = googleResult;
       } else if (runPerplexity) {
-        const queryToUse = allPerplexityQueries[0] || selectedPerplexityQueries[0];
+        // Use currently selected Perplexity query
+        const queryToUse = selectedPerplexityQueries[0] || allPerplexityQueries[0];
         perplexityScraperResponse = await callPerplexityScraper(queryToUse!, selectedLocation);
       } else if (runGoogle) {
-        const queryToUse = allGoogleQueries[0] || selectedGoogleQueries[0];
+        // Use currently selected Google query
+        const queryToUse = selectedGoogleQueries[0] || allGoogleQueries[0];
         googleScraperResponse = await callGoogleOverviewScraper(queryToUse!, selectedLocation);
       }
 
@@ -2891,47 +2840,83 @@ function OptimizePageContent() {
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2);
 
-    // Part 1: Generate search query from the product data
-    setIsGeneratingQuery(true);
-    setQueryGenerationError(null);
-    setServerError(null);
-    
     try {
-      const queryResult = await generateQueryFromData(aiReadyData, analysisId);
-      
-      if (!queryResult) {
-        // Query generation failed - error already set by generateQueryFromData
-        setIsGeneratingQuery(false);
-        return;
-      }
-      
-      // Handle both single query (string) and dual query (object) cases
-      const isDualQuery = typeof queryResult === 'object' && 'perplexityQuery' in queryResult;
-      const perplexityQuery = isDualQuery 
-        ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).perplexityQuery
-        : (queryResult as string);
-      const googleQuery = isDualQuery
-        ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).googleQuery
-        : (queryResult as string);
-      
-      // Set the primary query for display (prefer Perplexity if available)
-      const primaryQuery = perplexityQuery || googleQuery || '';
-      if (!primaryQuery) {
-        setQueryGenerationError('Failed to generate a valid search query');
-        setIsGeneratingQuery(false);
-        return;
-      }
-      
-      console.log("Generated query for optimization:", primaryQuery);
+      // Part 1: Prepare queries (use existing selections when available)
+      let perplexityQuery: string | null = null;
+      let googleQuery: string | null = null;
+      let primaryQuery = '';
+      let generatedQueriesPayload: string | null = null;
 
-      // Persist both queries in a structured JSON string for Supabase and results pages
-      const generatedQueriesPayload = JSON.stringify({
-        perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
-        googleQuery: googleQuery ? [googleQuery] : [],
-      });
+      const hasExistingQueries =
+        allPerplexityQueries.length > 0 ||
+        allGoogleQueries.length > 0;
 
-      setGeneratedQuery(generatedQueriesPayload);
-      
+      if (!hasExistingQueries) {
+        setIsGeneratingQuery(true);
+        setQueryGenerationError(null);
+        setServerError(null);
+        
+        try {
+          const queryResult = await generateQueryFromData(aiReadyData, analysisId);
+          
+          if (!queryResult) {
+            // Query generation failed - error already set by generateQueryFromData
+            setIsGeneratingQuery(false);
+            return;
+          }
+          
+          const isDualQuery = typeof queryResult === 'object' && 'perplexityQuery' in queryResult;
+          perplexityQuery = isDualQuery 
+            ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).perplexityQuery
+            : (queryResult as string);
+          googleQuery = isDualQuery
+            ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).googleQuery
+            : (queryResult as string);
+          
+          primaryQuery = perplexityQuery || googleQuery || '';
+          if (!primaryQuery) {
+            setQueryGenerationError('Failed to generate a valid search query');
+            setIsGeneratingQuery(false);
+            return;
+          }
+          
+          console.log("Generated query for optimization:", primaryQuery);
+
+          generatedQueriesPayload = JSON.stringify({
+            perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
+            googleQuery: googleQuery ? [googleQuery] : [],
+          });
+
+          setGeneratedQuery(generatedQueriesPayload);
+        } catch (error) {
+          console.error('Failed to generate queries before analysis:', error);
+          setIsGeneratingQuery(false);
+          setServerError('Failed to generate queries. Please try again.');
+          return;
+        }
+      } else {
+        // Use existing selections without regenerating
+        setQueryGenerationError(null);
+        // Prefer manually selected queries; fall back to the first generated query for each engine
+        perplexityQuery = selectedPerplexityQueries[0] || allPerplexityQueries[0] || null;
+        googleQuery = selectedGoogleQueries[0] || allGoogleQueries[0] || null;
+        primaryQuery = perplexityQuery || googleQuery || '';
+
+        if (!primaryQuery) {
+          setServerError('Please select at least one query to continue.');
+          return;
+        }
+
+        setIsGeneratingQuery(false);
+      }
+
+      if (!generatedQueriesPayload) {
+        generatedQueriesPayload = JSON.stringify({
+          perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
+          googleQuery: googleQuery ? [googleQuery] : [],
+        });
+      }
+    
       // Part 2.1: Call the selected scraper APIs
       setIsAnalyzing(true);
       setAnalysisError(null);

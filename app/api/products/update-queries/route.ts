@@ -4,7 +4,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase';
 // POST - Update query data for a user's current product
 export async function POST(request: Request) {
   try {
-    const { userId, queryData } = await request.json();
+    const { userId, productId, queryData } = await request.json();
 
     if (!userId || !queryData) {
       return NextResponse.json(
@@ -13,33 +13,41 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedQueryData = typeof queryData === 'string' ? queryData : JSON.stringify(queryData);
+
     const supabaseAdmin = getSupabaseAdminClient();
 
-    // Find the most recent product for this user
-    const { data: recentProduct, error: fetchError } = await (supabaseAdmin as any)
-      .from('products')
-      .select('id')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    let targetProductId: string | null = typeof productId === 'string' && productId.length > 0 ? productId : null;
 
-    if (fetchError || !recentProduct) {
-      // If no product exists, we can't update queries
-      return NextResponse.json(
-        { error: 'No product found for this user' },
-        { status: 404 }
-      );
+    if (!targetProductId) {
+      // Backward compatibility: fall back to most recent product for this user
+      const { data: recentProduct, error: fetchError } = await (supabaseAdmin as any)
+        .from('products')
+        .select('id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (fetchError || !recentProduct) {
+        // If no product exists, we can't update queries
+        return NextResponse.json(
+          { error: 'No product found for this user' },
+          { status: 404 }
+        );
+      }
+
+      targetProductId = recentProduct.id;
     }
 
     // Update the product's generated_query field with the new query data
     const { data, error } = await (supabaseAdmin as any)
       .from('products')
       .update({
-        generated_query: queryData,
+        generated_query: normalizedQueryData,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', recentProduct.id)
+      .eq('id', targetProductId)
       .eq('user_id', userId)
       .select()
       .single();

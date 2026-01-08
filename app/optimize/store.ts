@@ -616,6 +616,7 @@ export const useProductStore = create<ProductStoreState>()(
       // Helper functions for query data management
       saveQueriesToSupabase: async (userId: string) => {
         const state = get();
+        if (!state.currentProductId) return;
         const queryData: QueryData = {
           all: {
             perplexity: state.allPerplexityQueries,
@@ -633,7 +634,8 @@ export const useProductStore = create<ProductStoreState>()(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId,
-              queryData: JSON.stringify(queryData),
+              productId: state.currentProductId,
+              queryData,
             }),
           });
           
@@ -647,12 +649,15 @@ export const useProductStore = create<ProductStoreState>()(
       
       updateQueryDataInSupabase: async (userId: string, queryData: QueryData) => {
         try {
+          const state = get();
+          if (!state.currentProductId) return;
           const response = await fetch('/api/products/update-queries', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userId,
-              queryData: JSON.stringify(queryData),
+              productId: state.currentProductId,
+              queryData,
             }),
           });
           
