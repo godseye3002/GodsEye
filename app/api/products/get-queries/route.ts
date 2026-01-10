@@ -6,6 +6,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
+    const productId = searchParams.get('productId');
 
     if (!userId) {
       return NextResponse.json(
@@ -17,13 +18,17 @@ export async function GET(request: Request) {
     const supabaseAdmin = getSupabaseAdminClient();
 
     // Find the most recent product for this user
-    const { data: recentProduct, error: fetchError } = await (supabaseAdmin as any)
+    const query = (supabaseAdmin as any)
       .from('products')
-      .select('generated_query')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .select('generated_query');
+
+    if (productId) {
+      query.eq('id', productId);
+    } else {
+      query.eq('user_id', userId).order('created_at', { ascending: false }).limit(1);
+    }
+
+    const { data: recentProduct, error: fetchError } = await query.single();
 
     if (fetchError) {
       if (process.env.NODE_ENV !== 'production') {
@@ -45,9 +50,23 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      queryData: recentProduct.generated_query 
+    const rawQueryData = recentProduct.generated_query || null;
+
+    if (!rawQueryData) {
+      return NextResponse.json({
+        success: true,
+        queryData: null,
+      });
+    }
+
+    const serialized =
+      typeof rawQueryData === 'string'
+        ? rawQueryData
+        : JSON.stringify(rawQueryData);
+
+    return NextResponse.json({
+      success: true,
+      queryData: serialized,
     });
   } catch (error: any) {
     if (process.env.NODE_ENV !== 'production') {

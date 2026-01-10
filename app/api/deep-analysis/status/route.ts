@@ -22,6 +22,8 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ product_id }),
+      // Add timeout to handle cold starts
+      signal: AbortSignal.timeout(30000), // 30 second timeout
     });
 
     const data = await upstream.json().catch(() => null);

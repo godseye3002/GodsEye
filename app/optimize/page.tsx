@@ -24,7 +24,7 @@ import {
   Typography,
 } from "@mui/joy";
 import { keyframes } from "@mui/system";
-import { useCallback, useEffect, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 // API route handles query generation now
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/auth-context";
@@ -36,6 +36,7 @@ import { useProductStore } from "./store";
 import type { QueryData } from "./store";
 import SOVPerformanceCard from "@/components/SOVPerformanceCard";
 import DeepAnalysisCard from "@/components/DeepAnalysisCard";
+import { warmupService } from "@/lib/warmupService";
 import {
   Feature,
   OptimizationAnalysis,
@@ -315,7 +316,9 @@ function OptimizePageContent() {
   const [isPerplexityScraping, setIsPerplexityScraping] = useState(false);
   const [isGoogleScraping, setIsGoogleScraping] = useState(false);
   const [isLoadingQueries, setIsLoadingQueries] = useState(false);
+  const [hasLoadedQueriesForProduct, setHasLoadedQueriesForProduct] = useState(false);
   const [loadingResultKey, setLoadingResultKey] = useState<string | null>(null);
+  const lastLoadedProductIdRef = useRef<string | null>(null);
   
   // SOV card state management
   const [showSOVCards, setShowSOVCards] = useState(false);
@@ -342,6 +345,16 @@ function OptimizePageContent() {
 
   useEffect(() => {
     setIsClient(true);
+    // Clear any stale server errors on component mount
+    setServerError(null);
+    
+    // Start warmup service to prevent cold starts
+    warmupService.start();
+    
+    // Cleanup on unmount
+    return () => {
+      warmupService.stop();
+    };
   }, []);
 
   useEffect(() => {
@@ -1298,60 +1311,52 @@ function OptimizePageContent() {
   // We intentionally do NOT trust any locally persisted query arrays; instead,
   // Supabase is the source of truth for generated queries on reload.
   useEffect(() => {
-    const loadQueryData = async () => {
-      if (!user || queryData || isNewProductSession) return;
+    if (!user?.id || !currentProductId || isNewProductSession) {
+      lastLoadedProductIdRef.current = null;
+      setHasLoadedQueriesForProduct(false);
+      return;
+    }
 
+    if (lastLoadedProductIdRef.current === currentProductId) return;
+
+    setHasLoadedQueriesForProduct(false);
+
+    const loadQueryData = async () => {
+      lastLoadedProductIdRef.current = currentProductId;
       setIsLoadingQueries(true);
+
       try {
-        const queryDataString = await loadQueryDataFromSupabase(user.id);
+        const queryDataString = await loadQueryDataFromSupabase(user.id, currentProductId);
         if (queryDataString) {
           const parsedData = parseQueryData(queryDataString);
           if (parsedData) {
-            // Restore all query states from backend data
             setAllPerplexityQueries(parsedData.all.perplexity);
             setAllGoogleQueries(parsedData.all.google);
-            
-            // Don't auto-select any queries - let the user manually select them
-            // Used queries should only show "Result" buttons, not be auto-selected
-            
             setUsedPerplexityQueries(parsedData.used.perplexity);
             setUsedGoogleQueries(parsedData.used.google);
             setQueryData(parsedData);
+            // Clear any stale server errors when queries are loaded
+            setServerError(null);
 
-            // Also update the legacy generatedQuery field for compatibility
             setGeneratedQuery(JSON.stringify({
               perplexity: parsedData.all.perplexity.slice(0, 1),
               google: parsedData.all.google.slice(0, 1),
             }));
           }
         }
-        // If queryDataString is null, it means no queries exist - which is fine
-        // The UI will show "No Queries Generated Yet" naturally
       } catch (error) {
-        // Silently handle any errors - user will see "No Queries Generated Yet"
         if (process.env.NODE_ENV !== 'production') {
           console.warn('[Query Data] Error during query loading:', error);
         }
+        lastLoadedProductIdRef.current = null;
       } finally {
         setIsLoadingQueries(false);
+        setHasLoadedQueriesForProduct(true);
       }
     };
 
     loadQueryData();
-  }, [
-    user,
-    queryData,
-    isNewProductSession,
-    loadQueryDataFromSupabase,
-    setAllPerplexityQueries,
-    setAllGoogleQueries,
-    setSelectedPerplexityQueries,
-    setSelectedGoogleQueries,
-    setUsedPerplexityQueries,
-    setUsedGoogleQueries,
-    setQueryData,
-    setGeneratedQuery,
-  ]);
+  }, [user?.id, currentProductId, loadQueryDataFromSupabase]);
   
   // Helper function for backwards compatibility with existing query data format
   const parseQueryData = (generatedQuery: string | null): QueryData | null => {
@@ -1442,6 +1447,11 @@ function OptimizePageContent() {
   };
   const handleQuerySelection = (query: string, pipeline: 'perplexity' | 'google_overview') => {
     if (pipeline === 'perplexity') {
+      // Don't allow selection if query is already used
+      if (usedPerplexityQueries.includes(query)) {
+        return;
+      }
+      
       if (selectedPerplexityQueries.includes(query)) {
         setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q) => q !== query));
         return;
@@ -1450,6 +1460,11 @@ function OptimizePageContent() {
       // Allow selection even at max limit - user is replacing one query with another
       setSelectedPerplexityQueries([...selectedPerplexityQueries, query]);
     } else {
+      // Don't allow selection if query is already used
+      if (usedGoogleQueries.includes(query)) {
+        return;
+      }
+      
       if (selectedGoogleQueries.includes(query)) {
         setSelectedGoogleQueries(selectedGoogleQueries.filter((q) => q !== query));
         return;
@@ -1479,51 +1494,33 @@ function OptimizePageContent() {
     if (!editingQuery) return;
     
     const { pipeline, index, value } = editingQuery;
+    const cleanNewValue = value.trim();
     
     // Validation for Google queries: minimum 6 words
     if (pipeline === 'google_overview') {
-      const wordCount = value.trim().split(/\s+/).length;
+      const wordCount = cleanNewValue.split(/\s+/).length;
       if (wordCount < 6) {
         setServerError(`Google queries must have at least 6 words to effectively invoke AI Overview. Current: ${wordCount} words.`);
         return;
       }
     }
     
-    // Get the old query value before updating
+    // CRITICAL: Get old query value from CURRENT state arrays
     const oldQueryValue = pipeline === 'perplexity' ? allPerplexityQueries[index] : allGoogleQueries[index];
+    const cleanOldQueryValue = oldQueryValue ? oldQueryValue.trim() : "";
     
     // Add loading state for query editing
     setEditingQueryLoading(true);
     
-    // Update the edited queries state
+    // Update edited queries UI state immediately
     if (pipeline === 'perplexity') {
-      const newEditedPerplexity = [...editedQueries.perplexity];
-      newEditedPerplexity[index] = value;
-      setEditedQueries({ ...editedQueries, perplexity: newEditedPerplexity });
-      
-      // Update the actual queries array
-      const newAllPerplexity = [...allPerplexityQueries];
-      newAllPerplexity[index] = value;
-      setAllPerplexityQueries(newAllPerplexity);
-      
-      // Update selection if this query was selected - use the NEW value
-      if (selectedPerplexityQueries.includes(oldQueryValue)) {
-        setSelectedPerplexityQueries([value]);
-      }
+      const newEdited = [...editedQueries.perplexity];
+      newEdited[index] = cleanNewValue;
+      setEditedQueries({ ...editedQueries, perplexity: newEdited });
     } else {
-      const newEditedGoogle = [...editedQueries.google];
-      newEditedGoogle[index] = value;
-      setEditedQueries({ ...editedQueries, google: newEditedGoogle });
-      
-      // Update the actual queries array
-      const newAllGoogle = [...allGoogleQueries];
-      newAllGoogle[index] = value;
-      setAllGoogleQueries(newAllGoogle);
-      
-      // Update selection if this query was selected - use the NEW value
-      if (selectedGoogleQueries.includes(oldQueryValue)) {
-        setSelectedGoogleQueries([value]);
-      }
+      const newEdited = [...editedQueries.google];
+      newEdited[index] = cleanNewValue;
+      setEditedQueries({ ...editedQueries, google: newEdited });
     }
     
     // Immediately update the database
@@ -1534,23 +1531,41 @@ function OptimizePageContent() {
         return;
       }
 
-      // Prepare the updated query data
+      // 1. Construct updated "all" arrays based on CURRENT state + NEW value
+      const updatedAllPerplexity = allPerplexityQueries.map((q, i) => 
+        pipeline === 'perplexity' && i === index ? cleanNewValue : q
+      );
+      
+      const updatedAllGoogle = allGoogleQueries.map((q, i) => 
+        pipeline === 'google_overview' && i === index ? cleanNewValue : q
+      );
+
+      // 2. Construct updated "used" arrays
+      // We must check if the OLD query string exists in the used list and replace it
+      const updatedUsedPerplexity = usedPerplexityQueries.map((q) => {
+         if (pipeline === 'perplexity' && q.trim() === cleanOldQueryValue) {
+            return cleanNewValue;
+         }
+         return q;
+      });
+
+      const updatedUsedGoogle = usedGoogleQueries.map((q) => {
+         if (pipeline === 'google_overview' && q.trim() === cleanOldQueryValue) {
+            return cleanNewValue;
+         }
+         return q;
+      });
+
+      // 3. Construct the MASTER QueryData Object
+      // This step was missing/incomplete, causing analysis to read stale data later
       const updatedQueryData: QueryData = {
         all: {
-          perplexity: allPerplexityQueries.map((q, i) => 
-            pipeline === 'perplexity' && i === index ? value : q
-          ),
-          google: allGoogleQueries.map((q, i) => 
-            pipeline === 'google_overview' && i === index ? value : q
-          ),
+          perplexity: updatedAllPerplexity,
+          google: updatedAllGoogle,
         },
         used: {
-          perplexity: usedPerplexityQueries.map((q, i) => 
-            pipeline === 'perplexity' && q === oldQueryValue ? value : q
-          ),
-          google: usedGoogleQueries.map((q, i) => 
-            pipeline === 'google_overview' && q === oldQueryValue ? value : q
-          ),
+          perplexity: updatedUsedPerplexity,
+          google: updatedUsedGoogle,
         },
       };
 
@@ -1571,49 +1586,44 @@ function OptimizePageContent() {
 
       console.log('Query successfully updated in database');
       
-      // Reload query data from database to ensure frontend has latest state
-      await loadQueryDataFromSupabase(user.id);
+      // 4. CRITICAL FIX: Update ALL Store States immediately
+      // We update the master object AND the individual arrays to keep everything in sync
+      setQueryData(updatedQueryData); 
+      setAllPerplexityQueries(updatedAllPerplexity);
+      setAllGoogleQueries(updatedAllGoogle);
+      setUsedPerplexityQueries(updatedUsedPerplexity);
+      setUsedGoogleQueries(updatedUsedGoogle);
       
-      // Preserve the edited query as selected after reload
+      // 5. Update selection state to select the new value
       if (pipeline === 'perplexity') {
-        setSelectedPerplexityQueries([value]);
+        // If the old value was selected, replace it with the new one
+        if (selectedPerplexityQueries.includes(oldQueryValue)) {
+           const newSelection = selectedPerplexityQueries.filter(q => q !== oldQueryValue);
+           newSelection.push(cleanNewValue);
+           setSelectedPerplexityQueries(newSelection);
+        } else {
+           // Optional: Auto-select the edited query
+           setSelectedPerplexityQueries([cleanNewValue]);
+        }
       } else if (pipeline === 'google_overview') {
-        setSelectedGoogleQueries([value]);
-      }
-      
-      // Update local query states to match the database without full refresh
-      const currentProduct = products.find(p => p.id === currentProductId);
-      if (currentProduct) {
-        // Update all queries arrays
-        setAllPerplexityQueries(updatedQueryData.all.perplexity);
-        setAllGoogleQueries(updatedQueryData.all.google);
-        
-        // Update used queries arrays  
-        setUsedPerplexityQueries(updatedQueryData.used.perplexity);
-        setUsedGoogleQueries(updatedQueryData.used.google);
+        if (selectedGoogleQueries.includes(oldQueryValue)) {
+           const newSelection = selectedGoogleQueries.filter(q => q !== oldQueryValue);
+           newSelection.push(cleanNewValue);
+           setSelectedGoogleQueries(newSelection);
+        } else {
+           setSelectedGoogleQueries([cleanNewValue]);
+        }
       }
       
     } catch (error) {
       console.error('Failed to update query in database:', error);
       setServerError('Failed to save query changes. Please try again.');
-      // Revert the local changes if database update failed
-      if (pipeline === 'perplexity') {
-        const revertPerplexity = [...allPerplexityQueries];
-        revertPerplexity[index] = oldQueryValue;
-        setAllPerplexityQueries(revertPerplexity);
-        
-        if (selectedPerplexityQueries.includes(value)) {
-          setSelectedPerplexityQueries([oldQueryValue]);
-        }
-      } else {
-        const revertGoogle = [...allGoogleQueries];
-        revertGoogle[index] = oldQueryValue;
-        setAllGoogleQueries(revertGoogle);
-        
-        if (selectedGoogleQueries.includes(value)) {
-          setSelectedGoogleQueries([oldQueryValue]);
-        }
+      
+      // Revert the local changes if the database update failed by reloading from DB
+      if (user) {
+        await loadQueryDataFromSupabase(user.id);
       }
+      
     } finally {
       // Exit editing mode and clear loading
       setEditingQuery(null);
@@ -1808,7 +1818,7 @@ function OptimizePageContent() {
       const creditCheckData = await creditCheckResponse.json();
 
       if (!creditCheckData.hasEnoughCredits) {
-        setServerError('Insufficient credits. Please purchase more credits to continue.');
+        setServerError(`Insufficient credits. Required: ${requiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`);
         return;
       }
       if (typeof creditCheckData.currentCredits === 'number') {
@@ -1923,7 +1933,9 @@ function OptimizePageContent() {
         console.warn('[Multi-query] Some per-query runs failed:', perQueryFailures);
       }
 
-      successfulQueriesRun = queriesToRun;
+      successfulQueriesRun = perQuerySuccess
+        .map((r: any) => (typeof r?.query === 'string' ? r.query : ''))
+        .filter((q: string) => q && q.trim().length > 0);
 
       scraperResponse = perQuerySuccess[0]?.scrapeWithQuery ?? null;
 
@@ -2052,7 +2064,9 @@ function OptimizePageContent() {
             throw new Error('Failed to save any analysis rows. Please try again.');
           }
 
-          successfulQueriesRun = queriesToRun;
+          successfulQueriesRun = insertSuccess
+            .map((r: any) => (typeof r?.query === 'string' ? r.query : ''))
+            .filter((q: string) => q && q.trim().length > 0);
 
           savedGoogleAnalysisId = insertSuccess
             .map((r: any) => r.savedGoogleId)
@@ -2212,7 +2226,7 @@ function OptimizePageContent() {
       const creditCheckData = await creditCheckResponse.json();
 
       if (!creditCheckData.hasEnoughCredits) {
-        setServerError('Insufficient credits for combined analysis. Please purchase more credits to continue.');
+        setServerError(`Insufficient credits for combined analysis. Required: ${requiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`);
         return;
       }
       if (typeof creditCheckData.currentCredits === 'number') {
@@ -2815,7 +2829,7 @@ function OptimizePageContent() {
       const creditCheckData = await creditCheckResponse.json();
 
       if (!creditCheckData.hasEnoughCredits) {
-        setServerError('Insufficient credits. Please purchase more credits to continue.');
+        setServerError(`Insufficient credits. Required: ${requiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`);
         return;
       }
       if (typeof creditCheckData.currentCredits === 'number') {
@@ -2840,83 +2854,47 @@ function OptimizePageContent() {
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2);
 
-    try {
-      // Part 1: Prepare queries (use existing selections when available)
-      let perplexityQuery: string | null = null;
-      let googleQuery: string | null = null;
-      let primaryQuery = '';
-      let generatedQueriesPayload: string | null = null;
-
-      const hasExistingQueries =
-        allPerplexityQueries.length > 0 ||
-        allGoogleQueries.length > 0;
-
-      if (!hasExistingQueries) {
-        setIsGeneratingQuery(true);
-        setQueryGenerationError(null);
-        setServerError(null);
-        
-        try {
-          const queryResult = await generateQueryFromData(aiReadyData, analysisId);
-          
-          if (!queryResult) {
-            // Query generation failed - error already set by generateQueryFromData
-            setIsGeneratingQuery(false);
-            return;
-          }
-          
-          const isDualQuery = typeof queryResult === 'object' && 'perplexityQuery' in queryResult;
-          perplexityQuery = isDualQuery 
-            ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).perplexityQuery
-            : (queryResult as string);
-          googleQuery = isDualQuery
-            ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).googleQuery
-            : (queryResult as string);
-          
-          primaryQuery = perplexityQuery || googleQuery || '';
-          if (!primaryQuery) {
-            setQueryGenerationError('Failed to generate a valid search query');
-            setIsGeneratingQuery(false);
-            return;
-          }
-          
-          console.log("Generated query for optimization:", primaryQuery);
-
-          generatedQueriesPayload = JSON.stringify({
-            perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
-            googleQuery: googleQuery ? [googleQuery] : [],
-          });
-
-          setGeneratedQuery(generatedQueriesPayload);
-        } catch (error) {
-          console.error('Failed to generate queries before analysis:', error);
-          setIsGeneratingQuery(false);
-          setServerError('Failed to generate queries. Please try again.');
-          return;
-        }
-      } else {
-        // Use existing selections without regenerating
-        setQueryGenerationError(null);
-        // Prefer manually selected queries; fall back to the first generated query for each engine
-        perplexityQuery = selectedPerplexityQueries[0] || allPerplexityQueries[0] || null;
-        googleQuery = selectedGoogleQueries[0] || allGoogleQueries[0] || null;
-        primaryQuery = perplexityQuery || googleQuery || '';
-
-        if (!primaryQuery) {
-          setServerError('Please select at least one query to continue.');
-          return;
-        }
-
-        setIsGeneratingQuery(false);
-      }
-
-      if (!generatedQueriesPayload) {
-        generatedQueriesPayload = JSON.stringify({
-          perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
-          googleQuery: googleQuery ? [googleQuery] : [],
-        });
-      }
+    // Part 1: Generate search query from the product data
+    setIsGeneratingQuery(true);
+    setQueryGenerationError(null);
+    setServerError(null);
     
+    try {
+      const queryResult = await generateQueryFromData(aiReadyData, analysisId);
+      
+      if (!queryResult) {
+        // Query generation failed - error already set by generateQueryFromData
+        setIsGeneratingQuery(false);
+        return;
+      }
+      
+      // Handle both single query (string) and dual query (object) cases
+      const isDualQuery = typeof queryResult === 'object' && 'perplexityQuery' in queryResult;
+      const perplexityQuery = isDualQuery 
+        ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).perplexityQuery
+        : (queryResult as string);
+      const googleQuery = isDualQuery
+        ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).googleQuery
+        : (queryResult as string);
+      
+      // Set the primary query for display (prefer Perplexity if available)
+      const primaryQuery = perplexityQuery || googleQuery || '';
+      if (!primaryQuery) {
+        setQueryGenerationError('Failed to generate a valid search query');
+        setIsGeneratingQuery(false);
+        return;
+      }
+      
+      console.log("Generated query for optimization:", primaryQuery);
+
+      // Persist both queries in a structured JSON string for Supabase and results pages
+      const generatedQueriesPayload = JSON.stringify({
+        perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
+        googleQuery: googleQuery ? [googleQuery] : [],
+      });
+
+      setGeneratedQuery(generatedQueriesPayload);
+      
       // Part 2.1: Call the selected scraper APIs
       setIsAnalyzing(true);
       setAnalysisError(null);
@@ -5363,6 +5341,41 @@ function OptimizePageContent() {
               </Box>
             )}
             
+            {/* Server Error State */}
+            {serverError && (
+              <Box sx={{ mb: 4 }}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    p: 3,
+                    backgroundColor: "rgba(243, 91, 100, 0.1)",
+                    border: "1px solid rgba(243, 91, 100, 0.3)",
+                  }}
+                >
+                  <Typography level="body-md" sx={{ color: "#F35B64", mb: 2 }}>
+                    ⚠️ Error
+                  </Typography>
+                  <Typography level="body-sm" sx={{ color: textSecondary, mb: 2 }}>
+                    {serverError}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => setServerError(null)}
+                    sx={{
+                      borderColor: "rgba(243, 91, 100, 0.4)",
+                      color: "#F35B64",
+                      "&:hover": {
+                        backgroundColor: "rgba(243, 91, 100, 0.1)",
+                      },
+                    }}
+                  >
+                    Dismiss
+                  </Button>
+                </Card>
+              </Box>
+            )}
+            
             {/* Loading State - Generating Queries */}
             {isGeneratingQuery && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
               <Box sx={{ textAlign: "center", py: 8 }}>
@@ -5414,7 +5427,7 @@ function OptimizePageContent() {
                 </Box>
               </Box>
             )}
-            {!isLoadingQueries && !isGeneratingQuery && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
+            {hasLoadedQueriesForProduct && !isLoadingQueries && !isGeneratingQuery && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
               <Box sx={{ textAlign: "center", py: 8 }}>
                 <Typography level="h3" sx={{ mb: 2, color: textPrimary }}>
                   No Queries Generated Yet

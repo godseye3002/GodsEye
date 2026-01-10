@@ -81,7 +81,7 @@ interface ProductStoreState {
   setQueryData: (queryData: QueryData | null) => void;
   saveQueriesToSupabase: (userId: string) => Promise<void>;
   updateQueryDataInSupabase: (userId: string, queryData: QueryData) => Promise<void>;
-  loadQueryDataFromSupabase: (userId: string) => Promise<string | null>;
+  loadQueryDataFromSupabase: (userId: string, productId?: string) => Promise<string | null>;
   setOptimizationAnalysis: (analysis: OptimizationAnalysis | null) => void;
   setGoogleOverviewAnalysis: (analysis: OptimizationAnalysis | null) => void;
   setAnalysisError: (error: string | null) => void;
@@ -341,7 +341,11 @@ export const useProductStore = create<ProductStoreState>()(
             };
           });
           
-          set({ products: transformedProducts });
+          set((state) => ({
+            products: transformedProducts,
+            currentProductId:
+              state.currentProductId || transformedProducts[0]?.id || state.currentProductId || null,
+          }));
           
           // Load query data from the first available product (or create empty state)
           if (products.length > 0) {
@@ -404,29 +408,7 @@ export const useProductStore = create<ProductStoreState>()(
                   console.error('[Query Data] Failed to cleanup orphaned queries:', cleanupError);
                 }
               }
-            } else {
-              // Reset query state if no query_text found
-              set({
-                allPerplexityQueries: [],
-                allGoogleQueries: [],
-                usedPerplexityQueries: [],
-                usedGoogleQueries: [],
-                selectedPerplexityQueries: [],
-                selectedGoogleQueries: [],
-                queryData: null,
-              });
             }
-          } else {
-            // Reset query state if no products
-            set({
-              allPerplexityQueries: [],
-              allGoogleQueries: [],
-              usedPerplexityQueries: [],
-              usedGoogleQueries: [],
-              selectedPerplexityQueries: [],
-              selectedGoogleQueries: [],
-              queryData: null,
-            });
           }
         } catch (error) {
           console.error('Error loading products from Supabase:', error);
@@ -669,9 +651,13 @@ export const useProductStore = create<ProductStoreState>()(
         }
       },
       
-      loadQueryDataFromSupabase: async (userId: string) => {
+      loadQueryDataFromSupabase: async (userId: string, productId?: string) => {
         try {
-          const response = await fetch(`/api/products/get-queries?userId=${userId}`);
+          const params = new URLSearchParams({ userId });
+          if (productId) {
+            params.append("productId", productId);
+          }
+          const response = await fetch(`/api/products/get-queries?${params.toString()}`);
           
           // Handle 404 (no products found) as normal case, not error
           if (response.status === 404) {
@@ -728,7 +714,14 @@ export const useProductStore = create<ProductStoreState>()(
         ignoredMissingFields: state.ignoredMissingFields,
         selectedPipeline: state.selectedPipeline,
         // Do NOT persist query arrays; they should be loaded from Supabase so
-        // the backend remains the source of truth for generated queries.
+        // backend remains the source of truth for generated queries.
+        allPerplexityQueries: undefined,
+        allGoogleQueries: undefined,
+        selectedPerplexityQueries: undefined,
+        selectedGoogleQueries: undefined,
+        usedPerplexityQueries: undefined,
+        usedGoogleQueries: undefined,
+        queryData: undefined,
       }),
     }
   )
