@@ -20,9 +20,9 @@ interface AuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   loading: boolean;
-  signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
-  signUpWithEmail: (email: string, password: string, userName?: string) => Promise<{ error: any; alreadyExists: boolean }>;
-  signInWithGoogle: () => Promise<{ error: any }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: unknown }>;
+  signUpWithEmail: (email: string, password: string, userName?: string) => Promise<{ error: unknown; alreadyExists: boolean }>;
+  signInWithGoogle: () => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -45,18 +45,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       setProfile(data);
-    } catch (error: any) {
-      const errorCode = error?.code;
-      const errorMessage = error?.message || '';
+    } catch (error: unknown) {
+      const errorCode = error && typeof error === 'object' ? (error as Record<string, unknown>).code : undefined;
+      const errorMessage = error && typeof error === 'object' ? (error as Record<string, unknown>).message : undefined;
       const isMissingProfile =
         errorCode === 'PGRST116' ||
         errorCode === 'PGRST101' ||
         errorCode === 'PGRST103' ||
-        errorMessage.toLowerCase().includes('no rows') ||
-        errorMessage.toLowerCase().includes('not found');
+        (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('no rows')) ||
+        (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('not found'));
 
       if (isMissingProfile) {
-        console.warn('Profile not found for user. Clearing session.');
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[AuthService] Profile not found for user. Clearing session.', {
+          userId: session?.user?.id,
+          timestamp: new Date().toISOString()
+        });
+      }
         setProfile(null);
         setUser(null);
         setSession(null);
@@ -64,7 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.error('Error fetching profile:', error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[AuthService] Error fetching profile:', {
+          error,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
   };
 
@@ -94,7 +104,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         // Do not block loading on profile fetch; run in background
         fetchProfile(session.user.id).catch((e) => {
-          console.error('Background profile fetch failed:', e);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[AuthService] Background profile fetch failed:', {
+            error: e,
+            userId: session?.user?.id,
+            timestamp: new Date().toISOString()
+          });
+        }
         });
 
         // Update last_login on SIGNED_IN event (includes OAuth)
@@ -106,7 +122,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               body: JSON.stringify({ userId: session.user.id }),
             });
           } catch (loginError) {
-            console.error('Failed to update last login:', loginError);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[AuthService] Failed to update last login:', {
+            error: loginError,
+            userId: session?.user?.id,
+            timestamp: new Date().toISOString()
+          });
+        }
           }
         }
       } else {
@@ -133,7 +155,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({ userId: data.user.id }),
         });
       } catch (loginError) {
-        console.error('Failed to update last login:', loginError);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[AuthService] Failed to update last login:', {
+            error: loginError,
+            userId: data?.user?.id,
+            timestamp: new Date().toISOString()
+          });
+        }
         // Don't block sign-in if this fails
       }
     }
@@ -154,8 +182,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Supabase quirk: if email already exists, `data.user.identities` may be [] with no error
-    const alreadyExists = !!(data?.user && Array.isArray((data.user as any).identities) && (data.user as any).identities.length === 0);
-    return { error, alreadyExists } as { error: any, alreadyExists: boolean };
+    const userObj = data?.user ? data.user as unknown : {};
+    const identities = userObj && typeof userObj === 'object' ? (userObj as Record<string, unknown>).identities : undefined;
+    const alreadyExists = !!(data?.user && Array.isArray(identities) && identities.length === 0);
+    return { error, alreadyExists } as { error: unknown, alreadyExists: boolean };
   };
 
   const signInWithGoogle = async () => {

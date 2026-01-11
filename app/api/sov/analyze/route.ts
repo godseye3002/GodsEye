@@ -30,25 +30,28 @@ export async function POST(request: Request) {
     });
 
     const text = await upstreamResponse.text();
-    let json: any = null;
+    let json: unknown = null;
 
     try {
       json = text ? JSON.parse(text) : null;
     } catch {
-      return NextResponse.json(
-        {
-          error: 'Upstream returned non-JSON response',
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[SOVAnalyze] Failed to parse response JSON:', {
+          text: text.slice(0, 200),
           status: upstreamResponse.status,
-          body: text,
-        },
-        { status: 502 }
+          timestamp: new Date().toISOString()
+        });
+      }
+      return NextResponse.json(
+        { error: 'Server returned an invalid response. Please try again.' },
+        { status: 500 }
       );
     }
 
     if (!upstreamResponse.ok) {
       return NextResponse.json(
         {
-          error: json?.error || 'SOV analysis failed',
+          error: (json && typeof json === 'object' && 'error' in json) ? (json as any).error : 'SOV analysis failed',
           status: upstreamResponse.status,
           details: json,
         },

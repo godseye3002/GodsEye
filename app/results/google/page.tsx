@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Typography, Card, Sheet, Button, Skeleton, Stack } from "@mui/joy";
+import { Box, Typography, Card, Sheet, Button, Skeleton, Stack, CircularProgress } from "@mui/joy";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import { useProductStore } from "../../optimize/store";
 import AnalysisDisplay from "../../optimize/analysis-display";
@@ -10,6 +10,7 @@ import { exportAnalysisToDocx, exportAnalysisToPdf } from "../../optimize/export
 
 export default function GoogleResultsPage() {
   const router = useRouter();
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const {
     googleOverviewAnalysis,
     products,
@@ -25,6 +26,11 @@ export default function GoogleResultsPage() {
     if (googleOverviewAnalysis) {
       exportAnalysisToPdf(googleOverviewAnalysis, "Google AI Overview Analysis", googleQueryText);
     }
+  };
+
+  const handleBackToDashboard = async () => {
+    setIsNavigatingBack(true);
+    router.push("/products");
   };
 
   const [hydrated, setHydrated] = useState(false);
@@ -162,10 +168,16 @@ export default function GoogleResultsPage() {
         <Button
           variant="outlined"
           size="sm"
-          onClick={() => router.push("/products")}
-          sx={{ width: { xs: 120, sm: "auto" } }}
+          onClick={handleBackToDashboard}
+          disabled={isNavigatingBack}
+          startDecorator={isNavigatingBack ? <CircularProgress size="sm" thickness={5} sx={{ color: "#2ED47A" }} /> : null}
+          sx={{ 
+            width: { xs: 120, sm: "auto" },
+            opacity: isNavigatingBack ? 0.7 : 1,
+            cursor: isNavigatingBack ? "not-allowed" : "pointer"
+          }}
         >
-          Back to Dashboard
+          {isNavigatingBack ? "Loading..." : "Back to Dashboard"}
         </Button>
       </Sheet>
 

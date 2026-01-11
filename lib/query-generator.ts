@@ -20,7 +20,11 @@ export async function generateSearchQueries(productContext: ProductContext): Pro
   const API_KEY: string = process.env.GEMINI_API_KEY3 || '';
   
   if (!API_KEY) {
-    console.error("GEMINI_API_KEY3 is not defined in the environment variables.");
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[QueryGenerator] GEMINI_API_KEY3 is not defined in environment variables.', {
+        timestamp: new Date().toISOString()
+      });
+    }
     return null;
   }
 
@@ -31,7 +35,7 @@ export async function generateSearchQueries(productContext: ProductContext): Pro
 Role: You are a digital marketing analyst specializing in consumer search behavior.
 
 
-Objective: Generate a list of the most common and high-intent search queries that a potential customer would type into a search engine when they are actively looking to purchase a [Product Category] to solve a [Core Problem].
+Objective: Generate a list of the most common and high-intent search queries that a potential customer would type into a search engine when they are actively looking to purchase a [Product Category] to solve a [Core Problem).
 
 
 Product Context:
@@ -50,7 +54,9 @@ Output Format:
 A Python list containing exactly 5 search query strings. For example: ["query one", "query two", ...]
 `;
 
-  console.log("🚀 Sending prompt to the Gemini API for query generation...");
+  if (process.env.NODE_ENV !== 'production') {
+    console.log("🚀 Sending prompt to Gemini API for query generation...");
+  }
   
   try {
     const result = await model.generateContentStream(prompt);
@@ -71,16 +77,20 @@ A Python list containing exactly 5 search query strings. For example: ["query on
         const uniqueQueries = [...new Set(cleanedQueries)];
         const finalQueries = uniqueQueries.slice(0, 5);
 
-        console.log("\n--- Generated Search Queries ---");
-        console.log(finalQueries);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log("\n--- Generated Search Queries ---");
+          console.log(finalQueries);
+        }
 
         // Check if the array is not empty before selecting the first element
         if (finalQueries.length > 0) {
           // Select the first (top-ranked) query
           const topQuery = finalQueries[0];
 
-          console.log("\n--- ✅ Top-Ranked Query for API Call ---");
-          console.log(topQuery);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log("\n--- ✅ Top-Ranked Query for API Call ---");
+            console.log(topQuery);
+          }
 
           return {
             queries: finalQueries,
@@ -88,21 +98,32 @@ A Python list containing exactly 5 search query strings. For example: ["query on
           };
 
         } else {
-          console.log("\nNo valid queries were generated.");
+          if (process.env.NODE_ENV !== 'production') {
+            console.log("\nNo valid queries were generated.");
+          }
           return null;
         }
 
       } else {
-        console.log("Could not extract any queries from the model's response.");
+        if (process.env.NODE_ENV !== 'production') {
+          console.log("Could not extract any queries from the model's response.");
+        }
         return null;
       }
     } else {
-      console.log("Could not find a Python-style list in the model's response.");
+      if (process.env.NODE_ENV !== 'production') {
+        console.log("Could not find a Python-style list in the model's response.");
+      }
       return null;
     }
 
   } catch (error) {
-    console.error("An error occurred while generating content:", error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[QueryGenerator] An error occurred while generating content:', {
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      });
+    }
     return null;
   }
 }

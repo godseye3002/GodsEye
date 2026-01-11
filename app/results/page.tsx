@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Box, Typography, Card, Sheet, Button, Skeleton, Stack, Modal, ModalDialog, ModalClose } from "@mui/joy";
+import { Box, Typography, Card, Sheet, Button, Skeleton, Stack, Modal, ModalDialog, ModalClose, CircularProgress } from "@mui/joy";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import { useProductStore } from "../optimize/store";
 import AnalysisDisplay from "../optimize/analysis-display";
@@ -12,6 +12,7 @@ import { exportAnalysisToDocx, exportAnalysisToPdf } from "../optimize/export-ut
 export default function ResultsPage() {
   const router = useRouter();
   const [confirmResetOpen, setConfirmResetOpen] = useState(false);
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const {
     formData,
     optimizationAnalysis,
@@ -27,6 +28,11 @@ export default function ResultsPage() {
 
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
+
+  const handleBackToDashboard = async () => {
+    setIsNavigatingBack(true);
+    router.push("/products");
+  };
 
   // Fallback: if we're viewing results for an existing product (identified by
   // currentProductId) but optimizationAnalysis is missing (e.g. after reload),
@@ -182,8 +188,19 @@ export default function ResultsPage() {
             GodsEye
           </Typography>
         </Box>
-        <Button variant="outlined" size="sm" onClick={() => router.push("/products")} sx={{ width: { xs: 120, sm: "auto" } }}>
-          Back to Dashboard
+        <Button 
+          variant="outlined" 
+          size="sm" 
+          onClick={handleBackToDashboard} 
+          disabled={isNavigatingBack}
+          startDecorator={isNavigatingBack ? <CircularProgress size="sm" thickness={5} sx={{ color: "#2ED47A" }} /> : null}
+          sx={{ 
+            width: { xs: 120, sm: "auto" },
+            opacity: isNavigatingBack ? 0.7 : 1,
+            cursor: isNavigatingBack ? "not-allowed" : "pointer"
+          }}
+        >
+          {isNavigatingBack ? "Loading..." : "Back to Dashboard"}
         </Button>
       </Sheet>
 

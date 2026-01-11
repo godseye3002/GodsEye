@@ -12,16 +12,16 @@ export type SovAnalyzeResult =
       data?: {
         global_score?: number;
         narrative?: string;
-        [key: string]: any;
+        [key: string]: unknown;
       };
       message?: string;
-      [key: string]: any;
+      [key: string]: unknown;
     }
   | {
       success?: false;
       error: string;
       status?: number;
-      details?: any;
+      details?: unknown;
     };
 
 function toUserFriendlyError(err: unknown): string {
@@ -42,7 +42,7 @@ export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyz
       });
 
       const text = await response.text();
-      let json: any = null;
+      let json: unknown = null;
       try {
         json = text ? JSON.parse(text) : null;
       } catch {
@@ -61,7 +61,9 @@ export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyz
       // If 502 (cold start) and we have retries left, retry with delay
       if (response.status === 502 && attempt < maxRetries) {
         const delay = Math.min(1000 * Math.pow(2, attempt), 3000);
-        console.log(`[SOV Analysis] Attempt ${attempt + 1} failed with 502, retrying in ${delay}ms...`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[SOV Analysis] Attempt ${attempt + 1} failed with 502, retrying in ${delay}ms...`);
+        }
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -69,7 +71,7 @@ export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyz
       // Return error for non-retryable failures
       return {
         success: false,
-        error: json?.error || 'Failed to start SOV analysis.',
+        error: (json && typeof json === 'object' && 'error' in json) ? (json as any).error : 'Failed to start SOV analysis.',
         status: response.status,
         details: json,
       };
@@ -80,7 +82,9 @@ export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyz
       
       // Retry network errors too
       const delay = Math.min(1000 * Math.pow(2, attempt), 2000);
-      console.log(`[SOV Analysis] Network error on attempt ${attempt + 1}, retrying in ${delay}ms...`, err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[SOV Analysis] Network error on attempt ${attempt + 1}, retrying in ${delay}ms...`, err);
+      }
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }

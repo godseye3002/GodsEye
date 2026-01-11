@@ -14,7 +14,7 @@ export interface SovSnapshotRow {
   category_relevance: number;
   total_queries_analyzed: number;
   narrative_summary: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const STATUS_CACHE = new Map<string, SovListenerStatus>();
@@ -39,7 +39,14 @@ async function fetchCurrentSovStatus(productId: string, engine: SovEngine): Prom
     
     return 'processing';
   } catch (err) {
-    console.warn('[useSovSnapshotListener] Error fetching current status', err);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[SovSnapshotListener] Error fetching current status:', {
+        error: err,
+        productId,
+        engine,
+        timestamp: new Date().toISOString()
+      });
+    }
     return 'completed';
   }
 }
@@ -110,7 +117,12 @@ export function useSovSnapshotListener(productId: string, engine: SovEngine) {
         supabase.removeChannel(channel);
       } catch (err) {
         if (process.env.NODE_ENV !== 'production') {
-          console.warn('[useSovSnapshotListener] Error removing channel', { err, productId, engine });
+          console.warn('[SovSnapshotListener] Error removing channel:', {
+            error: err,
+            productId,
+            engine,
+            timestamp: new Date().toISOString()
+          });
         }
       }
     };

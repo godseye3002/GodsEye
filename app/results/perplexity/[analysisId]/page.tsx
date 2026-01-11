@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Box, Typography, Card, Sheet, Button, Skeleton, Stack, Modal, ModalDialog, ModalClose } from "@mui/joy";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import { useProductStore } from "../../../optimize/store";
+import { OptimizedProduct, OptimizationAnalysis } from "../../../optimize/types";
 import AnalysisDisplay from "../../../optimize/analysis-display";
 import { exportAnalysisToDocx, exportAnalysisToPdf } from "../../../optimize/export-utils";
 import AnalysisReplacer from "../../../components/AnalysisReplacer";
@@ -50,17 +51,17 @@ export default function PerplexityAnalysisResultPage() {
         setServerError(null);
         
         // 1) Try local store first (fast path)
-        let localMatch: any = null;
+        let localMatch: OptimizedProduct | null = null;
         if (currentProductId && products.length > 0) {
           const currentProduct = products.find(p => p.id === currentProductId);
-          localMatch = currentProduct?.analyses?.find((a: any) => a.id === analysisId) ?? null;
+          localMatch = currentProduct?.analyses?.find((a: unknown) => (a as { id: string }).id === analysisId) ?? null;
         }
 
-        if (localMatch?.optimization_analysis) {
+        if (localMatch && 'optimization_analysis' in localMatch && localMatch.optimization_analysis) {
           // Set data synchronously before stopping loading
           setAnalysis(localMatch);
-          setOptimizationAnalysis(localMatch.optimization_analysis);
-          setGeneratedQuery(localMatch.optimization_query || '');
+          setOptimizationAnalysis(localMatch.optimization_analysis as OptimizationAnalysis);
+          setGeneratedQuery('optimization_query' in localMatch && typeof localMatch.optimization_query === 'string' ? localMatch.optimization_query : '');
           return;
         }
 

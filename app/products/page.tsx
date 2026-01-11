@@ -22,6 +22,9 @@ function ProductsPageContent() {
   const [isProductsLoading, setIsProductsLoading] = useState(false);
   const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [isNavigatingToProduct, setIsNavigatingToProduct] = useState(false);
+  const [navigatingProductId, setNavigatingProductId] = useState<string | null>(null);
   const router = useRouter();
   const { user, signOut } = useAuth();
   const {
@@ -65,6 +68,13 @@ function ProductsPageContent() {
     }
   }, [user, setUserInfo, setUserCredits]);
 
+  // Reset navigation state when component mounts
+  useEffect(() => {
+    setIsAddingProduct(false);
+    setIsNavigatingToProduct(false);
+    setNavigatingProductId(null);
+  }, []);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -100,13 +110,16 @@ function ProductsPageContent() {
         .slice(0, 2) || 'U'
     : userInfo?.email?.[0]?.toUpperCase() || 'U';
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
+    setIsAddingProduct(true);
     resetForm();
     router.push("/optimize");
   };
 
-  const handleProductClick = (productId: string) => {
-    loadProduct(productId);
+  const handleProductClick = async (productId: string) => {
+    setIsNavigatingToProduct(true);
+    setNavigatingProductId(productId);
+    await loadProduct(productId);
     router.push("/optimize");
   };
 
@@ -438,13 +451,15 @@ function ProductsPageContent() {
             flexDirection: "column",
             alignItems: "flex-start",
             justifyContent: "space-between",
-            cursor: "pointer",
+            cursor: isAddingProduct ? "not-allowed" : "pointer",
+            opacity: isAddingProduct ? 0.7 : 1,
             transition: "all 0.3s ease",
             backgroundColor: "rgba(17, 19, 24, 0.96)",
             border: "2px dashed rgba(46, 212, 122, 0.24)",
             borderRadius: "12px",
             p: { xs: 1.5, sm: 2, md: 2.4 },
             gap: { xs: 1.3, md: 1.7 },
+            position: "relative",
             "&:hover": {
               borderColor: "rgba(46, 212, 122, 0.6)",
               backgroundColor: "rgba(20, 23, 29, 0.98)",
@@ -463,19 +478,22 @@ function ProductsPageContent() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transition: "all 0.3s ease",
             }}
           >
-            <Typography
-              sx={{
-                fontSize: "1.6rem",
-                color: "#2ED47A",
-                fontWeight: 300,
-                lineHeight: 1,
-              }}
-            >
-              +
-            </Typography>
+            {isAddingProduct ? (
+              <CircularProgress size="sm" thickness={6} sx={{ color: "#2ED47A" }} />
+            ) : (
+              <Typography
+                sx={{
+                  fontSize: "1.6rem",
+                  color: "#2ED47A",
+                  fontWeight: 300,
+                  lineHeight: 1,
+                }}
+              >
+                +
+              </Typography>
+            )}
           </Box>
           <Typography
             level="h4"
@@ -486,7 +504,7 @@ function ProductsPageContent() {
               fontSize: { xs: "0.98rem", sm: "1.08rem", md: "1.2rem" },
             }}
           >
-            Add New Product
+            {isAddingProduct ? "Loading..." : "Add New Product"}
           </Typography>
           <Typography
             level="body-md"
@@ -524,11 +542,12 @@ function ProductsPageContent() {
               p: { xs: 1.5, sm: 2, md: 2.4 },
               gap: { xs: 1, md: 1.25 },
               position: "relative",
-              cursor: "pointer",
-              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+              cursor: isNavigatingToProduct && navigatingProductId === product.id ? "not-allowed" : "pointer",
+              opacity: isNavigatingToProduct && navigatingProductId === product.id ? 0.7 : 1,
+              transition: "transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease",
               "&:hover": {
-                transform: "translateY(-4px)",
-                boxShadow: "0 20px 44px rgba(46, 212, 122, 0.12)",
+                transform: isNavigatingToProduct && navigatingProductId === product.id ? "none" : "translateY(-4px)",
+                boxShadow: isNavigatingToProduct && navigatingProductId === product.id ? "none" : "0 20px 44px rgba(46, 212, 122, 0.12)",
               },
             }}
             onClick={() => handleProductClick(product.id)}
@@ -595,6 +614,32 @@ function ProductsPageContent() {
             >
               Saved on {new Date(product.createdAt).toLocaleString()}
             </Typography>
+            
+            {/* Loading Overlay */}
+            {isNavigatingToProduct && navigatingProductId === product.id && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(13, 15, 20, 0.8)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: "12px",
+                  zIndex: 10,
+                }}
+              >
+                <Stack spacing={1} alignItems="center">
+                  <CircularProgress size="md" thickness={5} sx={{ color: "#2ED47A" }} />
+                  <Typography level="body-sm" sx={{ color: "#F2F5FA", fontWeight: 500 }}>
+                    Loading...
+                  </Typography>
+                </Stack>
+              </Box>
+            )}
           </Card>
         ))}
       </Box>

@@ -47,7 +47,12 @@ export async function isAnalysisUpToDate(productId: string, source: AnalysisSour
 
     if (sourceError) {
       if (process.env.NODE_ENV !== 'production') {
-        console.error(`[AnalysisHash] Failed to load ${table} rows for product ${productId}:`, sourceError);
+        console.error('[AnalysisHash] Failed to load source rows:', {
+          table,
+          productId,
+          error: sourceError,
+          timestamp: new Date().toISOString()
+        });
       }
       return { upToDate: false, computedHash: null, storedHash: null, hasSourceRows: false };
     }
@@ -67,7 +72,11 @@ export async function isAnalysisUpToDate(productId: string, source: AnalysisSour
 
     if (productError) {
       if (process.env.NODE_ENV !== 'production') {
-        console.error(`[AnalysisHash] Failed to load product ${productId}:`, productError);
+        console.error('[AnalysisHash] Failed to load product:', {
+          productId,
+          error: productError,
+          timestamp: new Date().toISOString()
+        });
       }
       return { upToDate: false, computedHash, storedHash: null, hasSourceRows: ids.length > 0 };
     }
@@ -83,7 +92,10 @@ export async function isAnalysisUpToDate(productId: string, source: AnalysisSour
     };
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-      console.error('[AnalysisHash] Unexpected error verifying analysis hash:', error);
+      console.error('[AnalysisHash] Unexpected error verifying analysis hash:', {
+        error,
+        timestamp: new Date().toISOString()
+      });
     }
     return { upToDate: false, computedHash: null, storedHash: null, hasSourceRows: false };
   }

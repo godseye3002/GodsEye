@@ -52,7 +52,15 @@ export async function getFaviconUrl(url: string): Promise<string | null> {
 
     // If article URL fails, try the homepage
     if (!response.ok) {
-      console.warn(`[Favicon] HTTP error for ${url}: ${response.status} ${response.statusText}. Trying homepage...`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[FaviconService] HTTP error for URL:', {
+          url,
+          status: response.status,
+          statusText: response.statusText,
+          action: 'Trying homepage',
+          timestamp: new Date().toISOString()
+        });
+      }
       const homeCtrl = new AbortController();
       const homeTimeout = setTimeout(() => homeCtrl.abort(), 5000);
       try {
@@ -61,7 +69,14 @@ export async function getFaviconUrl(url: string): Promise<string | null> {
         clearTimeout(homeTimeout);
       }
       if (!response.ok) {
-        console.warn(`[Favicon] Homepage fetch also failed for ${origin}: ${response.status} ${response.statusText}`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[FaviconService] Homepage fetch also failed:', {
+            origin,
+            status: response.status,
+            statusText: response.statusText,
+            timestamp: new Date().toISOString()
+          });
+        }
         // fall through to favicon.ico / google fallback below
       }
     }
@@ -137,7 +152,12 @@ export async function getFaviconUrl(url: string): Promise<string | null> {
       }
     } catch (err) {
       // Fallback doesn't exist or timed out
-      console.warn(`[Favicon] Fallback /favicon.ico not found for ${url}`);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[FaviconService] Fallback /favicon.ico not found:', {
+          url,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     // 5. Final fallback: Google S2 favicon service
@@ -149,10 +169,20 @@ export async function getFaviconUrl(url: string): Promise<string | null> {
     return null;
   } catch (error: any) {
     // Handle network errors, timeouts, or parsing errors
-    if (error.name === 'AbortError') {
-      console.warn(`[Favicon] Timeout fetching favicon for ${url}`);
-    } else {
-      console.warn(`[Favicon] Error fetching favicon for ${url}:`, error.message);
+    if (process.env.NODE_ENV !== 'production') {
+      if (error.name === 'AbortError') {
+        console.warn('[FaviconService] Timeout fetching favicon:', {
+          url,
+          timeout: 5000,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.warn('[FaviconService] Error fetching favicon:', {
+          url,
+          error: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString()
+        });
+      }
     }
     return null;
   }

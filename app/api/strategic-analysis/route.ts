@@ -401,7 +401,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(analysisResult);
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-      console.error('[Strategic Analysis] Error:', error);
+      console.error('[StrategicAnalysis] Error:', {
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      });
     }
     return NextResponse.json(
       { error: 'Failed to perform strategic analysis' },
@@ -410,7 +413,10 @@ export async function POST(request: NextRequest) {
   }
   } catch (error) {
     if (process.env.NODE_ENV !== 'production') {
-      console.error('[Strategic Analysis] Handler Error:', error);
+      console.error('[StrategicAnalysis] Handler Error:', {
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      });
     }
     return NextResponse.json(
       { error: 'Failed to perform strategic analysis' },

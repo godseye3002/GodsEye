@@ -129,7 +129,9 @@ export default function DeepAnalysisCard({
         console.log('[DeepAnalysisCard] Copy successful, notification shown');
       }
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to copy text: ', err);
+      }
       
       if (process.env.NODE_ENV !== 'production') {
         console.error('[DeepAnalysisCard] Copy failed:', {
@@ -545,6 +547,18 @@ export default function DeepAnalysisCard({
               <Typography level="body-sm" sx={{ color: "rgba(162, 167, 180, 0.88)" }}>
                 • <strong>"Product Not Found":</strong> Ensure the UUID is correct<br/>
                 • <strong>"Unauthorized":</strong> Ensure your user ID matches the product owner
+              </Typography>
+
+              <Typography level="body-sm" sx={{ color: "#F59E0B", fontWeight: 600, mb: 1, mt: 2 }}>
+                ⚠️ Important: Plan File Location Issue
+              </Typography>
+
+              <Typography level="body-sm" sx={{ color: "rgba(245, 158, 11, 0.88)", lineHeight: 1.6 }}>
+                <strong>Problem:</strong> MCP creates the optimization plan in a file, but your Vibe coding agent might download it to a different folder. You need to manually locate this file and move it to your project root directory (or any folder in the project) before optimization can proceed.
+              </Typography>
+
+              <Typography level="body-sm" sx={{ color: "rgba(245, 158, 11, 0.88)", lineHeight: 1.6, mt: 1 }}>
+                <strong>Action Required:</strong> Before starting optimization, mention the exact file location to your agent and instruct it to proceed with the AEO improvements.
               </Typography>
             </Box>
 

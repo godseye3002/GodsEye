@@ -401,19 +401,29 @@ function shapeStrict(obj: unknown): ProductInfo {
 
 export async function scrapeAndExtractProductInfo(url: string, searchQuery?: string): Promise<GeminiExtractionResult | null> {
   if (!API_KEY) {
-    console.error('GEMINI_API_KEY environment variable is not set.');
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[ScraperService] GEMINI_API_KEY environment variable is not set.', {
+        timestamp: new Date().toISOString()
+      });
+    }
     return null;
   }
 
-  if (!isProd) console.log('Fetching URL:', url);
+  if (!isProd && process.env.NODE_ENV !== 'production') console.log('Fetching URL:', url);
 
   let html: string | null = null;
   try {
     html = await fetchRawHtml(url);
-    if (!isProd) console.log('[SCRAPER] Server HTML length:', html.length);
+    if (!isProd && process.env.NODE_ENV !== 'production') console.log('[SCRAPER] Server HTML length:', html.length);
   } catch (error) {
     const message = (error as Error).message || String(error);
-    if (!isProd) console.warn('[SCRAPER] Failed to fetch server HTML:', message);
+    if (!isProd && process.env.NODE_ENV !== 'production') {
+      console.warn('[ScraperService] Failed to fetch server HTML:', {
+        error: message,
+        url,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 
   const extractionState: ExtractionState = {
@@ -502,7 +512,7 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
   extractionState.product_name = extractionState.product_name ? String(extractionState.product_name).trim() : null;
   extractionState.description = extractionState.description ? String(extractionState.description).trim() : null;
 
-  if (!isProd) console.log('[SCRAPER] Extraction method chosen:', extractionState.method);
+  if (!isProd && process.env.NODE_ENV !== 'production') console.log('[SCRAPER] Extraction method chosen:', extractionState.method);
 
   let cleanedForLLM = '';
   if (extractionState.product_name && extractionState.description) {
@@ -516,26 +526,31 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
   }
 
   if (!cleanedForLLM || cleanedForLLM.length < 20) {
-    if (!isProd) console.warn('[SCRAPER] LLM input is small; Gemini may return nulls for some fields.');
+    if (!isProd && process.env.NODE_ENV !== 'production') {
+      console.warn('[ScraperService] LLM input is small; Gemini may return nulls for some fields.', {
+        inputLength: cleanedForLLM?.length || 0,
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 
   try {
-    if (!isProd) console.log('[LLM] Sending cleaned text to Gemini (gemini-2.5-flash-lite)...');
+    if (!isProd && process.env.NODE_ENV !== 'production') console.log('[LLM] Sending cleaned text to Gemini (gemini-2.5-flash-lite)...');
     const { parsed: geminiJson, raw: geminiRaw, usage } = await callGemini(cleanedForLLM || '', searchQuery);
     const product = shapeStrict(geminiJson);
     const missingFields = computeMissingFields(product);
 
-    if (!isProd) {
+    if (!isProd && process.env.NODE_ENV !== 'production') {
       console.log('\n/* JavaScript variable: product */\n');
       console.log('const product = ' + JSON.stringify(product, null, 2) + ';\n');
     }
 
     const finalOutput = { product, extraction_method: extractionState.method, missing_fields: missingFields };
-    if (!isProd) {
+    if (!isProd && process.env.NODE_ENV !== 'production') {
       await fs.writeFile('final_output.json', JSON.stringify(finalOutput, null, 2), 'utf8');
     }
 
-    if (!isProd) {
+    if (!isProd && process.env.NODE_ENV !== 'production') {
       console.log('\n--- Final output (product) ---');
       console.log(JSON.stringify(finalOutput, null, 2));
     }
@@ -549,7 +564,7 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
       : undefined;
 
     try {
-      if (tokenUsage && !isProd) {
+      if (tokenUsage && !isProd && process.env.NODE_ENV !== 'production') {
         const input = tokenUsage.inputTokens ?? 0;
         const output = tokenUsage.outputTokens ?? 0;
         const total = tokenUsage.totalTokens ?? input + output;
@@ -566,7 +581,12 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
     };
   } catch (error) {
     const message = (error as Error).message || String(error);
-    if (!isProd) console.error('Fatal error:', message);
+    if (!isProd && process.env.NODE_ENV !== 'production') {
+      console.error('[ScraperService] Fatal error:', {
+        error: message,
+        timestamp: new Date().toISOString()
+      });
+    }
     return null;
   }
 }

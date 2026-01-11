@@ -6,6 +6,7 @@ import {
   Card,
   Checkbox,
   Chip,
+  CircularProgress,
   Divider,
   FormLabel,
   IconButton,
@@ -326,6 +327,9 @@ function OptimizePageContent() {
   
   // Deep Analysis state management
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
+  
+  // Navigation state
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
 
   const maxPerplexityQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_PERPLEXITY_QUERIES, 1);
   const maxGoogleQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_GOOGLE_QUERIES, 1);
@@ -1358,6 +1362,12 @@ function OptimizePageContent() {
     loadQueryData();
   }, [user?.id, currentProductId, loadQueryDataFromSupabase]);
   
+  // Handler for Back to Dashboard navigation
+  const handleBackToDashboard = async () => {
+    setIsNavigatingBack(true);
+    router.push("/products");
+  };
+  
   // Helper function for backwards compatibility with existing query data format
   const parseQueryData = (generatedQuery: string | null): QueryData | null => {
     if (!generatedQuery) return null;
@@ -2078,7 +2088,7 @@ function OptimizePageContent() {
             .filter((id: any) => typeof id === 'string' && id.length > 0)
             .slice(-1)[0] ?? null;
 
-          if (String(process.env.NODE_ENV) === 'debug') {
+          if (String(process.env.NODE_ENV) === 'debug' && process.env.NODE_ENV !== 'production') {
             console.log('[DEBUG][product-analyses] single-engine per-query inserts', {
               pipeline,
               product_id: savedProductId,
@@ -2140,6 +2150,9 @@ function OptimizePageContent() {
               setQueryData(updatedQueryData);
               setUsedPerplexityQueries(updatedQueryData.used.perplexity);
               setUsedGoogleQueries(updatedQueryData.used.google);
+              // Remove used queries from selected queries
+              setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q: string) => !updatedQueryData.used.perplexity.includes(q)));
+              setSelectedGoogleQueries(selectedGoogleQueries.filter((q: string) => !updatedQueryData.used.google.includes(q)));
               finalQueryData = updatedQueryData;
             }
           }
@@ -2543,7 +2556,7 @@ function OptimizePageContent() {
             .filter((id: any) => typeof id === 'string' && id.length > 0)
             .slice(-1)[0] ?? null;
 
-          if (String(process.env.NODE_ENV) === 'debug') {
+          if (String(process.env.NODE_ENV) === 'debug' && process.env.NODE_ENV !== 'production') {
             console.log('[DEBUG][product-analyses] combined per-query inserts', {
               product_id: savedProductId,
               perplexityQueries,
@@ -2604,6 +2617,9 @@ function OptimizePageContent() {
               setQueryData(updatedQueryData);
               setUsedPerplexityQueries(updatedQueryData.used.perplexity);
               setUsedGoogleQueries(updatedQueryData.used.google);
+              // Remove used queries from selected queries
+              setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q: string) => !updatedQueryData.used.perplexity.includes(q)));
+              setSelectedGoogleQueries(selectedGoogleQueries.filter((q: string) => !updatedQueryData.used.google.includes(q)));
               finalQueryData = updatedQueryData;
             }
           }
@@ -3168,7 +3184,7 @@ function OptimizePageContent() {
                   const serializedPerplexity = serializeQueriesForHistory(boundedPerplexityQueries);
                   const serializedGoogle = serializeQueriesForHistory(boundedGoogleQueries);
 
-                  if (String(process.env.NODE_ENV) === 'debug') {
+                  if (String(process.env.NODE_ENV) === 'debug' && process.env.NODE_ENV !== 'production') {
                     console.log('[DEBUG][product-analyses] handleSubmit save', {
                       product_id: savedProductId,
                       boundedPerplexityQueries,
@@ -3321,9 +3337,15 @@ function OptimizePageContent() {
           variant="outlined"
           color="neutral"
           size="sm"
-          onClick={() => router.push("/products")}
+          onClick={handleBackToDashboard}
+          disabled={isNavigatingBack}
+          startDecorator={isNavigatingBack ? <CircularProgress size="sm" thickness={5} sx={{ color: "#2ED47A" }} /> : null}
+          sx={{ 
+            opacity: isNavigatingBack ? 0.7 : 1,
+            cursor: isNavigatingBack ? "not-allowed" : "pointer"
+          }}
         >
-          Back to Dashboard
+          {isNavigatingBack ? "Loading..." : "Back to Dashboard"}
         </Button>
       </Sheet>
 

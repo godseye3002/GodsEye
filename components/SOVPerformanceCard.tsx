@@ -75,7 +75,13 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
         setError('No Share of Voice data available for this product.');
       }
     } catch (err) {
-      console.error('Error fetching SOV data:', err);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[SOVPerformanceCard] Error fetching SOV data:', {
+          error: err,
+          productId,
+          timestamp: new Date().toISOString()
+        });
+      }
       setSnapshot(null);
       setError('Failed to load Share of Voice data.');
     } finally {

@@ -89,7 +89,12 @@ export function useAnalysisListener<T = any>(productId: string, source: Analysis
       } catch (err) {
         // Silently handle channel removal errors
         if (process.env.NODE_ENV !== 'production') {
-          console.warn('[useAnalysisListener] Error removing channel', { err, table, productId });
+          console.warn('[AnalysisListener] Error removing channel:', {
+            error: err,
+            table,
+            productId,
+            timestamp: new Date().toISOString()
+          });
         }
       }
     };

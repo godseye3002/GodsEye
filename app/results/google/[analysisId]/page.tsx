@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Box, Typography, Card, Sheet, Button, Skeleton, Stack, Modal, ModalDialog, ModalClose } from "@mui/joy";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import { useProductStore } from "../../../optimize/store";
+import { OptimizedProduct, OptimizationAnalysis } from "../../../optimize/types";
 import AnalysisDisplay from "../../../optimize/analysis-display";
 import { exportAnalysisToDocx, exportAnalysisToPdf } from "../../../optimize/export-utils";
 import AnalysisReplacer from "../../../components/AnalysisReplacer";
@@ -50,17 +51,17 @@ export default function GoogleAnalysisResultPage() {
         setServerError(null);
         
         // 1) Try local store first (fast path)
-        let localMatch: any = null;
+        let localMatch: OptimizedProduct | null = null;
         if (currentProductId && products.length > 0) {
           const currentProduct = products.find(p => p.id === currentProductId);
-          localMatch = currentProduct?.analyses?.find((a: any) => a.id === analysisId) ?? null;
+          localMatch = currentProduct?.analyses?.find((a: unknown) => (a as { id: string }).id === analysisId) ?? null;
         }
 
-        if (localMatch?.google_overview_analysis) {
+        if (localMatch && 'googleOverviewAnalysis' in localMatch && localMatch.googleOverviewAnalysis) {
           // Set data synchronously before stopping loading
           setAnalysis(localMatch);
-          setGoogleOverviewAnalysis(localMatch.google_overview_analysis);
-          setGeneratedQuery(localMatch.google_search_query || '');
+          setGoogleOverviewAnalysis(localMatch.googleOverviewAnalysis as OptimizationAnalysis);
+          setGeneratedQuery('google_search_query' in localMatch ? localMatch.google_search_query || '' : '');
           return;
         }
 
