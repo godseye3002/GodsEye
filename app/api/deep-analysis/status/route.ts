@@ -28,6 +28,17 @@ export async function POST(request: Request) {
 
     const data = await upstream.json().catch(() => null);
 
+    // Handle 404 gracefully during race condition (analysis not yet created)
+    if (upstream.status === 404) {
+      return NextResponse.json({
+        success: true,
+        data: { 
+          status: 'pending', 
+          message: 'Analysis initializing...' 
+        }
+      });
+    }
+
     if (!upstream.ok) {
       return NextResponse.json(
         {

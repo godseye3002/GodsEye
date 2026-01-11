@@ -382,8 +382,9 @@ export const useProductStore = create<ProductStoreState>()(
                 allGoogleQueries: allGoogle,
                 usedPerplexityQueries: validUsedPerplexity,
                 usedGoogleQueries: validUsedGoogle,
-                selectedPerplexityQueries: [],
-                selectedGoogleQueries: [],
+                // Filter selected queries to exclude used queries
+                selectedPerplexityQueries: allPerplexity.filter((query: string) => !validUsedPerplexity.includes(query)),
+                selectedGoogleQueries: allGoogle.filter((query: string) => !validUsedGoogle.includes(query)),
               });
               
               // Update queryData state for consistency

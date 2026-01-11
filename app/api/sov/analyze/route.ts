@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-
-const DEFAULT_SOV_ANALYSIS_URL = 'https://godseye-sov.onrender.com/analyze';
+// godseye-sov-production.up.railway.app
+// godseye-sov.onrender.com
+const DEFAULT_SOV_ANALYSIS_URL = 'https://godseye-sov-production.up.railway.app/analyze';
 
 export async function POST(request: Request) {
   try {

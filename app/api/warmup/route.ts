@@ -12,7 +12,7 @@ export async function GET() {
     }
     
     // SOV service health endpoint
-    healthEndpoints.push('https://godseye-sov.onrender.com/health');
+    healthEndpoints.push('https://godseye-sov-production.up.railway.app/health');
 
     if (healthEndpoints.length === 0) {
       return NextResponse.json({ 

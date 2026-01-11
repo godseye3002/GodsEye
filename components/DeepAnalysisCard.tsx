@@ -356,12 +356,12 @@ export default function DeepAnalysisCard({
                   whiteSpace: "pre-wrap",
                   pr: 4,
                 }}>
-                  {`{\n  \"mcpServers\": {\n    \"godseye\": {\n      \"url\": \"https://godseye-mcp.onrender.com/sse\",\n      \"type\": \"sse\"\n    }\n  }\n}`}
+                  {`{\n  \"mcpServers\": {\n    \"godseye\": {\n      \"url\": \"https://godseye-mcp-production.up.railway.app/sse\",\n      \"type\": \"sse\"\n    }\n  }\n}`}
                 </Box>
                 <Button
                   size="sm"
                   variant="plain"
-                  onClick={() => copyToClipboard(`{\n  "mcpServers": {\n    "godseye": {\n      "url": "https://godseye-mcp.onrender.com/sse",\n      "type": "sse"\n    }\n  }\n}`)}
+                  onClick={() => copyToClipboard(`{\n  "mcpServers": {\n    "godseye": {\n      "url": "https://godseye-mcp-production.up.railway.app/sse",\n      "type": "sse"\n    }\n  }\n}`)}
                   sx={{
                     position: "absolute",
                     top: 8,
@@ -408,12 +408,12 @@ export default function DeepAnalysisCard({
                   whiteSpace: "pre-wrap",
                   pr: 4,
                 }}>
-                  {`{\n  \"mcpServers\": {\n    \"godseye\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"@modelcontextprotocol/server-sse-client\",\n        \"https://godseye-mcp.onrender.com/sse\"\n      ]\n    }\n  }\n}`}
+                  {`{\n  \"mcpServers\": {\n    \"godseye\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"@modelcontextprotocol/server-sse-client\",\n        \"https://godseye-mcp-production.up.railway.app/sse\"\n      ]\n    }\n  }\n}`}
                 </Box>
                 <Button
                   size="sm"
                   variant="plain"
-                  onClick={() => copyToClipboard(`{\n  "mcpServers": {\n    "godseye": {\n      "command": "npx",\n      "args": [\n        "-y",\n        "@modelcontextprotocol/server-sse-client",\n        "https://godseye-mcp.onrender.com/sse"\n      ]\n    }\n  }\n}`)}
+                  onClick={() => copyToClipboard(`{\n  "mcpServers": {\n    "godseye": {\n      "command": "npx",\n      "args": [\n        "-y",\n        "@modelcontextprotocol/server-sse-client",\n        "https://godseye-mcp-production.up.railway.app/sse"\n      ]\n    }\n  }\n}`)}
                   sx={{
                     position: "absolute",
                     top: 8,
