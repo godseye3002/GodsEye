@@ -51,7 +51,7 @@ export default function GoogleAnalysisResultPage() {
         setServerError(null);
         
         // 1) Try local store first (fast path)
-        let localMatch: OptimizedProduct | null = null;
+        let localMatch: any = null;
         if (currentProductId && products.length > 0) {
           const currentProduct = products.find(p => p.id === currentProductId);
           localMatch = currentProduct?.analyses?.find((a: unknown) => (a as { id: string }).id === analysisId) ?? null;
@@ -61,7 +61,9 @@ export default function GoogleAnalysisResultPage() {
           // Set data synchronously before stopping loading
           setAnalysis(localMatch);
           setGoogleOverviewAnalysis(localMatch.googleOverviewAnalysis as OptimizationAnalysis);
-          setGeneratedQuery('google_search_query' in localMatch ? localMatch.google_search_query || '' : '');
+          const googleQueryCandidate =
+            typeof localMatch?.google_search_query === "string" ? localMatch.google_search_query : "";
+          setGeneratedQuery(googleQueryCandidate);
           return;
         }
 
