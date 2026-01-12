@@ -1040,6 +1040,7 @@ function OptimizePageContent() {
 
   const scrapeProductData = async (retryCount = 0) => {
     const MAX_RETRIES = 2;
+    const RETRY_DELAYS = [2000, 5000]; // 2 seconds, then 5 seconds
     
     if (!formData.url.trim()) {
       setScrapingError("Please enter a valid URL");
@@ -1126,17 +1127,45 @@ function OptimizePageContent() {
       if (error.name === 'AbortError' && retryCount < MAX_RETRIES) {
         console.log(`Scraping timeout, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
         setIsScraping(false);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+        const delay = RETRY_DELAYS[retryCount] || 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return scrapeProductData(retryCount + 1);
+      }
+
+      // Handle Gemini API rate limit and key errors with retry
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isRetryableError = 
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('quota') ||
+        errorMessage.includes('too many requests') ||
+        errorMessage.includes('429') ||
+        errorMessage.includes('Resource exhausted') ||
+        errorMessage.includes('GEMINI_API_KEY') ||
+        errorMessage.includes('API key') ||
+        errorMessage.includes('503') ||
+        errorMessage.includes('Service unavailable');
+
+      if (isRetryableError && retryCount < MAX_RETRIES) {
+        console.log(`Gemini API error, retrying... (${retryCount + 1}/${MAX_RETRIES}): ${errorMessage}`);
+        setIsScraping(false);
+        const delay = RETRY_DELAYS[retryCount] || 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
         return scrapeProductData(retryCount + 1);
       }
       
-      // User-friendly error messages
-      if (error.name === 'AbortError') {
+      // User-friendly error messages for specific issues
+      if (errorMessage.includes('GEMINI_API_KEY') || errorMessage.includes('API key')) {
+        setScrapingError('AI service configuration error. Please contact support or try again later.');
+      } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota') || errorMessage.includes('429')) {
+        setScrapingError('AI service is temporarily busy due to high demand. Please try again in a few moments.');
+      } else if (errorMessage.includes('Resource exhausted') || errorMessage.includes('503') || errorMessage.includes('Service unavailable')) {
+        setScrapingError('AI service is temporarily unavailable. Please try again in a few moments.');
+      } else if (error.name === 'AbortError') {
         setScrapingError('The request took too long. The website might be slow or blocking automated access. Please try again or enter product details manually.');
-      } else if (error.message.includes('fetch')) {
+      } else if (errorMessage.includes('fetch')) {
         setScrapingError('Unable to connect to the scraping service. Please check your internet connection and try again.');
       } else {
-        setScrapingError(error instanceof Error ? error.message : 'Failed to scrape product data. You can enter the details manually below.');
+        setScrapingError(errorMessage || 'Failed to scrape product data. You can enter the details manually below.');
       }
     } finally {
       setIsScraping(false);
