@@ -97,7 +97,7 @@ export default function AuthPage() {
 
       if (error) {
         console.error('Sign up error:', error);
-        const raw = (error?.message || '').toLowerCase();
+        const raw = ((error as any)?.message || '').toLowerCase();
         // Common Supabase messages: "User already registered", "duplicate key value violates unique constraint"
         const isExisting = raw.includes('already registered') || raw.includes('duplicate') || raw.includes('exists') || raw.includes('already in use');
         if (isExisting) {
@@ -130,7 +130,7 @@ export default function AuthPage() {
       const { error } = await signInWithEmail(signInEmail, signInPassword);
       
       if (error) {
-        const raw = (error?.message || '').toLowerCase();
+        const raw = ((error as any)?.message || '').toLowerCase();
         const isInvalid = raw.includes('invalid') || raw.includes('credential');
         if (isInvalid) {
           console.debug('Sign in: invalid credentials');
@@ -165,7 +165,10 @@ export default function AuthPage() {
       
       if (error) {
         console.error('Google auth error:', error);
-        setAuthError(error.message || 'Failed to sign in with Google.');
+        const errorMessage = error && typeof error === 'object' && 'message' in error 
+          ? (error as { message: string }).message 
+          : 'Failed to sign in with Google.';
+        setAuthError(errorMessage);
         setIsSubmitting(false);
       }
       // Redirect happens automatically via callback
@@ -189,7 +192,7 @@ export default function AuthPage() {
         redirectTo: `${window.location.origin}/auth/update-password`,
       });
       if (error) {
-        const raw = (error?.message || '').toLowerCase();
+        const raw = ((error as any)?.message || '').toLowerCase();
         const friendly = raw.includes('rate limit')
           ? 'We\'ve received too many requests. Please wait and try again.'
           : 'We couldn\'t send a reset link right now. Please try again.';
