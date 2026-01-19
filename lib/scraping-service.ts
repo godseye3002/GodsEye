@@ -12,6 +12,7 @@ export interface ProductInfo {
   features: { name: string; description: string }[];
   targeted_market: string | null;
   problem_product_is_solving: string | null;
+  formulation_attribution: string | null;
 }
 
 function computeMissingFields(product: ProductInfo): string[] {
@@ -23,8 +24,17 @@ function computeMissingFields(product: ProductInfo): string[] {
   if (!product.specific_product_type) missing.push('specific_product_type');
   if (!product.targeted_market) missing.push('targeted_market');
   if (!product.problem_product_is_solving) missing.push('problem_product_is_solving');
+  if (!product.formulation_attribution) missing.push('formulation_attribution');
   if (!product.features || product.features.length === 0) missing.push('features');
-  if (!product.specifications || Object.keys(product.specifications).length === 0) missing.push('specifications');
+  
+  // Better specifications validation - check if it exists and has any meaningful data
+  const hasSpecifications = product.specifications && 
+    typeof product.specifications === 'object' && 
+    product.specifications !== null &&
+    (Object.keys(product.specifications).length > 0 || 
+     Object.getOwnPropertyNames(product.specifications).length > 0);
+  
+  if (!hasSpecifications) missing.push('specifications');
 
   return missing;
 }
@@ -43,6 +53,8 @@ export interface GeminiExtractionResult {
   missingFields: string[];
 }
 
+export type GeminiExtractionResultOrNull = GeminiExtractionResult | null;
+
 interface ExtractionState {
   product_name: string | null;
   description: string | null;
@@ -52,7 +64,7 @@ interface ExtractionState {
 
 interface GeminiCallResult {
   parsed: unknown;
-  usage: UsageMetadata | undefined;
+  usage: any; // Using any to avoid UsageMetadata property access issues
   raw: string;
 }
 
@@ -325,11 +337,12 @@ The JSON should include the following keys:
 - "general_product_type": General type/category of the product.
 - "specific_product_type": Specific type/category of the product.
 - "specifications": An object containing key-value pairs of technical specifications.
-- "features": A list of objects, where each object has a "name" and "description" for a key feature.
+- "features": A list of objects, where each object has a "name" and "description" for a key feature. Extract features even if only names are mentioned - infer descriptions from context if needed. Be thorough in identifying all features mentioned.
 - "targeted_market": An inferred analysis of the ideal customer for this product.
-- "problem_product_is_solving": An inferred analysis of the key problems or pain points this product addresses for its target market.${searchContext}
+- "problem_product_is_solving": An inferred analysis of the key problems or pain points this product addresses for its target market.
+- "formulation_attribution": Source attribution for product formulation, ingredients, or manufacturing details. Include brand names, manufacturers, or origin information if present.${searchContext}
 
-Note: The price or any data related to price should not be included in the JSON output, even if it is present in the text content. Dont Force the data to be in the JSON output, add it only if it is present.
+Note: The price or any data related to price should not be included in the JSON output, even if it is present in the text content. Be comprehensive in extracting all available information - include data even if it seems incomplete, but do not invent information that is not present in the text.
 
 Here is the text content:
 ---
@@ -382,8 +395,9 @@ function shapeStrict(obj: unknown): ProductInfo {
       const item = feature && typeof feature === 'object' ? (feature as Record<string, unknown>) : {};
       const name = typeof item.name === 'string' ? item.name : '';
       const description = typeof item.description === 'string' ? item.description : '';
-      if (!name && !description) return null;
-      return { name, description };
+      // Allow features with just names - if description is missing, use empty string
+      if (!name) return null;
+      return { name, description: description || '' };
     })
     .filter((feature): feature is { name: string; description: string } => feature !== null);
 
@@ -395,11 +409,12 @@ function shapeStrict(obj: unknown): ProductInfo {
     specifications,
     features,
     targeted_market: typeof record.targeted_market === 'string' ? record.targeted_market : null,
-    problem_product_is_solving: typeof record.problem_product_is_solving === 'string' ? record.problem_product_is_solving : null
+    problem_product_is_solving: typeof record.problem_product_is_solving === 'string' ? record.problem_product_is_solving : null,
+    formulation_attribution: typeof record.formulation_attribution === 'string' ? record.formulation_attribution : null
   };
 }
 
-export async function scrapeAndExtractProductInfo(url: string, searchQuery?: string): Promise<GeminiExtractionResult | null> {
+export async function scrapeAndExtractProductInfo(url: string, searchQuery?: string): Promise<GeminiExtractionResultOrNull> {
   if (!API_KEY) {
     if (process.env.NODE_ENV !== 'production') {
       console.error('[ScraperService] GEMINI_API_KEY environment variable is not set.', {
@@ -577,12 +592,129 @@ export async function scrapeAndExtractProductInfo(url: string, searchQuery?: str
       tokenUsage,
       extractionMethod: extractionState.method,
       rawResponse: geminiRaw,
-      missingFields
+      missingFields: missingFields
     };
   } catch (error) {
     const message = (error as Error).message || String(error);
     if (!isProd && process.env.NODE_ENV !== 'production') {
       console.error('[ScraperService] Fatal error:', {
+        error: message,
+        timestamp: new Date().toISOString()
+      });
+    }
+    return null;
+  }
+}
+
+export async function processTextWithGemini(text: string, searchQuery?: string): Promise<GeminiExtractionResultOrNull> {
+  if (!API_KEY) {
+    if (!isProd && process.env.NODE_ENV !== 'production') {
+      console.error('[ScraperService] GEMINI_API_KEY environment variable is not set.', {
+        timestamp: new Date().toISOString()
+      });
+    }
+    return null;
+  }
+
+  if (!isProd && process.env.NODE_ENV !== 'production') console.log('[Text Processor] Processing text input:', text.length, 'characters');
+
+  const extractionState: ExtractionState = {
+    product_name: null,
+    description: null,
+    method: 'direct-text-input',
+    htmlPreview: text.slice(0, 2000)
+  };
+
+  // Extract basic info from text
+  const lines = text.split('\n').filter(line => line.trim().length > 0);
+  if (lines.length > 0) {
+    // First line is often the product name
+    const firstLine = lines[0].trim();
+    if (firstLine.length < 100 && !firstLine.includes('.')) {
+      extractionState.product_name = normalizeText(firstLine);
+    }
+    
+    // Combine remaining lines for description
+    const descriptionLines = lines.slice(1, 5).join(' ').trim();
+    if (descriptionLines.length > 50) {
+      extractionState.description = normalizeText(descriptionLines);
+    }
+  }
+
+  if (!extractionState.product_name || !extractionState.description) {
+    // Use the full text as description if we couldn't extract it properly
+    extractionState.description = normalizeText(text.slice(0, 1000));
+  }
+
+  const cleanedForLLM = extractionState.product_name && extractionState.description 
+    ? `${extractionState.product_name}\n\n${extractionState.description}`
+    : text.slice(0, 2000);
+
+  if (!cleanedForLLM || cleanedForLLM.length < 20) {
+    if (!isProd && process.env.NODE_ENV !== 'production') {
+      console.warn('[ScraperService] LLM input is small; Gemini may return nulls for some fields.', {
+        inputLength: cleanedForLLM?.length || 0,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  try {
+    if (!isProd && process.env.NODE_ENV !== 'production') console.log('[LLM] Sending cleaned text to Gemini (gemini-2.5-flash-lite)...');
+    const { parsed: geminiJson, raw: geminiRaw, usage } = await callGemini(cleanedForLLM || '', searchQuery);
+    const product = shapeStrict(geminiJson);
+    const missingFields = computeMissingFields(product);
+
+    if (!isProd && process.env.NODE_ENV !== 'production') {
+      console.log('\n/* JavaScript variable: product */\n');
+      console.log('const product = ' + JSON.stringify(product, null, 2) + ';\n');
+    }
+
+    const finalOutput = { product, extraction_method: extractionState.method, missing_fields: missingFields };
+    if (!isProd && process.env.NODE_ENV !== 'production') {
+      console.log('[ScraperService] Text processing complete', {
+        extractionMethod: extractionState.method,
+        missingFieldsCount: missingFields.length,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Track token usage
+    const input = usage?.promptTokenCount ?? 0;
+    const output = usage?.candidatesTokenCount ?? 0;
+    const total = usage?.totalTokenCount ?? input + output;
+    
+    try {
+      console.log('[Gemini][Process Text Info]' + (searchQuery ? ' [with-search-query]' : ' [no-search-query]'), { 
+        inputTokens: input, 
+        outputTokens: output, 
+        totalTokens: total 
+      });
+    } catch (tokenError) {
+      // Continue even if token tracking fails
+      if (!isProd && process.env.NODE_ENV !== 'production') {
+        console.warn('[ScraperService] Token usage tracking failed:', {
+          error: (tokenError as Error).message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+    
+    return {
+      jsonData: product,
+      tokenUsage: {
+        inputTokens: input,
+        outputTokens: output,
+        totalTokens: total
+      },
+      extractionMethod: extractionState.method,
+      rawResponse: geminiRaw,
+      missingFields
+    };
+  } catch (error) {
+    const message = (error as Error).message || String(error);
+    if (!isProd && process.env.NODE_ENV !== 'production') {
+      console.error('[ScraperService] Fatal error in text processing:', {
         error: message,
         timestamp: new Date().toISOString()
       });

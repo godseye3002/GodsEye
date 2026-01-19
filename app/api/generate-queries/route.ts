@@ -43,37 +43,86 @@ export async function POST(request: NextRequest) {
     let prompt: string;
 
     if (pipeline === 'google_overview') {
-      prompt = `
-Role: You are a digital marketing analyst specializing in Google Search behavior and Answer Engine Optimization (AEO).
+      prompt =
+// Role: You are a digital marketing analyst specializing in Google Search behavior and Answer Engine Optimization (AEO).
 
 
-Objective: Generate a list of the most common, high-intent search queries that a potential customer would type into **Google** when they are looking for a **product recommendation**. The queries must be **specifically designed to trigger a Google AI Overview** that would likely recommend products matching the provided \`productContext\`.
+// Objective: Generate a list of the most common, high-intent search queries that a potential customer would type into **Google** when they are looking for a **product recommendation**. The queries must be **specifically designed to trigger a Google AI Overview** that would likely recommend products matching the provided \`productContext\`.
 
+
+// Product Context:
+// ${JSON.stringify(productContext, null, 2)}
+
+// STRICT NOTE: the minimum number of words in the query should be 6.
+
+// Instructions:
+// 1. Simulate Real Search Queries: The output must be natural language questions or complex phrases.
+// 2. Focus on Product-Seeking Intent: The queries must reflect a user who is actively looking for a **product to buy** to solve their specific problem. The goal is to get a definitive product recommendation or a "best of" list from the AI Overview.
+// 3. Query Type (AI Overview Focus): Focus on explicit questions, problem-based queries, and requests for recommendations. Use the \`productContext\` to fill in the placeholders, the query should be bit long, medium length.
+// * **Good (High Trigger Chance):** "what are the best [specific_product_type] for [problem]", "[specific_product_type] recommendations for [user_type_or_problem]", "best [general_product_type] for [people_with_specific_problem]", "[specific_product_type] for [people_who_dislike_X]"
+// * **Okay (Medium Trigger Chance):** "best [specific_product_type] for [benefit]", "top rated [general_product_type] for [desired_outcome]"
+// * **Bad (Low Trigger Chance):** "buy [specific_product_type]", "[product] sale", "what is [product]", "best [product] for [benefit] and [benefit 2]"
+// 4. Use Context-Aware Modifiers: You must analyze the \`targeted_market\` and \`problem_product_is_solving\` in the \`productContext\`.
+// * **Problem/Solution Modifiers:** The queries MUST include modifiers related to the *problem* (e.g., 'for [problem]'), the *desired outcome* (e.g., 'for [desired_outcome]'), or the *user's specific situation* (e.g., 'for people who dislike swallowing pills').
+// * **Audience Modifiers:** If the \`targeted_market\` specifies a particular audience (e.g., "for men," "for sensitive skin"), use those modifiers.
+// * **Broad Audience Logic:** If the context indicates the product is for a *broad* audience (e.g., "all hair types," "both men and women"), you **must not** invent limiting modifiers.
+// 5. Keep it General: Do not use any specific brand names.
+// 6. Ranking: **This is the most important instruction.** You must rank the queries based on their likelihood of triggering an AI Overview.
+// * **Rank 1 (Top):** Explicit questions (e.g., "What are...", "Which...") and problem-based queries (e.g., "[product] for people who..."), in short which query triggers the AI overview.
+// * **Rank Lower:** Standard "best..." or "top rated..." queries.
+// * This fixes the failure from the previous attempt.
+// 7. Output Format: A Python list containing exactly 5 search query strings. For example: ["query one", "query two", ...]
+// 8. IMPORTANT NOTE 1: All instructions (especially the "Good" examples) are templates. You must replace the placeholders like [product], [problem], etc., with the specific details from the \`productContext\`.
+// 9. IMPORTANT NOTE 2: Use simple, common English words that a typical consumer would use.
+// `;
+`
+Role: You are a digital marketing analyst specializing in Answer Engine Optimization (AEO).
+
+Objective: Generate 5 specific, high-intent search queries that will **force a Google AI Overview** to trigger for the provided product.
 
 Product Context:
 ${JSON.stringify(productContext, null, 2)}
 
-STRICT NOTE: the minimum number of words in the query should be 6.
+THE PROBLEM:
+Simple queries like "Best [product]" or "Buy [product]" often fail to trigger AI Overviews because Google prefers to show "Featured Snippets" (text from a single blog) or Ads.
 
-Instructions:
-1. Simulate Real Search Queries: The output must be natural language questions or complex phrases.
-2. Focus on Product-Seeking Intent: The queries must reflect a user who is actively looking for a **product to buy** to solve their specific problem. The goal is to get a definitive product recommendation or a "best of" list from the AI Overview.
-3. Query Type (AI Overview Focus): Focus on explicit questions, problem-based queries, and requests for recommendations. Use the \`productContext\` to fill in the placeholders, the query should be bit long, medium length.
-* **Good (High Trigger Chance):** "what are the best [specific_product_type] for [problem]", "[specific_product_type] recommendations for [user_type_or_problem]", "best [general_product_type] for [people_with_specific_problem]", "[specific_product_type] for [people_who_dislike_X]"
-* **Okay (Medium Trigger Chance):** "best [specific_product_type] for [benefit]", "top rated [general_product_type] for [desired_outcome]"
-* **Bad (Low Trigger Chance):** "buy [specific_product_type]", "[product] sale", "what is [product]", "best [product] for [benefit] and [benefit 2]"
-4. Use Context-Aware Modifiers: You must analyze the \`targeted_market\` and \`problem_product_is_solving\` in the \`productContext\`.
-* **Problem/Solution Modifiers:** The queries MUST include modifiers related to the *problem* (e.g., 'for [problem]'), the *desired outcome* (e.g., 'for [desired_outcome]'), or the *user's specific situation* (e.g., 'for people who dislike swallowing pills').
-* **Audience Modifiers:** If the \`targeted_market\` specifies a particular audience (e.g., "for men," "for sensitive skin"), use those modifiers.
-* **Broad Audience Logic:** If the context indicates the product is for a *broad* audience (e.g., "all hair types," "both men and women"), you **must not** invent limiting modifiers.
-5. Keep it General: Do not use any specific brand names.
-6. Ranking: **This is the most important instruction.** You must rank the queries based on their likelihood of triggering an AI Overview.
-* **Rank 1 (Top):** Explicit questions (e.g., "What are...", "Which...") and problem-based queries (e.g., "[product] for people who..."), in short which query triggers the AI overview.
-* **Rank Lower:** Standard "best..." or "top rated..." queries.
-* This fixes the failure from the previous attempt.
-7. Output Format: A Python list containing exactly 5 search query strings. For example: ["query one", "query two", ...]
-8. IMPORTANT NOTE 1: All instructions (especially the "Good" examples) are templates. You must replace the placeholders like [product], [problem], etc., with the specific details from the \`productContext\`.
-9. IMPORTANT NOTE 2: Use simple, common English words that a typical consumer would use.
+THE SOLUTION:
+To trigger the AI, the query must require **synthesis** (combining info from multiple sources) or **complex reasoning** that a single website cannot easily answer.
+
+INSTRUCTIONS:
+1. **Identify Product Type:** First, determine if the product is Physical (needs durability, ingredients, material) or Digital/Service (needs features, compatibility, terms).
+2. **Infer Pain Points:** If the JSON is brief, INFER specific problems a user would have with *bad* versions of this product.
+3. **Strict Word Count:** All queries must be **7 words or longer**.
+4. **No Brand Names:** Keep queries unbranded.
+
+MANDATORY QUERY TEMPLATES (You MUST use these structures):
+
+* **Template 1 (The "Checklist" Trigger):**
+    * *Structure:* "Checklist for choosing [product_category] for [specific_audience/use_case]..."
+    * *Why:* "Checklist" forces the AI to generate a bulleted guide, which single-paragraph snippets rarely do well.
+    * *Universal Example:* "Checklist for choosing [product] for [audience] with [constraint]"
+
+* **Template 2 (The "Avoidance" Trigger - The Negative Search):**
+    * *Structure:* "How to find [product_category] that does not [common_negative_side_effect]..."
+    * *Why:* Negative constraints (e.g., "doesn't rust," "no hidden fees," "non-drowsy") force the AI to filter results, which requires deep synthesis.
+    * *Universal Example:* "How to find [product] that does not cause [problem]"
+
+* **Template 3 (The "Criteria" Trigger):**
+    * *Structure:* "Key factors to consider when buying [product_category] for [specific_outcome]..."
+    * *Why:* This asks for *educational criteria* (how to judge quality), not just a list of items to buy.
+
+* **Template 4 (The "Comparison" Trigger):**
+    * *Structure:* "Difference between [Alternative A] and [Alternative B] for [specific_problem]..."
+    * *Why:* Comparisons force the AI to look at multiple angles.
+    * *Universal Example:* "Difference between [Material/Type A] and [Material/Type B] for [Goal]"
+
+* **Template 5 (The "Worth It" Trigger):**
+    * *Structure:* "Is [product_category] effective for [severe_problem] in [specific_context]?"
+    * *Why:* "Effective" or "Worth it" questions trigger a "Evidence-based" evaluation from the AI.
+
+OUTPUT FORMAT:
+Return a Python list of exactly 5 strings, one for each template above.
+["query_from_template_1", "query_from_template_2", ...]
 `;
     } else {
       prompt = `

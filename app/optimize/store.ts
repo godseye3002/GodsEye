@@ -344,7 +344,11 @@ export const useProductStore = create<ProductStoreState>()(
           set((state) => ({
             products: transformedProducts,
             currentProductId:
-              state.currentProductId || transformedProducts[0]?.id || state.currentProductId || null,
+              // 1. If we have an ID, keep it.
+              state.currentProductId 
+              // 2. CRITICAL FIX: If we are in a "New Product" session, force it to remain null.
+              ? state.currentProductId 
+              : (state.isNewProductSession ? null : (transformedProducts[0]?.id || null)),
           }));
           
           // Load query data from the first available product (or create empty state)
@@ -654,10 +658,11 @@ export const useProductStore = create<ProductStoreState>()(
       
       loadQueryDataFromSupabase: async (userId: string, productId?: string) => {
         try {
-          const params = new URLSearchParams({ userId });
-          if (productId) {
-            params.append("productId", productId);
-          }
+          const state = get();
+          const targetProductId = productId ?? state.currentProductId;
+          if (!targetProductId) return null;
+
+          const params = new URLSearchParams({ userId, productId: targetProductId });
           const response = await fetch(`/api/products/get-queries?${params.toString()}`);
           
           // Handle 404 (no products found) as normal case, not error

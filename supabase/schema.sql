@@ -105,7 +105,7 @@ BEGIN
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'user_name', NEW.raw_user_meta_data->>'name', SPLIT_PART(NEW.email, '@', 1)),
-    2
+    100
   );
   RETURN NEW;
 END;

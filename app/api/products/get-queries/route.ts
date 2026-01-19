@@ -8,27 +8,21 @@ export async function GET(request: Request) {
     const userId = searchParams.get('userId');
     const productId = searchParams.get('productId');
 
-    if (!userId) {
+    if (!userId || !productId) {
       return NextResponse.json(
-        { error: 'User ID is required' },
+        { error: 'User ID and Product ID are required' },
         { status: 400 }
       );
     }
 
     const supabaseAdmin = getSupabaseAdminClient();
 
-    // Find the most recent product for this user
-    const query = (supabaseAdmin as any)
+    const { data: recentProduct, error: fetchError } = await (supabaseAdmin as any)
       .from('products')
-      .select('generated_query');
-
-    if (productId) {
-      query.eq('id', productId);
-    } else {
-      query.eq('user_id', userId).order('created_at', { ascending: false }).limit(1);
-    }
-
-    const { data: recentProduct, error: fetchError } = await query.single();
+      .select('generated_query')
+      .eq('id', productId)
+      .eq('user_id', userId)
+      .single();
 
     if (fetchError) {
       if (process.env.NODE_ENV !== 'production') {

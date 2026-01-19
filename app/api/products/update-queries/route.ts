@@ -1,45 +1,29 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase';
 
-// POST - Update query data for a user's current product
+// POST - Update query data for a specific product
 export async function POST(request: Request) {
   try {
-    const { userId, queryData } = await request.json();
+    // 1. Destructure productId from the request body
+    const { userId, productId, queryData } = await request.json();
 
-    if (!userId || !queryData) {
+    if (!userId || !productId || !queryData) {
       return NextResponse.json(
-        { error: 'User ID and query data are required' },
+        { error: 'User ID, Product ID and query data are required' },
         { status: 400 }
       );
     }
 
     const supabaseAdmin = getSupabaseAdminClient();
 
-    // Find the most recent product for this user
-    const { data: recentProduct, error: fetchError } = await (supabaseAdmin as any)
-      .from('products')
-      .select('id')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (fetchError || !recentProduct) {
-      // If no product exists, we can't update queries
-      return NextResponse.json(
-        { error: 'No product found for this user' },
-        { status: 404 }
-      );
-    }
-
-    // Update the product's generated_query field with the new query data
+    // Update the specific product using productId (no "latest" fallback)
     const { data, error } = await (supabaseAdmin as any)
       .from('products')
       .update({
         generated_query: queryData,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', recentProduct.id)
+      .eq('id', productId)
       .eq('user_id', userId)
       .select()
       .single();

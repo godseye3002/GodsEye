@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { scrapeAndExtractProductInfo, ProductInfo } from '@/lib/scraping-service';
+import { scrapeAndExtractProductInfo, processTextWithGemini, ProductInfo } from '@/lib/scraping-service';
 import { addTokens } from '@/lib/token-usage';
 import type { PipelineId } from '@/lib/pipelines';
 
@@ -7,36 +7,57 @@ export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
     const url = payload.url;
+    const text = payload.text;
     const searchQuery = payload.searchQuery;
     const analysisId: string | undefined = typeof payload.analysisId === 'string' ? payload.analysisId : undefined;
     const allowed: readonly string[] = ['perplexity','google_overview','chatgpt','gemini'];
     const pipeline: PipelineId | undefined = allowed.includes(String(payload.pipeline)) ? (payload.pipeline as PipelineId) : undefined;
 
-    if (!url) {
+    // Validate input: either URL or text must be provided
+    if (!url && !text) {
       return NextResponse.json(
-        { error: 'URL is required' },
+        { error: 'Either URL or text is required' },
         { status: 400 }
       );
     }
 
-    // Basic URL validation
-    try {
-      new URL(url);
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid URL format' },
-        { status: 400 }
-      );
+    // Validate URL if provided
+    if (url) {
+      // Basic URL validation
+      try {
+        new URL(url);
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid URL format' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate text if provided
+    if (text) {
+      if (text.trim().length < 50) {
+        return NextResponse.json(
+          { error: 'Text must be at least 50 characters long' },
+          { status: 400 }
+        );
+      }
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`[Scrape] Starting process for URL: ${url}`);
+      if (url) {
+        console.log(`[Scrape] Starting process for URL: ${url}`);
+      } else {
+        console.log(`[Scrape] Starting process for text input (${text.length} chars)`);
+      }
       if (searchQuery) {
         console.log(`[Scrape] Using search query context: ${searchQuery}`);
       }
     }
     
-    const result = await scrapeAndExtractProductInfo(url, searchQuery);
+    const result = url 
+      ? await scrapeAndExtractProductInfo(url, searchQuery)
+      : await processTextWithGemini(text, searchQuery);
 
     if (!result) {
       return NextResponse.json(

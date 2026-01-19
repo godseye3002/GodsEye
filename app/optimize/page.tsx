@@ -331,6 +331,11 @@ function OptimizePageContent() {
   // Navigation state
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
 
+  // Input mode state
+  const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
+  const [productText, setProductText] = useState('');
+  const [isTextProcessing, setIsTextProcessing] = useState(false);
+
   const maxPerplexityQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_PERPLEXITY_QUERIES, 1);
   const maxGoogleQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_GOOGLE_QUERIES, 1);
 
@@ -1042,17 +1047,31 @@ function OptimizePageContent() {
     const MAX_RETRIES = 2;
     const RETRY_DELAYS = [2000, 5000]; // 2 seconds, then 5 seconds
     
-    if (!formData.url.trim()) {
-      setScrapingError("Please enter a valid URL");
-      return;
-    }
-    
-    // Validate URL format
-    try {
-      new URL(formData.url);
-    } catch {
-      setScrapingError("Please enter a valid URL format (e.g., https://example.com)");
-      return;
+    // Validate input based on mode
+    if (inputMode === 'url') {
+      if (!formData.url.trim()) {
+        setScrapingError("Please enter a valid URL");
+        return;
+      }
+      
+      // Validate URL format
+      try {
+        new URL(formData.url);
+      } catch {
+        setScrapingError("Please enter a valid URL format (e.g., https://example.com)");
+        return;
+      }
+    } else {
+      // Text mode validation
+      if (!productText.trim()) {
+        setScrapingError("Please enter product description text");
+        return;
+      }
+      
+      if (productText.trim().length < 50) {
+        setScrapingError("Product text should be at least 50 characters for better results");
+        return;
+      }
     }
     
     setIsScraping(true);
@@ -1071,7 +1090,10 @@ function OptimizePageContent() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url: formData.url, location: selectedLocation }),
+        body: JSON.stringify(inputMode === 'url' 
+          ? { url: formData.url, location: selectedLocation }
+          : { text: productText.trim(), location: selectedLocation }
+        ),
         signal: controller.signal,
       });
       
@@ -1170,6 +1192,39 @@ function OptimizePageContent() {
     } finally {
       setIsScraping(false);
     }
+  };
+  
+  // File upload handler for .txt files
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.txt')) {
+      setScrapingError('Please upload a .txt file');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setScrapingError('File size must be less than 5MB');
+      return;
+    }
+    
+    try {
+      const text = await file.text();
+      if (text.trim().length < 50) {
+        setScrapingError('File content must be at least 50 characters long');
+        return;
+      }
+      setProductText(text);
+      setScrapingError(null); // Clear any previous errors
+    } catch (error) {
+      setScrapingError('Failed to read file. Please try again.');
+    }
+    
+    // Reset file input
+    event.target.value = '';
   };
   
   // Helper function to generate a query for a specific pipeline
@@ -1660,7 +1715,7 @@ function OptimizePageContent() {
       
       // Revert the local changes if the database update failed by reloading from DB
       if (user) {
-        await loadQueryDataFromSupabase(user.id);
+        await loadQueryDataFromSupabase(user.id, currentProductId ?? undefined);
       }
       
     } finally {
@@ -3586,7 +3641,7 @@ function OptimizePageContent() {
             <Typography level="h2" sx={{ color: textPrimary }}>
               Optimize Your Product for AI Search Engines
             </Typography>
-            {pendingMissingFields.length > 0 && (
+            {hasFormBlockingMissing && (
           <Button
             type="button"
                 size="sm"
@@ -3616,11 +3671,51 @@ function OptimizePageContent() {
               e.preventDefault();
               handleGenerateQueryOnly();
             }}>
-            {/* URL Input - Always visible */}
+            {/* Input Mode Toggle */}
             <Box sx={{ mb: 4 }}>
-              <FormLabel sx={{ fontWeight: 600, mb: 1, display: "block", color: "#ffffff" }}>
-                Product URL
+              <FormLabel sx={{ fontWeight: 600, mb: 2, display: "block", color: "#ffffff" }}>
+                Input Method
               </FormLabel>
+              <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+                <Button
+                  variant={inputMode === 'url' ? 'solid' : 'outlined'}
+                  onClick={() => setInputMode('url')}
+                  sx={{
+                    flex: 1,
+                    backgroundColor: inputMode === 'url' ? '#2ED47A' : 'transparent',
+                    borderColor: 'rgba(46, 212, 122, 0.3)',
+                    color: inputMode === 'url' ? '#0D0F14' : '#2ED47A',
+                    '&:hover': {
+                      backgroundColor: inputMode === 'url' ? '#26B869' : 'rgba(46, 212, 122, 0.1)',
+                    }
+                  }}
+                >
+                  🌐 URL Input
+                </Button>
+                <Button
+                  variant={inputMode === 'text' ? 'solid' : 'outlined'}
+                  onClick={() => setInputMode('text')}
+                  sx={{
+                    flex: 1,
+                    backgroundColor: inputMode === 'text' ? '#2ED47A' : 'transparent',
+                    borderColor: 'rgba(46, 212, 122, 0.3)',
+                    color: inputMode === 'text' ? '#0D0F14' : '#2ED47A',
+                    '&:hover': {
+                      backgroundColor: inputMode === 'text' ? '#26B869' : 'rgba(46, 212, 122, 0.1)',
+                    }
+                  }}
+                >
+                  📝 Text Input
+                </Button>
+              </Stack>
+            </Box>
+
+            {/* Conditional Input Section */}
+            {inputMode === 'url' ? (
+              <Box sx={{ mb: 4 }}>
+                <FormLabel sx={{ fontWeight: 600, mb: 1, display: "block", color: "#ffffff" }}>
+                  Product URL
+                </FormLabel>
               <Stack
                 direction={{ xs: "column", md: "row" }}
                 spacing={2}
@@ -3675,7 +3770,7 @@ function OptimizePageContent() {
                 <Button
                   type="button"
                   onClick={() => scrapeProductData()}
-                  disabled={isScraping}
+                  disabled={isScraping || ((inputMode as 'url' | 'text') === 'url' && !formData.url.trim()) || ((inputMode as 'url' | 'text') === 'text' && !productText.trim())}
                   size="md"
                   sx={{
                     minHeight: 44,
@@ -3702,7 +3797,7 @@ function OptimizePageContent() {
                     },
                   }}
                 >
-                  {isScraping ? 'Scraping...' : 'Fetch Info'}
+                  {isScraping ? 'Processing...' : (inputMode === 'url' ? 'Fetch Info' : 'Process Text')}
                 </Button>
               </Stack>
               
@@ -3712,17 +3807,161 @@ function OptimizePageContent() {
                   level="body-sm" 
                   sx={{ 
                     mt: 1, 
-                    color: '#ff6b6b',
-                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                    p: 1,
-                    borderRadius: '4px',
-                    border: '1px solid rgba(255, 107, 107, 0.2)'
+                    color: "#f44336",
+                    fontSize: "0.875rem"
                   }}
                 >
                   {scrapingError}
                 </Typography>
               )}
             </Box>
+            ) : (
+              /* Text Input Mode */
+              <Box sx={{ mb: 4 }}>
+                <FormLabel sx={{ fontWeight: 600, mb: 1, display: "block", color: "#ffffff" }}>
+                  Product Description
+                </FormLabel>
+                <Textarea
+                  placeholder="Paste your product description, features, specifications, and any relevant details here..."
+                  value={productText}
+                  onChange={(e) => setProductText(e.target.value)}
+                  minRows={8}
+                  maxRows={15}
+                  sx={{
+                    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(79, 70, 229, 0.01))",
+                    backdropFilter: "blur(8px)",
+                    border: "1px solid rgba(216, 180, 254, 0.08)",
+                    borderRadius: "12px",
+                    color: "#ffffff",
+                    fontSize: "0.95rem",
+                    "&:focus-within": {
+                      border: "1px solid rgba(216, 180, 254, 0.15)",
+                      background: "linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(79, 70, 229, 0.02))",
+                    },
+                    "& textarea": {
+                      color: "#ffffff",
+                      paddingY: 1,
+                    },
+                    "&::placeholder": {
+                      color: "rgba(255, 255, 255, 0.6)",
+                    },
+                  }}
+                />
+                
+                <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                  <Button
+                    type="button"
+                    onClick={() => scrapeProductData()}
+                    disabled={isScraping || !productText.trim()}
+                    size="md"
+                    sx={{
+                      minHeight: 44,
+                      px: 2.5,
+                      fontSize: "0.95rem",
+                      borderRadius: "999px",
+                      fontWeight: 600,
+                      backgroundColor: accentColor,
+                      color: "#0D0F14",
+                      border: "1px solid rgba(46, 212, 122, 0.32)",
+                      boxShadow: "0 8px 24px rgba(46, 212, 122, 0.25)",
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: "#26B869",
+                        borderColor: "rgba(46, 212, 122, 0.45)",
+                        boxShadow: "0 10px 28px rgba(46, 212, 122, 0.28)",
+                      },
+                      "&:disabled": {
+                        backgroundColor: "rgba(46, 212, 122, 0.28)",
+                        borderColor: "rgba(46, 212, 122, 0.18)",
+                        color: "rgba(13, 15, 20, 0.7)",
+                        boxShadow: "none",
+                        cursor: "not-allowed",
+                      },
+                    }}
+                  >
+                    {isScraping ? 'Processing...' : 'Process Text'}
+                  </Button>
+                  
+                  <Button
+                    type="button"
+                    onClick={() => setProductText('')}
+                    disabled={isScraping}
+                    variant="outlined"
+                    size="md"
+                    sx={{
+                      minHeight: 44,
+                      px: 2.5,
+                      fontSize: "0.95rem",
+                      borderRadius: "999px",
+                      fontWeight: 600,
+                      borderColor: "rgba(216, 180, 254, 0.3)",
+                      color: "rgba(255, 255, 255, 0.8)",
+                      "&:hover": {
+                        backgroundColor: "rgba(216, 180, 254, 0.1)",
+                        borderColor: "rgba(216, 180, 254, 0.5)",
+                      },
+                      "&:disabled": {
+                        opacity: 0.5,
+                        cursor: "not-allowed",
+                      },
+                    }}
+                  >
+                    Clear
+                  </Button>
+                  
+                  <Button
+                    component="label"
+                    disabled={isScraping}
+                    variant="outlined"
+                    size="md"
+                    sx={{
+                      minHeight: 44,
+                      px: 2.5,
+                      fontSize: "0.95rem",
+                      borderRadius: "999px",
+                      fontWeight: 600,
+                      borderColor: "rgba(46, 212, 122, 0.3)",
+                      color: "rgba(255, 255, 255, 0.8)",
+                      "&:hover": {
+                        backgroundColor: "rgba(46, 212, 122, 0.1)",
+                        borderColor: "rgba(46, 212, 122, 0.5)",
+                      },
+                      "&:disabled": {
+                        opacity: 0.5,
+                        cursor: "not-allowed",
+                      },
+                    }}
+                  >
+                    📁 Upload .txt
+                    <input
+                      type="file"
+                      accept=".txt"
+                      onChange={handleFileUpload}
+                      style={{ display: 'none' }}
+                    />
+                  </Button>
+                </Stack>
+                
+                {/* Text Input Helper */}
+                <Typography level="body-sm" sx={{ mt: 2, color: "rgba(255, 255, 255, 0.6)" }}>
+                  💡 Tip: Include product name, description, features, specifications, and target audience for best results.
+                </Typography>
+                
+                {/* Error Display */}
+                {scrapingError && (
+                  <Typography 
+                    level="body-sm" 
+                    sx={{ 
+                      mt: 1, 
+                      color: "#f44336",
+                      fontSize: "0.875rem"
+                    }}
+                  >
+                    {scrapingError}
+                  </Typography>
+                )}
+              </Box>
+            )}
 
             {/* Data Cards - Only shown after data is fetched */}
             {formData.product_name && (
@@ -3996,17 +4235,17 @@ function OptimizePageContent() {
                     </Button>
                   </Tooltip>
                   <Tooltip
-                    title={pendingMissingFields.length > 0 ? "Please review the highlighted fields before running optimization." : undefined}
+                    title={hasFormBlockingMissing ? "Please review the highlighted fields before running optimization." : undefined}
                     arrow
                     placement="top"
-                    variant={pendingMissingFields.length > 0 ? "outlined" : "plain"}
+                    variant={hasFormBlockingMissing ? "outlined" : "plain"}
                   >
                     <span>
                       <Button
                         type="submit"
                         variant="solid"
                         size="lg"
-                        disabled={isGeneratingQuery || isAnalyzing || pendingMissingFields.length > 0}
+                        disabled={isGeneratingQuery || isAnalyzing || hasFormBlockingMissing}
                         sx={{
                           flex: 1,
                           width: { xs: "100%", sm: "auto" },
