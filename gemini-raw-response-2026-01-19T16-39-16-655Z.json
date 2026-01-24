@@ -1,0 +1,77 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Avyott Talk",
+    "status_overview": "Your product was not featured, as the AI's response is currently informational, focusing on defining the technologies rather than recommending specific solutions. It cites competitor blogs as authoritative sources for this information.",
+    "strategic_analogy": "This is like a university lecture on 'Types of Engines'. The professor is explaining the difference between gasoline and electric engines but hasn't started recommending specific car models yet. Your competitors are the authors of the textbooks being cited in the lecture."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "The client's product, Avyott Talk, was not mentioned by name in the AI overview text or in any of the cited source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is building an educational narrative that explains the fundamental differences between two technologies: AI chatbots and AI voice automation. It focuses on their respective channels (text vs. voice), ideal use cases, strengths, and limitations to help a user decide which technology fits their business needs.",
+    "key_decision_factors": [
+      "Interaction Channel (Text vs. Voice)",
+      "Engagement Type (Asynchronous vs. Real-time)",
+      "Complexity of Queries",
+      "Emotional Resonance and Urgency",
+      "Industry Application (e.g., Digital-first vs. High-touch)",
+      "Cost Considerations (Upfront investment, per-minute costs)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in B2B SaaS and tech company blogs that publish detailed, comparative content. The sources (like thoughtly.com, justcall.io, cognigy.com) are from companies operating in the AI/customer communication space, positioning themselves as thought leaders."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Thoughtly",
+      "reason_for_inclusion": "This competitor's blog content was used as an authoritative source to define and compare Voice AI and Chatbots for business communication.",
+      "source_of_mention": "https://www.thoughtly.com/blog/voice-ai-vs-chatbots-a-head-to-head-comparison-for-business-communication/#:~:text=In%20conclusion%2C%20the%20choice%20between,%2C%20and%20customer%2Dcentric%20experience."
+    },
+    {
+      "competitor_name": "Robylon.ai",
+      "reason_for_inclusion": "Their blog provides a direct comparison between AI chatbots and AI voice agents, which likely influenced the AI's structured analysis.",
+      "source_of_mention": "https://www.robylon.ai/blog/ai-chatbot-vs-voice-agent#:~:text=for%20my%20business?-,TL;DR:%20AI%20chatbot%20vs%20AI%20voice%20agent,conversion%20rate%20on%20voice%20calls."
+    },
+    {
+      "competitor_name": "CommercePundit",
+      "reason_for_inclusion": "This source's content likely contributed to the AI's understanding of the conversion and emotional differences between text and voice agents.",
+      "source_of_mention": "https://www.commercepundit.com/blog/ai-chatbots-vs-ai-voice-agents-which-one-actually-converts-better/#:~:text=Voice%20adds%20emotional%20clarity.,do%20it%20in%20different%20ways."
+    },
+    {
+      "competitor_name": "Kapture.cx",
+      "reason_for_inclusion": "Their blog post on 'Voicebot vs Chatbot' was cited, indicating it was used as a source for foundational definitions and customer impact analysis.",
+      "source_of_mention": "https://www.kapture.cx/blog/voicebot-vs-chatbot/"
+    },
+    {
+      "competitor_name": "JustCall.io",
+      "reason_for_inclusion": "This competitor's content offered a direct comparison of AI Voice Agents vs. Chatbots, influencing the AI's structure and analysis of key differences.",
+      "source_of_mention": "https://justcall.io/blog/ai-voice-agent-vs-chatbot.html#:~:text=and%20partial%20speech-,User%20experience:%20A%20tale%20of%20two%20interfaces,for%20users%20to%20reach%20out."
+    },
+    {
+      "competitor_name": "Cognigy",
+      "reason_for_inclusion": "Their content comparing chatbots to AI agents was used as a source, helping the AI frame the different capabilities and roles of each technology.",
+      "source_of_mention": "https://www.cognigy.com/ai-agents/chatbot-vs-ai-agent#:~:text=next%20few%20years%E2%80%A6-,Key%20Takeaways,What%20Is%20a%20Chatbot?"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary gap is not in the product itself, but in the content strategy. The AI is rewarding companies that provide clear, educational, top-of-funnel content. The opportunity is to become one of these trusted sources.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was not mentioned because the query was informational ('Difference between...'), not commercial ('best tool for...'). The AI answered by synthesizing educational content from authoritative blogs. Your brand was excluded because it does not currently have a high-ranking, comprehensive content piece that the AI could cite as a source for this specific topic.",
+      "path_to_inclusion": "The primary path to inclusion is through content marketing and thought leadership. Develop a comprehensive guide on your website that directly compares AI chatbots and AI voice automation. This content should be well-structured, data-rich, and optimized to answer this user query better than the current sources. The goal is to become a cited authority, which builds brand trust and increases the likelihood of being mentioned in future, more commercially-focused AI answers."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Create Authoritative Comparison Content",
+      "action": "Develop a cornerstone content piece (e.g., a blog post or guide) titled 'AI Voice Automation vs. AI Chatbots: Which is Right for Your Business?'. Structure it with clear H2/H3 tags for 'Key Differences', 'Use Cases', 'Benefits', and a 'When to Choose' checklist, mirroring the AI's preferred answer format."
+    },
+    {
+      "recommendation": "Target Informational Keywords",
+      "action": "Optimize this new content piece for informational keywords like 'chatbot vs voice agent', 'proactive engagement tools', and 'voice automation use cases'. Use schema markup (e.g., FAQ, HowTo) to make the content more machine-readable and appealing to AI."
+    },
+    {
+      "recommendation": "Content Promotion and Link Building",
+      "action": "Promote your new cornerstone content piece to industry blogs, publications, and forums to build backlinks. This will increase its authority in the eyes of search engines and the AI, making it more likely to be used as a trusted source in future AI Overviews."
+    }
+  ]
+}

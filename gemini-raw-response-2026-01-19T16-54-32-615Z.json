@@ -1,0 +1,76 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI is answering an informational query by citing authoritative educational content. Competitors are currently winning by becoming the primary source for these explanations, not by having their products directly recommended.",
+    "strategic_analogy": "This is like a university lecture where the professors (the cited sources) are being quoted, but your company is a student in the audience. To get noticed and cited by the AI, you need to publish your own definitive textbook (authoritative content) that becomes part of the curriculum."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name in the AI overview text, nor was its website used as a source for the information provided."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is acting as an educator, providing a structured, definitional comparison of two complex marketing analytics concepts. The narrative focuses on clarifying the purpose, granularity, and timeframe of each method, positioning them as complementary tools for strategic and tactical decision-making.",
+    "key_decision_factors": [
+      "Clear definitions for 'Attribution Modeling' and 'Cohort Analysis'",
+      "Direct comparison of key differences (e.g., granularity, timeframe, purpose)",
+      "Explanation of how the two concepts work together synergistically",
+      "Source authority from companies specializing in marketing analytics and data",
+      "Well-structured content that breaks down complex topics into digestible sections"
+    ],
+    "trusted_source_analysis": "The AI exclusively trusts content-driven sources, such as company blogs, glossaries, and resource guides from businesses within the marketing and data analytics industry. It is not citing product pages or commercial websites, prioritizing deep educational content over product-specific information for this type of query."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "LeadSources.io",
+      "reason_for_inclusion": "This company is cited as a source because it provides a clear glossary-style definition comparing cohort-based attribution with traditional methods, directly addressing the user's query.",
+      "source_of_mention": "https://leadsources.io/glossary/cohort-based-attribution#:~:text=What's%20the%20difference%20between%20cohort,efficient%20for%20channel%2Dlevel%20decisions."
+    },
+    {
+      "competitor_name": "Peel Insights",
+      "reason_for_inclusion": "Cited for its introductory content on cohort analysis ('Cohort Analysis 101'), which helps the AI build a foundational understanding of one of the core concepts in the query.",
+      "source_of_mention": "https://www.peelinsights.com/post/cohort-analysis-101-an-introduction#:~:text=But%20reviewing%20metrics%20through%20cohort,and%20increased%20customer%20lifetime%20value."
+    },
+    {
+      "competitor_name": "Rockerbox",
+      "reason_for_inclusion": "Included as a source for its content explaining how to use attribution to understand customer cohorts, directly linking the two concepts in the user's query.",
+      "source_of_mention": "https://www.rockerbox.com/blog/using-attribution-to-understand-customer-cohorts#:~:text=Understanding%20customer%20behavior%20is%20paramount,influence%20customer%20behavior%20over%20time."
+    },
+    {
+      "competitor_name": "Saras Analytics",
+      "reason_for_inclusion": "This source is used for its blog content on cohort retention analysis, which provides context on related metrics like CAC and LTV that are central to the purpose of cohort analysis.",
+      "source_of_mention": "https://www.sarasanalytics.com/blog/cohort-retention-analysis#:~:text=Customer%20Acquisition%20Cost%20(CAC)%20and,efficiency%20is%20improving%20or%20declining."
+    },
+    {
+      "competitor_name": "Adjust",
+      "reason_for_inclusion": "Cited for its guide on cohort analysis in mobile marketing, providing specific examples and applications which the AI uses to build a more comprehensive answer.",
+      "source_of_mention": "https://www.adjust.com/resources/guides/cohort-analysis/#:~:text=For%20example%2C%20if%20you%20spot,exactly%20what%20to%20do%20next."
+    },
+    {
+      "competitor_name": "HelloPM",
+      "reason_for_inclusion": "Included as a source for its content defining funnel analysis, which also provides a concise comparison to cohort analysis, helping the AI differentiate between related concepts.",
+      "source_of_mention": "https://hellopm.co/what-is-funnel-analysis/#:~:text=Cohort%20Analysis:%20Funnel%20analysis%20looks,engage%2C%20retain%2C%20or%20churn."
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary gap is not in product features but in content strategy. The AI is rewarding brands that serve as educators and thought leaders for informational queries. Linkrunner has an opportunity to become a trusted source by creating its own high-quality educational content, which can lead to brand visibility and authority in AI-generated answers.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Linkrunner was excluded because the AI is seeking to answer a 'what is' question, not a 'what to buy' question. Your online presence is likely optimized for product conversion, whereas competitors are being cited because they have created comprehensive, educational blog posts and guides that directly define and compare the concepts of attribution and cohort analysis.",
+      "path_to_inclusion": "The path to inclusion is to become a source. This requires creating a definitive, well-structured article on the Linkrunner blog that comprehensively answers the user's query. By becoming an authority on the topic, your domain can be cited in future AI overviews, driving highly relevant, top-of-funnel traffic and establishing brand trust."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Cornerstone Content Creation",
+      "action": "Develop and publish a comprehensive guide on your blog titled 'Attribution Modeling vs. Cohort Analysis: A Complete Guide'. Structure it with H2/H3 tags for definitions, key differences, and a section on how they work together, mirroring the structure the AI prefers. Subtly connect these concepts to the problems Linkrunner's features solve."
+    },
+    {
+      "recommendation": "On-Page SEO and Schema Markup",
+      "action": "Optimize the new content piece with relevant keywords and implement structured data (e.g., Article, FAQPage schema). This will clearly signal the content's purpose and structure to search engines and AI crawlers, increasing its likelihood of being used as a source."
+    },
+    {
+      "recommendation": "Thought Leadership Promotion",
+      "action": "Promote the new content piece to build its authority. Seek backlinks from other marketing blogs, share it across professional networks like LinkedIn, and feature it in your newsletter to establish it as a go-to resource on the topic, thereby increasing its value as a potential AI source."
+    }
+  ]
+}

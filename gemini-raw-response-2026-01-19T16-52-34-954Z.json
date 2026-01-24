@@ -1,0 +1,72 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes established, enterprise-level platforms that explicitly mention broad multi-channel support (email, social, SEO) and integrations with popular BI tools.",
+    "strategic_analogy": "This is like bringing a specialized surgical tool to a general construction site. While your product is powerful for its specific purpose (mobile measurement), the AI is looking for a comprehensive toolkit that can handle web, social, and email, and your product's description isn't showcasing its versatility for this broader query."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name in the AI's overview text or included in its source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is building a narrative around comprehensive, all-in-one marketing analytics solutions that unify data from diverse channels (web, social, paid, email) into a single dashboard. It emphasizes data integration, AI-driven insights, and connectivity with other business intelligence tools as the primary value proposition.",
+    "key_decision_factors": [
+      "Cross-channel data integration and unification",
+      "Real-time dashboards and KPI monitoring",
+      "AI-driven analysis and insights",
+      "Integrations with BI tools (Tableau, Power BI, Looker Studio)",
+      "Enterprise-level features like multi-touch attribution and forecasting",
+      "Support for a wide range of marketing channels (email, social, paid ads, SEO)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in the direct brand websites of the featured software companies (e.g., agencyanalytics.com, supermetrics.com, salesforce.com). It also uses a glossary page (zinfi.com), indicating it values definitional content that explains the product category."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Google Analytics",
+      "reason_for_inclusion": "Positioned as a foundational tool for web and channel traffic insights within the Google ecosystem, making it a default starting point for many users.",
+      "source_of_mention": "https://marketingplatform.google.com/about/analytics/"
+    },
+    {
+      "competitor_name": "Supermetrics",
+      "reason_for_inclusion": "Highlighted specifically for its core function as a 'data connector,' integrating over 150 platforms with BI tools, which directly addresses a key decision factor identified by the AI.",
+      "source_of_mention": "https://supermetrics.com/blog/performance-marketing-analytics"
+    },
+    {
+      "competitor_name": "AgencyAnalytics",
+      "reason_for_inclusion": "Mentioned for its ability to unify campaign data from multiple platforms into 'real-time dashboards' with 'automated insights,' aligning perfectly with the AI's dominant narrative.",
+      "source_of_mention": "https://agencyanalytics.com/solutions/marketing-campaign-analysis"
+    },
+    {
+      "competitor_name": "Salesforce Marketing Cloud Intelligence",
+      "reason_for_inclusion": "Included as an enterprise solution that centralizes media, CRM, and campaign metrics with 'AI-driven analysis,' showcasing its advanced capabilities.",
+      "source_of_mention": "https://www.salesforce.com/marketing/analytics/tools/"
+    },
+    {
+      "competitor_name": "HubSpot",
+      "reason_for_inclusion": "Cited as a popular option for 'inbound marketing dashboards,' representing the all-in-one marketing platform category.",
+      "source_of_mention": "https://www.zinfi.com/glossary/what-are-channel-performance-tools/"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "Linkrunner's absence from the AI response stems from a positioning and language gap. While its core technology is relevant, its current marketing messaging as a Mobile Measurement Partner (MMP) is too narrow for this broad query. The AI is rewarding platforms that communicate their value in the language of holistic, multi-channel marketing analytics and enterprise integration.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was not mentioned because its online content likely positions it as a niche 'MMP' focused on 'clicks, downloads, and onboardings'. The AI's response favors platforms with broader, explicitly stated capabilities across channels like email, social media, and SEO. Furthermore, your product description lacks key terms the AI rewarded, such as 'dashboards', 'attribution', 'ROI', and 'integrations' with BI tools like Tableau or Power BI.",
+      "path_to_inclusion": "Broaden your product's positioning on your website to address the entire marketing analytics landscape. Create content that explicitly details how Linkrunner analyzes performance across email, social, paid ads, and SEO. Prominently feature a section on 'Integrations', listing any connections to BI tools, CRMs, or other marketing platforms. Align your feature descriptions with the AI's vocabulary, using terms like 'multi-channel dashboards', 'ROI analysis', and 'attribution modeling'."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On your product and solution pages, create dedicated sections with H2 tags like 'Unified Marketing Dashboards', 'Cross-Channel Performance Analysis', and 'BI & CRM Integrations'. Use lists to detail the specific channels (email, social, SEO) and platforms you integrate with."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Incorporate the exact terminology the AI rewarded into your website copy. Phrases like 'real-time monitoring', 'multi-touch attribution', 'AI-driven analysis', and 'data integration' should be central to your messaging to align with the search intent."
+    },
+    {
+      "recommendation": "Expand Product Positioning",
+      "action": "Develop landing pages or blog posts specifically targeting keywords like 'marketing channel analysis' and 'cross-channel reporting tools'. This content should frame Linkrunner as a comprehensive solution, moving beyond the niche 'MMP' label to compete with the platforms featured in the AI's answer."
+    }
+  ]
+}

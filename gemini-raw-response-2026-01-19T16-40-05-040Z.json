@@ -1,0 +1,72 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Avyott Talk",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes established, enterprise-grade platforms that showcase quantifiable performance metrics (e.g., '80% automation', '99.8% accuracy') and a broad feature set on their own brand websites.",
+    "strategic_analogy": "This is like entering a car race with a brochure about your powerful engine. The winners are on the track, showcasing their lap times, top speeds, and specific features like 'turbochargers' and 'all-wheel drive'. Your product needs to move from describing its potential to proving its performance with hard data."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Avyott Talk was not mentioned in the AI-generated overview text or included in the source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is building a narrative around comprehensive, data-backed customer service automation platforms. It showcases solutions that can handle a high volume of tasks across multiple channels, proving their value with specific percentages, accuracy rates, and extensive integration capabilities.",
+    "key_decision_factors": [
+      "Quantifiable performance claims (e.g., 'automates up to 80%', '99.8% accuracy')",
+      "Specific, named AI features (e.g., 'AI voice assistants', 'copilots', 'generative AI responses')",
+      "Breadth of functionality (e.g., 'omnichannel support', 'ticket routing', 'workflow automation')",
+      "Integration capabilities (e.g., 'integrating with 100+ apps like Salesforce')",
+      "Language support (e.g., '50+ languages')",
+      "Source authority (direct brand websites and product pages)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in the primary brand domains of the featured products. It is directly citing product pages and company blogs (e.g., crescendo.ai, aisera.com), indicating that it rewards companies that clearly articulate their value proposition on their own web properties."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Crescendo.ai",
+      "reason_for_inclusion": "Positioned as a high-accuracy, enterprise solution by highlighting its ability to handle complex issues across '50+ languages with 99.8% accuracy' and specific features like 'AI voice assistants'.",
+      "source_of_mention": "https://www.crescendo.ai/blog/best-ai-driven-customer-support-automation-platforms"
+    },
+    {
+      "competitor_name": "Aisera",
+      "reason_for_inclusion": "Included for its high automation rate ('65-80% of support') and extensive integration capabilities, specifically mentioning '100+ apps like Salesforce'.",
+      "source_of_mention": "https://aisera.com/products/ai-customer-service/"
+    },
+    {
+      "competitor_name": "Zendesk AI",
+      "reason_for_inclusion": "Featured for its agent-assist features, described with specific terms like 'copilots for real-time agent guidance' and 'generative AI responses'.",
+      "source_of_mention": "https://www.crescendo.ai/blog/best-ai-driven-customer-support-automation-platforms"
+    },
+    {
+      "competitor_name": "Freshdesk (Freddy AI)",
+      "reason_for_inclusion": "Highlighted for its high ticket resolution rate ('up to 80% of tickets'), omnichannel capabilities, and data-driven features like 'automated insights'.",
+      "source_of_mention": "https://www.freshworks.com/customer-service/support/ai/"
+    },
+    {
+      "competitor_name": "Forethought",
+      "reason_for_inclusion": "Included for its clear focus on a specific business outcome: 'workflow automation to cut costs and elevate experiences'.",
+      "source_of_mention": "https://forethought.ai"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "Avyott Talk is currently invisible to the AI for this query because its online messaging is too conceptual and lacks the specific, data-driven proof points the AI is rewarding. Competitors are winning by explicitly stating their performance metrics, named features, and integration capabilities on their websites, which the AI is directly extracting and citing. The opportunity is to translate Avyott Talk's capabilities into this data-first language.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was excluded because its online content likely lacks the specific, quantifiable metrics (e.g., automation percentage, accuracy rate, number of integrations) that the AI is identifying as key decision factors. Competitors are explicitly stating 'automates 80% of support' or '99.8% accuracy', while your product's description is more general. Furthermore, the AI is rewarding platforms with a broad, named feature set (ticketing, copilots, omnichannel), whereas Avyott Talk is positioned more narrowly as a 'voice' solution.",
+      "path_to_inclusion": "Revise your product page to prominently feature a 'Performance & ROI' section with hard data (even if estimated or based on case studies). Create a 'Features' section that details specific functionalities beyond general 'voice automation', such as 'AI-Powered Call Routing' or 'Automated IVR'. Develop content, such as a blog post titled 'Top AI Voice Automation Platforms for Customer Service', to establish authority and control the narrative, similar to Crescendo's successful strategy."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On the Avyott Talk product page, create distinct, easily scannable sections using H2/H3 tags for 'Key Performance Metrics', 'Core Features', and 'Integrations'. Use bullet points and bold text to highlight specific numbers and feature names."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Incorporate the exact data-driven phrases the AI is rewarding into your web copy. For example, instead of 'automates complex workflows', use 'Automates up to 75% of inbound customer calls with 99%+ intent accuracy'. Benchmark against competitors and use their language as a guide."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "While direct brand sites are currently favored, a long-term strategy should involve getting listed and reviewed on software comparison sites like G2, Capterra, and industry tech blogs. In the short term, create your own authoritative content comparing solutions in your niche to attract AI crawlers and establish thought leadership."
+    }
+  ]
+}

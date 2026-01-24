@@ -38,6 +38,7 @@ import type { QueryData } from "./store";
 import SOVPerformanceCard from "@/components/SOVPerformanceCard";
 import DeepAnalysisCard from "@/components/DeepAnalysisCard";
 import { warmupService } from "@/lib/warmupService";
+import { fetchUsedQueriesFromAnalysisClient } from "@/lib/analysis-queries";
 import {
   Feature,
   OptimizationAnalysis,
@@ -1423,6 +1424,14 @@ function OptimizePageContent() {
             setUsedPerplexityQueries(parsedData.used.perplexity);
             setUsedGoogleQueries(parsedData.used.google);
             setQueryData(parsedData);
+            
+            // Update UI state with analysis table data (this is what UI uses for "Used" status)
+            const { google: analysisGoogleQueries, perplexity: analysisPerplexityQueries } = 
+              await fetchUsedQueriesFromAnalysisClient(currentProductId);
+            
+            setUsedPerplexityQueries(analysisPerplexityQueries);
+            setUsedGoogleQueries(analysisGoogleQueries);
+            
             // Clear any stale server errors when queries are loaded
             setServerError(null);
 
@@ -2686,21 +2695,21 @@ function OptimizePageContent() {
             }
 
             if (currentQueryData) {
+              // Fetch used queries from analysis tables
+              const { google: usedGoogleFromAnalysis, perplexity: usedPerplexityFromAnalysis } = 
+                await fetchUsedQueriesFromAnalysisClient(savedProductId);
+              
               const updatedQueryData: QueryData = {
                 ...currentQueryData,
                 used: {
-                  perplexity: perplexityQueriesRun.length > 0
-                    ? [...new Set([...currentQueryData.used.perplexity, ...perplexityQueriesRun])]
-                    : currentQueryData.used.perplexity,
-                  google: googleQueriesRun.length > 0
-                    ? [...new Set([...currentQueryData.used.google, ...googleQueriesRun])]
-                    : currentQueryData.used.google,
+                  perplexity: usedPerplexityFromAnalysis,
+                  google: usedGoogleFromAnalysis,
                 },
               };
               await updateQueryDataInSupabase(user.id, updatedQueryData);
               setQueryData(updatedQueryData);
-              setUsedPerplexityQueries(updatedQueryData.used.perplexity);
-              setUsedGoogleQueries(updatedQueryData.used.google);
+              setUsedPerplexityQueries(usedPerplexityFromAnalysis);
+              setUsedGoogleQueries(usedGoogleFromAnalysis);
               // Remove used queries from selected queries
               setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q: string) => !updatedQueryData.used.perplexity.includes(q)));
               setSelectedGoogleQueries(selectedGoogleQueries.filter((q: string) => !updatedQueryData.used.google.includes(q)));

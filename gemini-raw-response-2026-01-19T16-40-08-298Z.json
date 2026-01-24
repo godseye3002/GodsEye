@@ -1,0 +1,65 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Avyott Talk",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes established competitors with strong brand recognition and websites that highlight specific, quantifiable outcomes like cost savings and performance metrics.",
+    "strategic_analogy": "This is like trying to enter a professional sports league without any official stats. The AI is acting as a scout, looking for players with proven performance metrics (cost savings, call capacity), and your product's online presence currently lacks the specific, data-backed claims needed to make the draft."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Avyott Talk was not mentioned in the AI's overview text or cited in the source links. The response is entirely focused on four key competitors."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a directory of leading, ready-to-buy AI solutions for call center automation. The narrative focuses on established providers, highlighting their core features, scalability, and, most importantly, specific, quantifiable business outcomes (e.g., cost savings, NPS improvements, call volume capacity).",
+    "key_decision_factors": [
+      "Specific, quantifiable metrics (e.g., '$30 million savings', '38% NPS improvement')",
+      "Named product features (e.g., 'auto QA', 'speech analytics', 'no-code flow builders')",
+      "High scalability claims (e.g., '1 million concurrent calls')",
+      "Source authority (direct brand websites with clear product offerings)"
+    ],
+    "trusted_source_analysis": "The AI exclusively trusts and cites the primary, official brand websites of the featured competitors. This indicates a high reliance on direct-from-brand information as the authoritative source for product capabilities and claims."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Level AI",
+      "reason_for_inclusion": "Mentioned for providing end-to-end CX intelligence, auto QA, and a specific, compelling savings metric of '$30 million for customers'.",
+      "source_of_mention": "https://thelevel.ai"
+    },
+    {
+      "competitor_name": "Bland AI",
+      "reason_for_inclusion": "Included for its 'human-like' phone automation, custom voices, and a clear scalability metric of supporting '1 million concurrent calls'.",
+      "source_of_mention": "https://www.bland.ai"
+    },
+    {
+      "competitor_name": "Retell AI",
+      "reason_for_inclusion": "Featured for its ability to build scalable voice agents and for a specific performance metric, 'improving NPS by 38%'.",
+      "source_of_mention": "https://www.retellai.com"
+    },
+    {
+      "competitor_name": "Voiso",
+      "reason_for_inclusion": "Highlighted for its specific technical features, including 'AI speech analytics' and 'no-code flow builders', which appeal to a technical buyer.",
+      "source_of_mention": "https://voiso.com"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary gap is the lack of online authority and specific, data-backed claims for Avyott Talk. Competitors are winning by clearly communicating quantifiable value on their primary websites, which the AI is directly sourcing. The opportunity lies in building a robust online presence that mirrors this successful strategy.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Avyott Talk was excluded due to a lack of discoverable online authority compared to competitors. Its product description is generic ('automates complex workflows') and lacks the specific, quantifiable proof points (e.g., cost savings, efficiency metrics, scalability numbers) that the AI is identifying and rewarding on competitor websites.",
+      "path_to_inclusion": "Develop a dedicated product website that clearly articulates unique features and, crucially, quantifies the value proposition with case studies, data points, or performance metrics. Enhance online content to include keywords like 'virtual agents', 'speech analytics', and 'CRM integration'. Pursue features on tech industry blogs or software review sites to build the third-party validation and domain authority needed to be considered a top provider by the AI."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On your primary product page, implement a clear, scannable structure using H2/H3 tags for 'Key Features', 'Customer Results', and 'Technical Specifications'. Use a comparison table to highlight advantages over traditional systems."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Incorporate specific, data-backed claims into your website copy. Instead of 'improve customer interaction,' use 'Reduce average handle time by 30%' or 'Automate 50% of inbound support queries.' Use keywords the AI is rewarding, such as 'generative AI for contact centers' and 'AI speech analytics'."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Launch a PR and marketing campaign to secure product listings and reviews on software comparison sites like G2, Capterra, and industry-specific tech news portals. These external signals of authority are crucial for the AI to recognize Avyott Talk as a credible solution."
+    }
+  ]
+}

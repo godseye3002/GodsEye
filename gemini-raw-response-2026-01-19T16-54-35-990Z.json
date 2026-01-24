@@ -1,0 +1,77 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI's response is educational and conceptual, sourcing its information from competitors' thought leadership content like blogs and guides rather than specific product pages.",
+    "strategic_analogy": "This is like a university lecture where the professor is citing academic papers from various authors. Your product is a state-of-the-art lab instrument, but you haven't published the papers that get you cited in the lecture."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Your product, Linkrunner, was not mentioned by name or brand in the AI overview text. The response focused on explaining the concept of marketing analytics platforms, not recommending specific ones."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is acting as an expert consultant, confirming the effectiveness of marketing analytics platforms and providing a detailed, educational breakdown of *how* they optimize channels. The narrative is focused on capabilities, processes (like A/B testing), and metrics (like CAC/ROAS), establishing the value of the entire software category.",
+    "key_decision_factors": [
+      "Data-driven insights",
+      "Root cause identification",
+      "Real-time performance monitoring",
+      "Attribution modeling",
+      "Cost efficiency metrics (CAC and ROAS)",
+      "Predictive analytics",
+      "Budget reallocation",
+      "Data integration"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in B2B tech company blogs, digital marketing agency content, and educational articles from business publications (e.g., IMD.org). It is sourcing definitional and strategic content, not product reviews or e-commerce pages."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Sigmoid",
+      "reason_for_inclusion": "Positioned as a thought leader by providing a guide on effective marketing campaign optimization, which the AI used as a source to explain the topic.",
+      "source_of_mention": "https://www.sigmoid.com/ebooks-whitepapers/guide-to-marketing-campaign-optimization/#:~:text=Marketing%20analytics%20helps%20marketers%20closely,engagement%20for%20multiple%20audience%20groups."
+    },
+    {
+      "competitor_name": "ActiveCampaign",
+      "reason_for_inclusion": "Its blog was cited as an authoritative source for defining marketing analytics and explaining its benefits and best practices.",
+      "source_of_mention": "https://www.activecampaign.com/blog/marketing-analytics#:~:text=Directly%20impacts%20revenue,profitability%2C%20not%20just%20quick%20wins."
+    },
+    {
+      "competitor_name": "SR Analytics",
+      "reason_for_inclusion": "Its blog content on marketing analytics strategies was used as a source, establishing it as an expert in turning data into ROI.",
+      "source_of_mention": "https://sranalytics.io/blog/marketing-analytics-strategy-growth/#:~:text=Companies%20executing%20advanced%20marketing%20analytics,growth%20through%20data%2Ddriven%20decisions."
+    },
+    {
+      "competitor_name": "ThoughtSpot",
+      "reason_for_inclusion": "Cited as a source for defining marketing analytics and providing examples, positioning the company as a knowledgeable player in the data analytics space.",
+      "source_of_mention": "https://www.thoughtspot.com/data-trends/analytics/marketing-analytics#:~:text=fostering%20brand%20loyalty.-,2.,on%20real%2Dtime%20performance%20data."
+    },
+    {
+      "competitor_name": "Growth Natives",
+      "reason_for_inclusion": "Its blog on the power of marketing analytics was referenced, highlighting its expertise in leveraging data for business success.",
+      "source_of_mention": "https://growthnatives.com/blogs/analytics/the-power-of-marketing-analytics-harness-data-to-drive-business-success/#:~:text=They%20can%20then%20allocate%20resources,in%20today's%20increasingly%20digital%20landscape."
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The analysis reveals that for high-level, informational queries, the AI prioritizes educational content over product pages. Linkrunner's absence is not a product flaw but a content strategy gap. The opportunity lies in building thought leadership to become a cited source.",
+    "if_featured": {
+      "current_positioning": null,
+      "opportunities_for_improvement": null
+    },
+    "if_not_featured": {
+      "exclusion_reasons": "Linkrunner was excluded because the AI is answering a 'what is'/'how to' query, not a 'best product' query. It prioritized sources with comprehensive educational content (blogs, guides) that define and explain the value of marketing analytics. Your current online presence appears to be product-focused and lacks the top-of-funnel, thought leadership content that competitors are successfully providing.",
+      "path_to_inclusion": "To get featured as a source in similar queries, Linkrunner must develop and publish authoritative content that answers broad strategic questions. Create blog posts, guides, or whitepapers titled 'How to Optimize Distribution Channels with Analytics' or 'A Guide to Marketing Attribution Models'. This content must explicitly discuss the key concepts the AI values (CAC, ROAS, real-time data, etc.) and frame Linkrunner as a solution within that educational context."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Develop a Content Hub",
+      "action": "Create a dedicated 'Resources' or 'Blog' section on your website. Publish in-depth articles that answer strategic questions about marketing analytics, targeting the key concepts identified in the AI's response."
+    },
+    {
+      "recommendation": "Keyword and Concept Alignment",
+      "action": "Ensure your new content thoroughly covers the exact phrases and concepts the AI is rewarding, such as 'attribution modeling', 'real-time performance monitoring', 'CAC and ROAS', and 'predictive analytics'. Frame your product's features as the practical application of these concepts."
+    },
+    {
+      "recommendation": "Authoritative Content Strategy",
+      "action": "Focus on creating best-in-class, long-form content that can compete with the guides and articles from Sigmoid, ActiveCampaign, and others. Promote this content to gain backlinks from other reputable marketing websites to build the domain authority needed to be cited by the AI."
+    }
+  ]
+}

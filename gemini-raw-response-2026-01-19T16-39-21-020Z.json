@@ -1,0 +1,86 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Avyott Talk",
+    "status_overview": "Your product was not featured, as the AI is prioritizing solutions that explicitly market themselves as 'no-code' or 'low-code' platforms and are frequently mentioned on authoritative third-party technology blogs and review sites.",
+    "strategic_analogy": "This is like showing up to a job interview for a 'Graphic Designer' with a resume that only says 'Creative Professional'. You might be qualified, but you're not using the specific keywords and qualifications the recruiter is looking for, while your competitors are."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Avyott Talk was not mentioned by name or brand in the AI overview text or in any of the cited source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a narrative that the best way to find voice automation solutions without coding is to use platforms specifically designed and marketed as 'no-code' or 'low-code'. It highlights tools with visual builders, pre-built templates, and easy integrations as the primary solution for non-technical users.",
+    "key_decision_factors": [
+      "Explicit use of 'no-code'/'low-code' terminology",
+      "Presence of specific features like 'visual drag-and-drop builder'",
+      "Mentions of pre-built integrations for CRMs and telephony",
+      "Targeting specific use-cases or markets (e.g., SMBs, enterprise, Indian businesses)",
+      "Source authority from both direct brand websites and third-party listicles/guides"
+    ],
+    "trusted_source_analysis": "The AI trusts a combination of direct brand websites that clearly articulate their no-code value proposition (Voiceflow, Botpress, Telnyx) and authoritative third-party content, specifically 'Top X' listicles and industry guides (Vellum.ai, Smallest.ai, Vomyra.com)."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Voiceflow",
+      "reason_for_inclusion": "Positioned as a leading visual tool for building AI agents, including voice, without writing code.",
+      "source_of_mention": "https://www.voiceflow.com/#:~:text=Build%20Chat%20and%20Voice%20AI,human%2Dlike%2C%20and%20scalable."
+    },
+    {
+      "competitor_name": "Retell AI",
+      "reason_for_inclusion": "Highlighted for specializing in real-time, low-latency phone agents and providing pre-made templates for specific use cases like appointment scheduling.",
+      "source_of_mention": "https://www.vellum.ai/blog/ai-voice-agent-platforms-guide"
+    },
+    {
+      "competitor_name": "Synthflow",
+      "reason_for_inclusion": "Included for its focus on no-code voice agents specifically for small businesses and agencies, and its mention of CRM integrations.",
+      "source_of_mention": "https://smallest.ai/blog/top-no-code-voice-ai-solutions-to-explore-in-2025#:~:text=Autotagging%20for%20Lead%20Qualification%20%E2%80%93%20Proprietary,interruptions%2C%20and%20voice%20agent%20behavior."
+    },
+    {
+      "competitor_name": "Botpress",
+      "reason_for_inclusion": "Mentioned as a versatile platform that has expanded from chatbots into voice, featuring a visual editor and pre-built connectors.",
+      "source_of_mention": "https://botpress.com/"
+    },
+    {
+      "competitor_name": "Bland AI",
+      "reason_for_inclusion": "Cited as a good option for enterprise-scale automation, focusing on high-fidelity, realistic voice interactions.",
+      "source_of_mention": "https://www.vellum.ai/blog/ai-voice-agent-platforms-guide"
+    },
+    {
+      "competitor_name": "Goodcall",
+      "reason_for_inclusion": "Specifically mentioned for serving small businesses with a no-code builder to handle routine inquiries.",
+      "source_of_mention": "https://smallest.ai/blog/top-no-code-voice-ai-solutions-to-explore-in-2025#:~:text=Autotagging%20for%20Lead%20Qualification%20%E2%80%93%20Proprietary,interruptions%2C%2C%20and%20voice%20agent%20behavior."
+    },
+    {
+      "competitor_name": "Telnyx",
+      "reason_for_inclusion": "Included because it explicitly offers a 'no-code Voice AI Assistant builder' that handles core technical aspects like STT and TTS.",
+      "source_of_mention": "https://telnyx.com/resources/no-code-ai#:~:text=What%20is%20no%2Dcode%20AI,conversation%20context%20or%20user%20behavior."
+    },
+    {
+      "competitor_name": "Vomyra/ConvoZen/Gnani.ai",
+      "reason_for_inclusion": "Grouped as strong options for a specific niche: Indian businesses that require support for multiple Indian languages and accents.",
+      "source_of_mention": "https://vomyra.com/blogs/top-no-code-voicebot-platforms-for-indian-businesses#:~:text=1.,analytics%20&%20data%20flows%20stay%20unified."
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary gap is in marketing language and third-party validation. Your product's description as an 'AI voice automation solution' is too generic for a query where the user's intent is clearly focused on avoiding code. Competitors who explicitly use 'no-code' and 'low-code' are winning.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was not mentioned because its online content does not use the specific keywords ('no-code', 'low-code', 'visual builder') that the AI has identified as critical for this user query. Competitors are being rewarded for this explicit positioning and for being featured in third-party listicles that the AI trusts.",
+      "path_to_inclusion": "Revise your website's product page to prominently feature 'no-code' and 'low-code' benefits. Create detailed content showcasing a visual workflow builder (if applicable) and list specific pre-built integrations. Actively pursue features and reviews on technology blogs and in 'Top Platform' guides to build the external validation the AI is looking for."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On your primary product page, implement a clear 'Features' section with H2/H3 tags for 'No-Code Visual Builder', 'Pre-built Integrations (CRM, etc.)', and 'Use Case Templates'. This makes key information easily parsable for AI."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Integrate the exact phrases 'no-code AI voice automation', 'low-code platform', and 'drag-and-drop editor' into your website's primary copy, meta descriptions, and title tags to directly align with the AI's selection criteria."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Identify and pitch tech blogs and software review sites (like the ones cited by the AI, e.g., Vellum.ai, Smallest.ai) to get Avyott Talk included in their 'Best No-Code Voice AI' guides and comparisons. This builds the external authority the AI is looking for."
+    }
+  ]
+}

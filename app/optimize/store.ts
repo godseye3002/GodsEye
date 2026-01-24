@@ -7,6 +7,7 @@ import {
   ProcessedSource,
   ProductFormData,
 } from "./types";
+import { fetchUsedQueriesFromAnalysisClient } from "@/lib/analysis-queries";
 
 export type FormUpdater =
   | ProductFormData
@@ -380,15 +381,19 @@ export const useProductStore = create<ProductStoreState>()(
                 }
               }
               
-              // Update store with validated query data
+              // Fetch analysis queries for comparison and update UI state
+              const { google: analysisGoogleQueries, perplexity: analysisPerplexityQueries } = 
+                await fetchUsedQueriesFromAnalysisClient(products[0].id);
+
+              // Update store with validated query data and analysis table data
               set({
                 allPerplexityQueries: allPerplexity,
                 allGoogleQueries: allGoogle,
-                usedPerplexityQueries: validUsedPerplexity,
-                usedGoogleQueries: validUsedGoogle,
+                usedPerplexityQueries: analysisPerplexityQueries, // Use analysis table data
+                usedGoogleQueries: analysisGoogleQueries, // Use analysis table data
                 // Filter selected queries to exclude used queries
-                selectedPerplexityQueries: allPerplexity.filter((query: string) => !validUsedPerplexity.includes(query)),
-                selectedGoogleQueries: allGoogle.filter((query: string) => !validUsedGoogle.includes(query)),
+                selectedPerplexityQueries: allPerplexity.filter((query: string) => !analysisPerplexityQueries.includes(query)),
+                selectedGoogleQueries: allGoogle.filter((query: string) => !analysisGoogleQueries.includes(query)),
               });
               
               // Update queryData state for consistency

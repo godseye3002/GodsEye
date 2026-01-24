@@ -1,0 +1,82 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes established marketing platforms with content that explicitly details their ROI tracking capabilities, CRM integrations, and specific use cases like agency reporting.",
+    "strategic_analogy": "This is like entering a business pitch competition where the judges are only scoring on 'revenue generated'. Your product excellently details the 'activities performed' but fails to explicitly connect those activities to the final revenue numbers, which is what the winning competitors are doing."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "The client product, Linkrunner, was not mentioned by name in the AI's overview text or in the provided source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is constructing a narrative around providing a portfolio of established ROI tracking solutions, differentiating them by their primary strengths—such as agency-focused reporting, CRM integration for full-funnel tracking, or powerful free options—to give the user a clear choice based on their specific business needs.",
+    "key_decision_factors": [
+      "Explicit ROI tracking features",
+      "Integration with other platforms (e.g., CRM)",
+      "Specific use-case targeting (e.g., for agencies, for retention)",
+      "Multi-touch attribution capabilities",
+      "Brand recognition in the marketing analytics space",
+      "Source authority from competitor comparison articles"
+    ],
+    "trusted_source_analysis": "The AI is demonstrating trust in content from a direct competitor's blog (AgencyAnalytics), which provides a comparative analysis of various tools in the ecosystem. This indicates the AI values third-party roundup or 'best of' articles as authoritative sources for product recommendations."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "AgencyAnalytics",
+      "reason_for_inclusion": "Positioned as a standout solution for agencies, highlighting its ability to pull data from over 80 channels into customizable dashboards with built-in ROI tracking.",
+      "source_of_mention": "https://agencyanalytics.com/blog/roi-tracking"
+    },
+    {
+      "competitor_name": "Google Analytics 4",
+      "reason_for_inclusion": "Included as a powerful and free option offering event-based tracking, cross-device attribution, and revenue insights.",
+      "source_of_mention": "https://agencyanalytics.com/blog/roi-tracking"
+    },
+    {
+      "competitor_name": "Ruler Analytics",
+      "reason_for_inclusion": "Highlighted for its excellence in CRM syncing and tracking the full customer journey from click to closed deal, with multi-touch attribution.",
+      "source_of_mention": "https://agencyanalytics.com/blog/roi-tracking"
+    },
+    {
+      "competitor_name": "Kissmetrics",
+      "reason_for_inclusion": "Mentioned for its specific focus on cohort analysis and customer lifetime value, which are key for retention-focused ROI measurement.",
+      "source_of_mention": "https://agencyanalytics.com/blog/roi-tracking"
+    },
+    {
+      "competitor_name": "Matelso",
+      "reason_for_inclusion": "Included for its capability to provide lead tracking across a wide range of communication channels like chat, calls, email, and forms.",
+      "source_of_mention": "https://agencyanalytics.com/blog/roi-tracking"
+    },
+    {
+      "competitor_name": "Mixpanel",
+      "reason_for_inclusion": "Mentioned in the context of pricing models, specifically as a platform that offers a free tier.",
+      "source_of_mention": "https://agencyanalytics.com/blog/roi-tracking"
+    },
+    {
+      "competitor_name": "Adobe Analytics",
+      "reason_for_inclusion": "Framed as an enterprise-level option for scaled insights, available on a quote-based pricing model.",
+      "source_of_mention": "https://agencyanalytics.com/blog/roi-tracking"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "Linkrunner's absence from the AI response stems from two primary factors. First, its core value proposition (tracking clicks, downloads) is not explicitly framed in the language of 'ROI tracking' or 'revenue attribution', which is central to the query. Second, the AI's answer is heavily influenced by a third-party comparative article from a competitor. Linkrunner's lack of presence in such authoritative, industry-spanning content makes it invisible to the AI for this type of query.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Linkrunner was excluded because its online messaging, as described, focuses on tracking 'actions' (clicks, downloads) rather than explicitly connecting these actions to 'ROI' and 'revenue', which is the core of the user's query. Furthermore, it lacks mentions in the kind of authoritative third-party comparison articles the AI is using as its primary source.",
+      "path_to_inclusion": "Create dedicated content on the Linkrunner website that explicitly details its 'ROI tracking' capabilities, with case studies showing how to measure revenue from distribution channels. The most critical step is to pursue a third-party content strategy to get Linkrunner featured in 'best marketing ROI platforms' articles and reviews on reputable marketing tech blogs, mirroring the source the AI currently trusts."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content Structure Enhancement",
+      "action": "On the Linkrunner product page, create dedicated sections with H2 tags for 'ROI Tracking Features' and 'Marketing Attribution'. Use case studies to illustrate how tracking clicks and downloads translates into measurable financial returns."
+    },
+    {
+      "recommendation": "Keyword and Claim Alignment",
+      "action": "Integrate key phrases like 'ROI tracking', 'revenue attribution', 'prove marketing value', and 'full customer journey' into your website copy, meta descriptions, and blog content to align with the AI's vocabulary for this topic."
+    },
+    {
+      "recommendation": "Third-Party Validation Strategy",
+      "action": "Identify and pitch marketing analytics blogs and tech review sites to be included in their 'best ROI tracking platforms' roundup articles. Being featured in content similar to the cited AgencyAnalytics blog post is the most direct path to inclusion."
+    }
+  ]
+}

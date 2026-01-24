@@ -1,0 +1,84 @@
+{
+  "executive_summary": {
+    "title": "Your AEO Competitive Analysis for Linkrunner",
+    "status_overview": "Your product was not featured, as the AI currently prioritizes marketing analytics platforms that explicitly address broad data integration (CRM, Ads) and multi-touch attribution, with supporting content on authoritative domains.",
+    "strategic_analogy": "This is like arriving at a global economics summit with a highly detailed city map. While your map is accurate and valuable for its specific purpose (tracking local routes), the discussion is focused on international trade agreements and fiscal policy (holistic ROI and multi-channel attribution), and your tool isn't speaking that language yet."
+  },
+  "client_product_visibility": {
+    "status": "Not Featured",
+    "details": "Linkrunner was not mentioned by name or brand in the AI overview text or in any of the cited source links."
+  },
+  "ai_answer_deconstruction": {
+    "dominant_narrative": "The AI is building a narrative around selecting a sophisticated, all-in-one marketing analytics platform that moves beyond surface-level metrics. The core story is about achieving true ROI by unifying data from all marketing channels (ads, CRM, web), applying advanced multi-touch attribution models, and using real-time, predictive insights to make strategic decisions.",
+    "key_decision_factors": [
+      "Comprehensive data integration (Ad platforms, CRMs, eCommerce)",
+      "Support for first-party data and server-side tracking",
+      "Advanced attribution modeling (Multi-touch, algorithmic)",
+      "Direct ROI and ROAS calculation capabilities",
+      "Real-time reporting and customizable dashboards",
+      "Predictive analytics and AI features",
+      "User-friendliness and scalability",
+      "Transparent pricing and data security compliance (GDPR, CCPA)"
+    ],
+    "trusted_source_analysis": "The AI demonstrates high trust in a mix of authoritative B2B brand websites that are also product providers (Salesforce, HubSpot), specialist product blogs that establish thought leadership (Cometly), and third-party content sites that publish 'best of' lists and guides in the marketing technology space (Saras Analytics, Whatsdash, RedTrack)."
+  },
+  "competitive_landscape_analysis": [
+    {
+      "competitor_name": "Salesforce Marketing Cloud Intelligence",
+      "reason_for_inclusion": "Positioned as a leading platform due to Salesforce's high domain authority in the marketing and CRM space. The AI directly cites Salesforce's own content to define the category and its importance, reinforcing its credibility.",
+      "source_of_mention": "https://www.salesforce.com/marketing/analytics/tools/"
+    },
+    {
+      "competitor_name": "Cometly",
+      "reason_for_inclusion": "Cometly is included because it has successfully positioned itself as a thought leader. The AI cites two of Cometly's blog posts, using their content to frame the problem and solution, then logically recommends Cometly's product.",
+      "source_of_mention": "https://www.cometly.com/post/choosing-a-marketing-analytics-platform#:~:text=When%20making%20this%20crucial%20decision,to%20achieve%20your%20desired%20outcomes."
+    },
+    {
+      "competitor_name": "Google Analytics 4 (GA4)",
+      "reason_for_inclusion": "Mentioned as an industry-standard tool. Its inclusion is based on its widespread adoption and foundational role in web analytics, serving as a baseline competitor in this category.",
+      "source_of_mention": "https://www.sarasanalytics.com/blog/marketing-campaign-analytics"
+    },
+    {
+      "competitor_name": "Funnel",
+      "reason_for_inclusion": "Included as a known player specializing in data aggregation and integration, which directly aligns with one of the AI's primary decision factors: 'Unified Data Sources'.",
+      "source_of_mention": "https://whatsdash.com/blog/marketing-analytics/top-10-marketing-analytics-platforms/#:~:text=Choosing%20the%20right%20marketing%20analytics,marketing%20future%20depends%20on%20it."
+    },
+    {
+      "competitor_name": "Improvado",
+      "reason_for_inclusion": "Similar to Funnel, Improvado is mentioned for its capabilities in data integration from numerous sources, a critical factor highlighted by the AI.",
+      "source_of_mention": "https://www.redtrack.io/blog/best-marketing-analytics-software/#:~:text=Your%20marketing%20analytics%20tool%20should,be%20worth%20paying%20extra%20for."
+    },
+    {
+      "competitor_name": "Triple Whale",
+      "reason_for_inclusion": "Likely included due to its strong reputation in the eCommerce analytics space for providing clear ROI and attribution insights, which aligns with the AI's focus on linking marketing spend to revenue.",
+      "source_of_mention": "https://twominutereports.com/blog/marketing-analytics-tools"
+    },
+    {
+      "competitor_name": "HubSpot",
+      "reason_for_inclusion": "Although not listed as a final recommended platform, HubSpot is mentioned as a key CRM system for integration and is cited as a source, indicating its high authority and relevance in the marketing data ecosystem.",
+      "source_of_mention": "https://www.hubspot.com/"
+    }
+  ],
+  "strategic_gap_and_opportunity_analysis": {
+    "analysis_summary": "The primary gap is a mismatch between Linkrunner's current online positioning and the specific criteria the AI has identified as critical for this query. The AI is rewarding platforms that speak the language of holistic, multi-channel ROI analysis, while Linkrunner's description appears more focused on mobile/app-centric channel tracking. This presents a clear opportunity to reposition and create content that directly addresses the AI's evaluation framework.",
+    "if_featured": null,
+    "if_not_featured": {
+      "exclusion_reasons": "Your product was excluded because its current messaging ('MMP', 'distribution channels', 'clicks, downloads') does not align with the AI's core evaluation criteria, which include 'multi-touch attribution', 'CRM data integration', and 'ROI/ROAS calculation'. Competitors are explicitly addressing these broader business challenges on their websites and blogs, which the AI is then citing and rewarding.",
+      "path_to_inclusion": "To get featured, Linkrunner must broaden its marketing language to encompass the entire customer journey. Revise the product page and create new content (guides, blog posts) targeting keywords like 'multi-touch attribution platform', 'marketing ROI software', and 'unify marketing data'. Explicitly list integrations with major ad platforms (Google, Meta) and CRMs (Salesforce, HubSpot) to match the AI's data integration criteria."
+    }
+  },
+  "actionable_recommendations": [
+    {
+      "recommendation": "Content and Keyword Alignment",
+      "action": "Develop and publish a series of articles and landing pages on your website targeting the specific factors the AI prioritized. Titles could include 'The Ultimate Guide to Multi-Touch Attribution for ROI' and 'How Linkrunner Integrates with Salesforce and HubSpot to Unify Your Data'. Ensure terms like 'ROAS', 'CLV', 'real-time reporting', and 'predictive analytics' are used prominently."
+    },
+    {
+      "recommendation": "Product Page Restructuring",
+      "action": "On your main product page, restructure the content to mirror the AI's summary checklist. Create distinct, easily scannable sections for 'Data Integration', 'Attribution Modeling', and 'ROI Reporting'. Use bullet points to list specific integrations and supported attribution models (e.g., Linear, U-shaped, Algorithmic)."
+    },
+    {
+      "recommendation": "Third-Party Validation and Link Building",
+      "action": "Actively pursue features, reviews, and listings on the types of marketing technology blogs the AI cited (e.g., RedTrack, Whatsdash). Being mentioned in a 'Top 10 Marketing Analytics Platforms' article on a trusted third-party domain is a powerful signal that can lead to inclusion in future AI overviews."
+    }
+  ]
+}
