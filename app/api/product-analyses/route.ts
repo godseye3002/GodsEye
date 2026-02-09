@@ -16,6 +16,7 @@ export async function POST(request: Request) {
       raw_serp_results,
       perplexity_raw_serp_results,
       google_raw_serp_results,
+      snapshot_id,
     } = body || {};
 
     if (String(process.env.NODE_ENV) === 'debug') {
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
           search_query: google_search_query,
           google_overview_analysis,
           raw_serp_results: google_raw_serp_results || raw_serp_results || [],
+          snapshot_id: snapshot_id || null,
         })
         .select()
         .single();
@@ -84,6 +86,7 @@ export async function POST(request: Request) {
           citations: source_links ?? [],
           raw_serp_results: perplexity_raw_serp_results || raw_serp_results || [],
           related_google_analysis_id: googleAnalysis?.id ?? null,
+          snapshot_id: snapshot_id || null,
         })
         .select()
         .single();

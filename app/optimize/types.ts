@@ -38,6 +38,15 @@ export interface SourceLink {
   extraction_order: number;
 }
 
+export interface AnalysisSnapshot {
+  id: string;
+  batch_id: string;
+  product_id: string;
+  status: 'running' | 'completed' | 'failed';
+  started_at: string;
+  completed_at?: string | null;
+}
+
 export interface ProcessedSource {
   name: string;
   url: string;

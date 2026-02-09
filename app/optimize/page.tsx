@@ -13,6 +13,8 @@ import {
   Input,
   List,
   ListItem,
+  Menu,
+  MenuItem,
   Modal,
   ModalClose,
   ModalDialog,
@@ -20,6 +22,7 @@ import {
   Select,
   Sheet,
   Stack,
+  Switch,
   Textarea,
   Tooltip,
   Typography,
@@ -39,6 +42,7 @@ import SOVPerformanceCard from "@/components/SOVPerformanceCard";
 import DeepAnalysisCard from "@/components/DeepAnalysisCard";
 import { warmupService } from "@/lib/warmupService";
 import { fetchUsedQueriesFromAnalysisClient } from "@/lib/analysis-queries";
+import { callAIScraper } from "@/lib/ai-scraper";
 import {
   Feature,
   OptimizationAnalysis,
@@ -140,83 +144,6 @@ function serializeQueriesForHistory(queries: string[]) {
   return JSON.stringify(cleaned);
 }
 
-async function callGoogleOverviewScraper(query: string, location: string = 'India') {
-  try {
-    // const response = await axios.post('http://127.0.0.1:8000/scrape', {
-    //   query,
-    //   location,
-    //   max_retries: 3,
-    // });
-    const response = await axios.post(`${process.env.NEXT_PUBLIC_GOOGLE_OVERVIEW_SCRAPER}`, {
-      query,
-      location,
-      max_retries: 3,
-    });
-    console.log('Google AI Overview scraper response:', response.data);
-    
-    // Validate Google scraper response
-    const data = response.data;
-    if (!data || typeof data !== 'object') {
-      throw new Error('Invalid Google scraper response format');
-    }
-    
-    // Check if success is false
-    if (data.success === false) {
-      throw new Error(data.error_message || 'Google scraper failed to get AI Overview');
-    }
-    
-    // Check if ai_overview_text is empty or too short
-    if (!data.ai_overview_text || data.ai_overview_text.length <= 1) {
-      throw new Error('Google scraper returned empty or insufficient content');
-    }
-    
-    return data;
-  } catch (error: any) {
-    let status: number | undefined;
-    let humanMessage = 'We were unable to reach the Google AI Overview scraping service. Please try again in a moment.';
-    let technicalDetails: unknown = error;
-
-    if (axios.isAxiosError(error)) {
-      status = error.response?.status;
-      technicalDetails = error.response?.data ?? error.message;
-
-      const responseData = error.response?.data;
-      if (responseData && typeof responseData === 'object' && 'error' in responseData) {
-        const apiMessage = (responseData as { error?: string }).error;
-        if (apiMessage && apiMessage.trim().length > 0) {
-          humanMessage = apiMessage;
-        }
-      } else if (typeof responseData === 'string' && responseData.trim().length > 0) {
-        humanMessage = responseData.trim();
-      } else if (status === 404) {
-        humanMessage = 'Google AI Overview scraper endpoint was not found. Ensure the scraper service is running.';
-      } else if (status === 429) {
-        humanMessage = 'The Google AI Overview scraping service is receiving too many requests. Please wait a bit before retrying.';
-      } else if (status === 500) {
-        humanMessage = 'The Google AI Overview scraping service encountered an internal error. Please try again shortly.';
-      }
-    } else if (error instanceof Error) {
-      humanMessage = error.message;
-    }
-
-    const logPayload: Record<string, unknown> = {
-      status,
-      message: humanMessage,
-    };
-
-    if (!(technicalDetails && typeof technicalDetails === 'object' && Object.keys(technicalDetails as Record<string, unknown>).length === 0)) {
-      logPayload.details = technicalDetails;
-    }
-
-    console.error('Google AI Overview scraper error:', logPayload);
-
-    const scraperError = new Error(humanMessage);
-    scraperError.name = 'GoogleAIScraperError';
-    (scraperError as any).status = status;
-    throw scraperError;
-  }
-}
-
 const analyzingDotPulse = keyframes`
   0%, 80%, 100% { transform: scale(0.65); opacity: 0.35; }
   40% { transform: scale(1); opacity: 1; }
@@ -266,8 +193,6 @@ function OptimizePageContent() {
     setUsedPerplexityQueries,
     setUsedGoogleQueries,
     setQueryData,
-    updateQueryDataInSupabase,
-    loadQueryDataFromSupabase,
     optimizationAnalysis,
     setOptimizationAnalysis,
     analysisError,
@@ -286,6 +211,7 @@ function OptimizePageContent() {
     saveProductToSupabase,
     updateProductInSupabase,
     loadProductsFromSupabase,
+    saveQueriesToSupabase,
     setUserInfo,
     setUserCredits,
     adjustUserCredits,
@@ -309,10 +235,18 @@ function OptimizePageContent() {
   const [isClient, setIsClient] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<string>("India");
   const [openModal, setOpenModal] = useState<string | null>(null);
+  const [checkImplementationModalOpen, setCheckImplementationModalOpen] = useState(false);
+  const [checkImplementationIncompleteModalOpen, setCheckImplementationIncompleteModalOpen] = useState(false);
   const [newAttribute, setNewAttribute] = useState("");
   const [activeSection, setActiveSection] = useState<"product" | "perplexity" | "google" | "query">("product");
   const [specKeyEdits, setSpecKeyEdits] = useState<Record<string, string>>({});
   const [specKeyEditing, setSpecKeyEditing] = useState<Record<string, boolean>>({});
+
+  const [queryBatches, setQueryBatches] = useState<any[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [isLoadingBatches, setIsLoadingBatches] = useState(false);
+  const [isLoadingBatchQueries, setIsLoadingBatchQueries] = useState(false);
+  const [currentSnapshotId, setCurrentSnapshotId] = useState<string | null>(null);
   
   // Loading states for individual scrapers
   const [isPerplexityScraping, setIsPerplexityScraping] = useState(false);
@@ -321,6 +255,9 @@ function OptimizePageContent() {
   const [hasLoadedQueriesForProduct, setHasLoadedQueriesForProduct] = useState(false);
   const [loadingResultKey, setLoadingResultKey] = useState<string | null>(null);
   const lastLoadedProductIdRef = useRef<string | null>(null);
+  
+  // Result button dropdown menu state
+  const [resultMenuAnchor, setResultMenuAnchor] = useState<null | HTMLElement>(null);
   
   // SOV card state management
   const [showSOVCards, setShowSOVCards] = useState(false);
@@ -352,6 +289,102 @@ function OptimizePageContent() {
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "")
   , []);
+
+  const loadQueryBatches = useCallback(async () => {
+    if (!user?.id || !currentProductId) return;
+
+    setIsLoadingBatches(true);
+    try {
+      const response = await fetch(`/api/query-batches?userId=${user.id}&productId=${currentProductId}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load batches');
+      }
+      const data = await response.json();
+      setQueryBatches(Array.isArray(data?.batches) ? data.batches : []);
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Query Batches] Failed to load:', error);
+      }
+    } finally {
+      setIsLoadingBatches(false);
+    }
+  }, [user?.id, currentProductId]);
+
+  const loadQueriesForBatch = useCallback(async (batchId: string) => {
+    if (!user?.id || !currentProductId) return;
+
+    setIsLoadingBatchQueries(true);
+    try {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Frontend] Loading queries for batch:', { batchId, userId: user.id, productId: currentProductId });
+      }
+      
+      const response = await fetch(
+        `/api/queries?userId=${user.id}&productId=${currentProductId}&batchId=${batchId}`
+      );
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load batch queries');
+      }
+
+      const data = await response.json();
+      const rows = Array.isArray(data?.queries) ? data.queries : [];
+      
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Frontend] Batch queries response:', { 
+          batchId, 
+          rowsCount: rows.length,
+          rows: rows.slice(0, 3)
+        });
+      }
+
+      const perplexity = rows
+        .filter((q: any) => q?.suggested_engine === 'perplexity' || q?.suggested_engine === null)
+        .map((q: any) => q?.query_text)
+        .filter((q: any) => typeof q === 'string' && q.trim().length > 0);
+
+      const google = rows
+        .filter((q: any) => q?.suggested_engine === 'google')
+        .map((q: any) => q?.query_text)
+        .filter((q: any) => typeof q === 'string' && q.trim().length > 0);
+      
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Frontend] Filtered queries:', { 
+          batchId,
+          perplexityCount: perplexity.length,
+          googleCount: google.length,
+          perplexitySample: perplexity.slice(0, 2),
+          googleSample: google.slice(0, 2)
+        });
+      }
+
+      setAllPerplexityQueries(perplexity);
+      setAllGoogleQueries(google);
+      setSelectedPerplexityQueries([]);
+      setSelectedGoogleQueries([]);
+
+      const { google: analysisGoogleQueries, perplexity: analysisPerplexityQueries } =
+        await fetchUsedQueriesFromAnalysisClient(currentProductId);
+
+      setUsedPerplexityQueries(analysisPerplexityQueries);
+      setUsedGoogleQueries(analysisGoogleQueries);
+
+      setSelectedBatchId(batchId);
+    } catch (error) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Batch Queries] Failed to load:', error);
+      }
+    } finally {
+      setIsLoadingBatchQueries(false);
+    }
+  }, [user?.id, currentProductId, setAllPerplexityQueries, setAllGoogleQueries, setSelectedPerplexityQueries, setSelectedGoogleQueries, setUsedPerplexityQueries, setUsedGoogleQueries]);
+
+  useEffect(() => {
+    if (activeSection !== 'query') return;
+    if (!user?.id || !currentProductId) return;
+    loadQueryBatches();
+  }, [activeSection, user?.id, currentProductId, loadQueryBatches]);
 
   useEffect(() => {
     setIsClient(true);
@@ -495,17 +528,22 @@ function OptimizePageContent() {
 
   async function persistProductWithGeneratedQueries(queryData: QueryData) {
     if (!user) return;
-    const queryDataString = JSON.stringify(queryData);
 
     try {
-      if (currentProductId) {
-        await updateProductInSupabase(currentProductId, user.id, queryDataString);
-      } else {
+      // First, ensure we have a product
+      if (!currentProductId) {
         const productRecord = createProductRecord(null, null);
-        const newProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+        const newProductId = await saveProductToSupabase(productRecord, user.id);
         if (newProductId) {
           setCurrentProductId(newProductId);
         }
+      }
+
+      // Save queries to the new queries table
+      await saveQueriesToSupabase(user.id);
+      
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Page] Queries saved to queries table successfully');
       }
     } catch (error: any) {
       const isNotFound =
@@ -514,9 +552,11 @@ function OptimizePageContent() {
       if (isNotFound) {
         try {
           const productRecord = createProductRecord(null, null);
-          const newProductId = await saveProductToSupabase(productRecord, user.id, queryDataString);
+          const newProductId = await saveProductToSupabase(productRecord, user.id);
           if (newProductId) {
             setCurrentProductId(newProductId);
+            // Retry saving queries after creating product
+            await saveQueriesToSupabase(user.id);
           }
         } catch (creationError) {
           console.error('[Persist Queries] Failed to create product after not found:', creationError);
@@ -525,6 +565,166 @@ function OptimizePageContent() {
       }
 
       console.error('[Persist Queries] Failed to persist product with queries:', error);
+    }
+  }
+
+  // Helper function to create or reuse an analysis snapshot using Supabase directly
+  async function createAnalysisSnapshot(productId: string, batchId: string, totalNumberOfQueries: number = 0): Promise<string | null> {
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const supabaseClient = supabase;
+
+      // Check if an existing snapshot exists for this product_id and batch_id
+      const { data: existingSnapshot, error: fetchError } = await supabaseClient
+        .from('analysis_snapshots')
+        .select('*')
+        .eq('product_id', productId)
+        .eq('batch_id', batchId)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 means no rows found, which is expected
+        console.error('[Snapshot] Failed to check for existing snapshot:', fetchError);
+        throw new Error(fetchError.message || 'Failed to check for existing snapshot');
+      }
+
+      if (existingSnapshot) {
+        // Reuse existing snapshot
+        console.log('[Snapshot] Reusing existing snapshot:', existingSnapshot.id);
+        
+        // Check if all queries have been analyzed
+        const allQueriesAnalyzed = existingSnapshot.no_of_query === existingSnapshot.total_no_of_query;
+        
+        if (allQueriesAnalyzed) {
+          console.log('[Snapshot] All queries already analyzed for this batch, creating new snapshot:', {
+            existingSnapshotId: existingSnapshot.id,
+            no_of_query: existingSnapshot.no_of_query,
+            total_no_of_query: existingSnapshot.total_no_of_query
+          });
+          
+          // Create new snapshot when all queries are already analyzed
+          const { data: newSnapshot, error: createError } = await supabaseClient
+            .from('analysis_snapshots')
+            .insert({
+              product_id: productId,
+              batch_id: batchId,
+              status: 'running',
+              started_at: new Date().toISOString(),
+              no_of_query: 0,
+              total_no_of_query: totalNumberOfQueries,
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('[Snapshot] Failed to create new snapshot:', createError);
+            throw new Error(createError.message || 'Failed to create new analysis snapshot');
+          }
+
+          console.log('[Snapshot] Created new snapshot after completed analysis:', newSnapshot.id);
+          return newSnapshot.id;
+        }
+        
+        // Reset status to running and update started_at only if analysis is incomplete
+        const { error: updateError } = await supabaseClient
+          .from('analysis_snapshots')
+          .update({
+            status: 'running',
+            started_at: new Date().toISOString(),
+            completed_at: null,
+          })
+          .eq('id', existingSnapshot.id);
+
+        if (updateError) {
+          console.error('[Snapshot] Failed to update existing snapshot:', updateError);
+          throw new Error(updateError.message || 'Failed to update existing snapshot');
+        }
+
+        return existingSnapshot.id;
+      }
+
+      // No existing snapshot found, create a new one
+      const { data, error } = await supabaseClient
+        .from('analysis_snapshots')
+        .insert({
+          product_id: productId,
+          batch_id: batchId,
+          status: 'running',
+          started_at: new Date().toISOString(),
+          no_of_query: 0,
+          total_no_of_query: totalNumberOfQueries,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[Snapshot] Failed to create snapshot:', error);
+        throw new Error(error.message || 'Failed to create analysis snapshot');
+      }
+
+      console.log('[Snapshot] Created new snapshot with total queries:', {
+        id: data.id,
+        total_no_of_query: totalNumberOfQueries
+      });
+      return data.id;
+    } catch (error: any) {
+      console.error('[Snapshot] Failed to create/reuse snapshot:', error);
+      throw new Error('Failed to initialize analysis tracking. Please try again.');
+    }
+  }
+
+  // Helper function to update snapshot status and no_of_query using Supabase directly
+  async function updateSnapshotStatus(
+    snapshotId: string | null,
+    status: 'completed' | 'failed',
+    noOfQueries: number = 0
+  ): Promise<void> {
+    if (!snapshotId) return;
+
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      const supabaseClient = supabase;
+
+      // Fetch existing snapshot to get current no_of_query
+      const { data: existingSnapshot, error: fetchError } = await supabaseClient
+        .from('analysis_snapshots')
+        .select('no_of_query')
+        .eq('id', snapshotId)
+        .single();
+
+      if (fetchError) {
+        console.error('[Snapshot] Failed to fetch existing snapshot:', fetchError);
+        // Continue with the provided noOfQueries if fetch fails
+      }
+
+      // Calculate new no_of_query by adding to existing value
+      const existingNoOfQueries = existingSnapshot?.no_of_query || 0;
+      const newNoOfQueries = existingNoOfQueries + noOfQueries;
+
+      const { error } = await supabaseClient
+        .from('analysis_snapshots')
+        .update({
+          status,
+          completed_at: status === 'completed' ? new Date().toISOString() : null,
+          no_of_query: newNoOfQueries,
+        })
+        .eq('id', snapshotId);
+
+      if (error) {
+        console.error('[Snapshot] Failed to update snapshot status:', error);
+      } else {
+        console.log('[Snapshot] Updated snapshot status:', { 
+          snapshotId, 
+          status, 
+          existingNoOfQueries, 
+          addedQueries: noOfQueries, 
+          totalNoOfQueries: newNoOfQueries 
+        });
+      }
+    } catch (error) {
+      console.error('[Snapshot] Error updating snapshot status:', error);
     }
   }
 
@@ -823,6 +1023,88 @@ function OptimizePageContent() {
     } else if (event.key === "Escape") {
       event.preventDefault();
       revertSpecificationKeyEdit(originalKey);
+    }
+  };
+
+  const handleCheckImplementationIncompleteBatch = async () => {
+    setQueryGenerationError(null);
+    setServerError(null);
+
+    if (!selectedBatchId) {
+      setQueryGenerationError('No batch selected for re-optimization.');
+      return;
+    }
+
+    const batchUsedPerplexityQueries = usedPerplexityQueries.filter(query => 
+      allPerplexityQueries.includes(query)
+    );
+    const batchUsedGoogleQueries = usedGoogleQueries.filter(query => 
+      allGoogleQueries.includes(query)
+    );
+
+    const finalPerplexityQueries = batchUsedPerplexityQueries.filter(query =>
+      !hasQueryBeenReanalyzed(query, 'perplexity')
+    );
+    const finalGoogleQueries = batchUsedGoogleQueries.filter(query =>
+      !hasQueryBeenReanalyzed(query, 'google_overview')
+    );
+
+    const allUsedQueries = [...finalPerplexityQueries, ...finalGoogleQueries];
+    const hasValidUsedQueries = allUsedQueries.some(query => query && query.trim().length > 0);
+
+    if (!hasValidUsedQueries) {
+      setQueryGenerationError('No non-odd used queries available for re-optimization in the selected batch.');
+      return;
+    }
+
+    const requiredCredits = allUsedQueries.length;
+    if (!userCredits || userCredits < requiredCredits) {
+      setQueryGenerationError(`Insufficient credits for re-optimization. Required: ${requiredCredits}, Available: ${userCredits || 0}`);
+      return;
+    }
+
+    let snapshotId: string | null = null;
+    if (selectedBatchId && currentProductId) {
+      try {
+        const totalQueries = allPerplexityQueries.length + allGoogleQueries.length;
+        snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId, totalQueries);
+        setCurrentSnapshotId(snapshotId);
+      } catch (snapshotError: any) {
+        console.error('[Re-Optimization] Failed to create snapshot:', snapshotError);
+        setServerError(snapshotError.message || 'Failed to initialize re-optimization. Please try again.');
+        return;
+      }
+    }
+
+    let mode: 'all' | 'perplexity' | 'google_overview' | null = null;
+    const hasUsedPerplexity = finalPerplexityQueries.length > 0;
+    const hasUsedGoogle = finalGoogleQueries.length > 0;
+
+    if (hasUsedPerplexity && hasUsedGoogle) {
+      mode = 'all';
+    } else if (hasUsedPerplexity) {
+      mode = 'perplexity';
+    } else if (hasUsedGoogle) {
+      mode = 'google_overview';
+    }
+
+    if (!mode) {
+      setQueryGenerationError('No non-odd used queries available for re-optimization in the selected batch.');
+      return;
+    }
+
+    try {
+      if (mode === 'all') {
+        await startAnalysisWithBothQueries(snapshotId, finalPerplexityQueries, finalGoogleQueries);
+      } else if (mode === 'perplexity') {
+        await startAnalysisWithSelectedQueries('perplexity', snapshotId, finalPerplexityQueries);
+      } else if (mode === 'google_overview') {
+        await startAnalysisWithSelectedQueries('google_overview', snapshotId, finalGoogleQueries);
+      }
+    } catch (error) {
+      console.error('[Re-Optimization] Error:', error);
+      await updateSnapshotStatus(snapshotId, 'failed', 0);
+      setServerError('Failed to start re-optimization. Please try again.');
     }
   };
 
@@ -1354,6 +1636,61 @@ function OptimizePageContent() {
     setQueryGenerationError(null);
     setServerError(null);
     
+    // Part 0: Create analysis snapshot before starting analysis
+    let snapshotId: string | null = null;
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[Snapshot Debug] handleUseSelectedQueries - Checking conditions:', {
+        selectedBatchId,
+        currentProductId,
+        hasBatch: !!selectedBatchId,
+        hasProduct: !!currentProductId
+      });
+    }
+    
+    if (selectedBatchId && currentProductId) {
+      try {
+        // Calculate total number of queries in the batch (not just selected)
+        const totalQueries = allPerplexityQueries.length + allGoogleQueries.length;
+        
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[Snapshot Debug] handleUseSelectedQueries - Creating snapshot with:', {
+            productId: currentProductId,
+            batchId: selectedBatchId,
+            totalQueries,
+            selectedPerplexityQueries: selectedPerplexityQueries.length,
+            selectedGoogleQueries: selectedGoogleQueries.length,
+            allPerplexityQueries: allPerplexityQueries.length,
+            allGoogleQueries: allGoogleQueries.length
+          });
+        }
+        snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId, totalQueries);
+        setCurrentSnapshotId(snapshotId);
+        console.log('[Snapshot] Snapshot created:', snapshotId);
+      } catch (snapshotError: any) {
+        console.error('[Snapshot] Failed to create snapshot:', snapshotError);
+        setServerError(snapshotError.message || 'Failed to initialize analysis tracking. Please try again.');
+        return;
+      }
+    } else {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Snapshot Debug] handleUseSelectedQueries - Skipping snapshot creation - missing conditions:', {
+          selectedBatchId,
+          currentProductId,
+          reason: !selectedBatchId ? 'No batch selected' : !currentProductId ? 'No current product' : 'Unknown'
+        });
+      }
+    }
+    
+    // Prevent used queries from being re-run via the primary Optimize button.
+    const hasUsedSelected =
+      selectedPerplexityQueries.some(q => usedPerplexityQueries.includes(q)) ||
+      selectedGoogleQueries.some(q => usedGoogleQueries.includes(q));
+
+    if (hasUsedSelected) {
+      setQueryGenerationError('You selected Used queries. Use "Check Implementation" to re-optimize those queries.');
+      return;
+    }
+
     // Auto-detect mode based on selected queries
     const mode = getAnalysisMode();
     
@@ -1382,16 +1719,18 @@ function OptimizePageContent() {
       // Start analysis based on detected mode
       if (mode === 'all') {
         // Both selected - run both analyses sequentially
-        await startAnalysisWithBothQueries();
+        await startAnalysisWithBothQueries(snapshotId);
       } else if (mode === 'perplexity') {
         // Only Perplexity selected
-        await startAnalysisWithSelectedQueries('perplexity');
+        await startAnalysisWithSelectedQueries('perplexity', snapshotId);
       } else if (mode === 'google_overview') {
         // Only Google selected
-        await startAnalysisWithSelectedQueries('google_overview');
+        await startAnalysisWithSelectedQueries('google_overview', snapshotId);
       }
     } catch (error) {
       console.error('Error using selected queries:', error);
+      // Update snapshot status to failed if an error occurs during analysis
+      await updateSnapshotStatus(snapshotId, 'failed', 0);
       setServerError('Failed to start analysis with selected queries. Please try again.');
     }
   };
@@ -1408,52 +1747,9 @@ function OptimizePageContent() {
 
     if (lastLoadedProductIdRef.current === currentProductId) return;
 
-    setHasLoadedQueriesForProduct(false);
-
-    const loadQueryData = async () => {
-      lastLoadedProductIdRef.current = currentProductId;
-      setIsLoadingQueries(true);
-
-      try {
-        const queryDataString = await loadQueryDataFromSupabase(user.id, currentProductId);
-        if (queryDataString) {
-          const parsedData = parseQueryData(queryDataString);
-          if (parsedData) {
-            setAllPerplexityQueries(parsedData.all.perplexity);
-            setAllGoogleQueries(parsedData.all.google);
-            setUsedPerplexityQueries(parsedData.used.perplexity);
-            setUsedGoogleQueries(parsedData.used.google);
-            setQueryData(parsedData);
-            
-            // Update UI state with analysis table data (this is what UI uses for "Used" status)
-            const { google: analysisGoogleQueries, perplexity: analysisPerplexityQueries } = 
-              await fetchUsedQueriesFromAnalysisClient(currentProductId);
-            
-            setUsedPerplexityQueries(analysisPerplexityQueries);
-            setUsedGoogleQueries(analysisGoogleQueries);
-            
-            // Clear any stale server errors when queries are loaded
-            setServerError(null);
-
-            setGeneratedQuery(JSON.stringify({
-              perplexity: parsedData.all.perplexity.slice(0, 1),
-              google: parsedData.all.google.slice(0, 1),
-            }));
-          }
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('[Query Data] Error during query loading:', error);
-        }
-        lastLoadedProductIdRef.current = null;
-      } finally {
-        setIsLoadingQueries(false);
-        setHasLoadedQueriesForProduct(true);
-      }
-    };
-
-    loadQueryData();
-  }, [user?.id, currentProductId, loadQueryDataFromSupabase]);
+    // Queries are now loaded via loadProductsFromSupabase, so no separate loading needed
+    setHasLoadedQueriesForProduct(true);
+  }, [user?.id, currentProductId, isNewProductSession]);
   
   // Handler for Back to Dashboard navigation
   const handleBackToDashboard = async () => {
@@ -1548,13 +1844,129 @@ function OptimizePageContent() {
         return { text: 'No Analysis Mode', color: '#F35B64' };
     }
   };
-  const handleQuerySelection = (query: string, pipeline: 'perplexity' | 'google_overview') => {
-    if (pipeline === 'perplexity') {
-      // Don't allow selection if query is already used
-      if (usedPerplexityQueries.includes(query)) {
+
+  const handleReOptimizeSelectedQueries = async () => {
+    setQueryGenerationError(null);
+    setServerError(null);
+
+    // Automatically use ALL used queries for re-optimization (filtered by selected batch)
+    if (!selectedBatchId) {
+      setQueryGenerationError('No batch selected for re-optimization.');
+      return;
+    }
+
+    // Filter used queries to only include those from the selected batch
+    const batchUsedPerplexityQueries = usedPerplexityQueries.filter(query => 
+      allPerplexityQueries.includes(query)
+    );
+    const batchUsedGoogleQueries = usedGoogleQueries.filter(query => 
+      allGoogleQueries.includes(query)
+    );
+    
+    // Use all batch used queries
+    const finalPerplexityQueries = batchUsedPerplexityQueries;
+    const finalGoogleQueries = batchUsedGoogleQueries;
+    
+    const allUsedQueries = [...finalPerplexityQueries, ...finalGoogleQueries];
+    const hasValidUsedQueries = allUsedQueries.some(query => query && query.trim().length > 0);
+    
+    if (!hasValidUsedQueries) {
+      setQueryGenerationError('No used queries found in the selected batch to re-optimize.');
+      return;
+    }
+
+    // Check credits before starting re-optimization
+    const requiredCredits = allUsedQueries.length;
+    if (!userCredits || userCredits < requiredCredits) {
+      setQueryGenerationError(`Insufficient credits for re-optimization. Required: ${requiredCredits}, Available: ${userCredits || 0}`);
+      return;
+    }
+
+    let snapshotId: string | null = null;
+    if (selectedBatchId && currentProductId) {
+      try {
+        const totalQueries = allPerplexityQueries.length + allGoogleQueries.length;
+        snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId, totalQueries);
+        setCurrentSnapshotId(snapshotId);
+      } catch (snapshotError: any) {
+        console.error('[Re-Optimization] Failed to create snapshot:', snapshotError);
+        setServerError(snapshotError.message || 'Failed to initialize re-optimization. Please try again.');
         return;
       }
-      
+    }
+
+    // Determine mode based on available used queries in the selected batch
+    let mode: 'all' | 'perplexity' | 'google_overview' | null = null;
+    const hasUsedPerplexity = finalPerplexityQueries.length > 0;
+    const hasUsedGoogle = finalGoogleQueries.length > 0;
+    
+    if (hasUsedPerplexity && hasUsedGoogle) {
+      mode = 'all';
+    } else if (hasUsedPerplexity) {
+      mode = 'perplexity';
+    } else if (hasUsedGoogle) {
+      mode = 'google_overview';
+    }
+
+    if (!hasValidUsedQueries) {
+      if (hasValidUsedQueries) {
+        setQueryGenerationError('No used queries manually selected for re-optimization in the selected batch.');
+      } else {
+        setQueryGenerationError('No used queries available for re-optimization in the selected batch.');
+      }
+      return;
+    }
+
+    try {
+      // Pass final used queries directly to avoid async state issues
+      if (mode === 'all') {
+        await startAnalysisWithBothQueries(snapshotId, finalPerplexityQueries, finalGoogleQueries);
+      } else if (mode === 'perplexity') {
+        await startAnalysisWithSelectedQueries('perplexity', snapshotId);
+      } else if (mode === 'google_overview') {
+        await startAnalysisWithSelectedQueries('google_overview', snapshotId);
+      }
+    } catch (error) {
+      console.error('[Re-Optimization] Error:', error);
+      await updateSnapshotStatus(snapshotId, 'failed', 0);
+      setServerError('Failed to start re-optimization. Please try again.');
+    }
+  };
+  
+  // Handler functions for manual used query selection
+  // Helper function to check if query is odd based on analysis count comparison across all queries
+  const hasQueryBeenReanalyzed = (query: string, pipeline: 'perplexity' | 'google_overview'): boolean => {
+    // Get analysis counts for all queries in the current batch (both pipelines)
+    const allBatchQueries = [
+      ...allPerplexityQueries.map(q => ({ query: q, pipeline: 'perplexity' as const })),
+      ...allGoogleQueries.map(q => ({ query: q, pipeline: 'google_overview' as const }))
+    ];
+    
+    // Calculate analysis counts for each query in the batch
+    const queryCounts = allBatchQueries.map(({ query, pipeline }) => ({
+      query,
+      pipeline,
+      count: getAnalysesForQuery(query, pipeline).length
+    }));
+    
+    // Find the maximum count
+    const maxCount = Math.max(...queryCounts.map(qc => qc.count));
+    
+    // If all queries have the same count, all are odd (no remaining analysis needed)
+    const allSameCount = queryCounts.every(qc => qc.count === maxCount);
+    if (allSameCount) {
+      return true;
+    }
+    
+    // Find the current query's count
+    const currentQueryCount = queryCounts.find(qc => qc.query === query && qc.pipeline === pipeline)?.count || 0;
+    
+    // Queries with the highest count are odd, others are non-odd
+    return currentQueryCount === maxCount;
+  };
+
+  const handleQuerySelection = (query: string, pipeline: 'perplexity' | 'google_overview') => {
+    if (pipeline === 'perplexity') {
       if (selectedPerplexityQueries.includes(query)) {
         setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q) => q !== query));
         return;
@@ -1563,11 +1975,6 @@ function OptimizePageContent() {
       // Allow selection even at max limit - user is replacing one query with another
       setSelectedPerplexityQueries([...selectedPerplexityQueries, query]);
     } else {
-      // Don't allow selection if query is already used
-      if (usedGoogleQueries.includes(query)) {
-        return;
-      }
-      
       if (selectedGoogleQueries.includes(query)) {
         setSelectedGoogleQueries(selectedGoogleQueries.filter((q) => q !== query));
         return;
@@ -1634,98 +2041,73 @@ function OptimizePageContent() {
         return;
       }
 
-      // 1. Construct updated "all" arrays based on CURRENT state + NEW value
-      const updatedAllPerplexity = allPerplexityQueries.map((q, i) => 
-        pipeline === 'perplexity' && i === index ? cleanNewValue : q
-      );
-      
-      const updatedAllGoogle = allGoogleQueries.map((q, i) => 
-        pipeline === 'google_overview' && i === index ? cleanNewValue : q
-      );
-
-      // 2. Construct updated "used" arrays
-      // We must check if the OLD query string exists in the used list and replace it
-      const updatedUsedPerplexity = usedPerplexityQueries.map((q) => {
-         if (pipeline === 'perplexity' && q.trim() === cleanOldQueryValue) {
-            return cleanNewValue;
-         }
-         return q;
-      });
-
-      const updatedUsedGoogle = usedGoogleQueries.map((q) => {
-         if (pipeline === 'google_overview' && q.trim() === cleanOldQueryValue) {
-            return cleanNewValue;
-         }
-         return q;
-      });
-
-      // 3. Construct the MASTER QueryData Object
-      // This step was missing/incomplete, causing analysis to read stale data later
-      const updatedQueryData: QueryData = {
-        all: {
-          perplexity: updatedAllPerplexity,
-          google: updatedAllGoogle,
-        },
-        used: {
-          perplexity: updatedUsedPerplexity,
-          google: updatedUsedGoogle,
-        },
-      };
-
-      const response = await fetch('/api/products/update-queries', {
-        method: 'POST',
+      // Update query_text directly in the queries table
+      const response = await fetch('/api/queries', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productId: currentProductId,
           userId: user.id,
-          queryData: updatedQueryData,
+          productId: currentProductId,
+          oldQueryText: cleanOldQueryValue,
+          newQueryText: cleanNewValue,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update queries in database');
+        throw new Error(errorData.error || 'Failed to update query in database');
       }
 
       console.log('Query successfully updated in database');
       
-      // 4. CRITICAL FIX: Update ALL Store States immediately
-      // We update the master object AND the individual arrays to keep everything in sync
-      setQueryData(updatedQueryData); 
-      setAllPerplexityQueries(updatedAllPerplexity);
-      setAllGoogleQueries(updatedAllGoogle);
-      setUsedPerplexityQueries(updatedUsedPerplexity);
-      setUsedGoogleQueries(updatedUsedGoogle);
-      
-      // 5. Update selection state to select the new value
+      // Update the store state with the new query
       if (pipeline === 'perplexity') {
-        // If the old value was selected, replace it with the new one
+        const updatedAllPerplexity = allPerplexityQueries.map((q, i) => 
+          i === index ? cleanNewValue : q
+        );
+        setAllPerplexityQueries(updatedAllPerplexity);
+        
+        // Also update used queries if the old query was used
+        const updatedUsedPerplexity = usedPerplexityQueries.map((q) => {
+          if (q.trim() === cleanOldQueryValue) {
+            return cleanNewValue;
+          }
+          return q;
+        });
+        setUsedPerplexityQueries(updatedUsedPerplexity);
+        
+        // Update selection state
         if (selectedPerplexityQueries.includes(oldQueryValue)) {
            const newSelection = selectedPerplexityQueries.filter(q => q !== oldQueryValue);
            newSelection.push(cleanNewValue);
            setSelectedPerplexityQueries(newSelection);
-        } else {
-           // Optional: Auto-select the edited query
-           setSelectedPerplexityQueries([cleanNewValue]);
         }
-      } else if (pipeline === 'google_overview') {
+      } else {
+        const updatedAllGoogle = allGoogleQueries.map((q, i) => 
+          i === index ? cleanNewValue : q
+        );
+        setAllGoogleQueries(updatedAllGoogle);
+        
+        // Also update used queries if the old query was used
+        const updatedUsedGoogle = usedGoogleQueries.map((q) => {
+          if (q.trim() === cleanOldQueryValue) {
+            return cleanNewValue;
+          }
+          return q;
+        });
+        setUsedGoogleQueries(updatedUsedGoogle);
+        
+        // Update selection state
         if (selectedGoogleQueries.includes(oldQueryValue)) {
            const newSelection = selectedGoogleQueries.filter(q => q !== oldQueryValue);
            newSelection.push(cleanNewValue);
            setSelectedGoogleQueries(newSelection);
-        } else {
-           setSelectedGoogleQueries([cleanNewValue]);
         }
       }
       
     } catch (error) {
       console.error('Failed to update query in database:', error);
       setServerError('Failed to save query changes. Please try again.');
-      
-      // Revert the local changes if the database update failed by reloading from DB
-      if (user) {
-        await loadQueryDataFromSupabase(user.id, currentProductId ?? undefined);
-      }
       
     } finally {
       // Exit editing mode and clear loading
@@ -1750,6 +2132,171 @@ function OptimizePageContent() {
     }
   };
   
+  // Get all analyses for a specific query (sorted by date, newest first)
+  const getAnalysesForQuery = (query: string, pipeline: 'perplexity' | 'google_overview') => {
+    if (!currentProductId) return [];
+
+    const currentProduct = products.find(p => p.id === currentProductId);
+    if (!currentProduct || !currentProduct.analyses) return [];
+
+    return currentProduct.analyses
+      .filter((analysis: any) => {
+        if (pipeline === 'perplexity') {
+          const analysisQuery = analysis.optimization_query;
+          return analysisQuery && (
+            analysisQuery === query ||
+            analysisQuery.toLowerCase() === query.toLowerCase()
+          );
+        } else {
+          const analysisQuery = analysis.google_search_query;
+          return analysisQuery && (
+            analysisQuery === query ||
+            analysisQuery.toLowerCase() === query.toLowerCase()
+          );
+        }
+      })
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA; // Newest first
+      });
+  };
+
+  // Calculate trend indicator (compare latest vs previous analysis)
+  const getTrendIndicator = (analyses: any[]) => {
+    if (analyses.length < 2) return null;
+
+    const latest = analyses[0];
+    const previous = analyses[1];
+
+    // Extract client_product_visibility from analysis data
+    const getVisibilityStatus = (analysis: any) => {
+      try {
+        const analysisData = analysis.optimization_analysis || analysis.google_overview_analysis || '';
+        
+        // Try to parse as JSON first
+        let parsedData;
+        try {
+          parsedData = typeof analysisData === 'string' ? JSON.parse(analysisData) : analysisData;
+        } catch {
+          // If not valid JSON, try to extract from text
+          return extractVisibilityFromText(analysisData);
+        }
+
+        // Look for client_product_visibility in the parsed data
+        if (parsedData && typeof parsedData === 'object') {
+          if (parsedData.client_product_visibility) {
+            return parsedData.client_product_visibility;
+          }
+          
+          // Check nested objects
+          for (const key in parsedData) {
+            if (parsedData[key] && parsedData[key].client_product_visibility) {
+              return parsedData[key].client_product_visibility;
+            }
+          }
+        }
+        
+        return extractVisibilityFromText(analysisData);
+      } catch (error) {
+        console.error('Error extracting visibility:', error);
+        return 'Unknown';
+      }
+    };
+
+    const extractVisibilityFromText = (text: string) => {
+      // Look for patterns like "client_product_visibility": "Featured" or similar
+      const patterns = [
+        /client_product_visibility["\s]*[:=]["\s]*(Featured|Not Featured)/i,
+        /visibility["\s]*[:=]["\s]*(Featured|Not Featured)/i,
+        /(Featured|Not Featured)/i
+      ];
+      
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+      
+      return 'Unknown';
+    };
+
+    const latestVisibility = getVisibilityStatus(latest);
+    const previousVisibility = getVisibilityStatus(previous);
+
+    // Define visibility hierarchy: Featured > Not Featured
+    const getVisibilityRank = (visibility: any) => {
+      if (!visibility || typeof visibility !== 'string') {
+        return 0; // Unknown or invalid values
+      }
+      
+      const normalized = visibility.toLowerCase().trim();
+      if (normalized.includes('featured')) return 2;
+      if (normalized.includes('not featured')) return 1;
+      return 0; // Unknown or other values
+    };
+
+    const latestRank = getVisibilityRank(latestVisibility);
+    const previousRank = getVisibilityRank(previousVisibility);
+
+    if (latestRank > previousRank) {
+      return { direction: 'up', icon: '↗' };
+    } else if (latestRank < previousRank) {
+      return { direction: 'down', icon: '↘' };
+    } else {
+      return { direction: 'same', icon: '-' };
+    }
+  };
+
+  // Format relative time for display
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Handle opening result menu
+  const handleResultMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setResultMenuAnchor(event.currentTarget);
+  };
+
+  // Handle closing result menu
+  const handleResultMenuClose = () => {
+    setResultMenuAnchor(null);
+  };
+
+  // Handle viewing a specific analysis from history
+  const handleViewAnalysisById = async (analysisId: string, pipeline: 'perplexity' | 'google_overview') => {
+    handleResultMenuClose();
+    
+    if (!currentProductId) {
+      setServerError('No product selected. Please select a product first.');
+      return;
+    }
+    
+    if (!user) {
+      setServerError('User not authenticated. Please sign in.');
+      return;
+    }
+
+    // Navigate to the appropriate historical results page with analysis ID
+    if (pipeline === 'perplexity') {
+      router.push(`/results/perplexity/${analysisId}`);
+    } else {
+      router.push(`/results/google/${analysisId}`);
+    }
+  };
+
   // View analysis result for a used query
   const handleViewAnalysisResult = async (query: string, pipeline: 'perplexity' | 'google_overview') => {
     console.log('handleViewAnalysisResult called', { query, pipeline, currentProductId });
@@ -1878,7 +2425,11 @@ function OptimizePageContent() {
     // Don't clear loading on successful navigation - let the user see the loading state until navigation completes
   };
   
-  const startAnalysisWithSelectedQueries = async (pipeline: 'perplexity' | 'google_overview') => {
+  const startAnalysisWithSelectedQueries = async (
+    pipeline: 'perplexity' | 'google_overview',
+    snapshotId: string | null,
+    queriesParam?: string[]
+  ) => {
     if (!user) {
       setServerError('Please sign in to analyze products');
       router.push('/auth');
@@ -1886,7 +2437,7 @@ function OptimizePageContent() {
     }
 
     // 2) Get the selected query for this pipeline
-    const selectedQueries = pipeline === 'perplexity' ? selectedPerplexityQueries : selectedGoogleQueries;
+    const selectedQueries = queriesParam || (pipeline === 'perplexity' ? selectedPerplexityQueries : selectedGoogleQueries);
     const validQueries = selectedQueries.filter(q => q && q.trim().length > 0);
 
     if (validQueries.length === 0) {
@@ -1952,71 +2503,153 @@ function OptimizePageContent() {
       // 4) Mirror old behavior per query (run in parallel): scrape -> analyze (+sources)
       // NOTE: We only insert DB rows after we have a saved product_id.
       const perQuerySettled = await Promise.allSettled(
-        queriesToRun.map(async (q) => {
-          const scrapeData = pipeline === 'perplexity'
-            ? await callPerplexityScraper(q, selectedLocation)
-            : await callGoogleOverviewScraper(q, selectedLocation);
-
-          const scrapeWithQuery = { query: q, ...scrapeData };
-
-          const analysisResp = await fetch('/api/strategic-analysis', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              aiSearchJson: scrapeWithQuery,
-              clientProductJson: aiReadyData,
-              analysisId: undefined,
-              pipeline,
-            }),
-          });
-
-          if (!analysisResp.ok) {
-            const analysisError = await analysisResp.json().catch(() => ({}));
-            const userMessage = (analysisError as any)?.error || 'Failed to perform strategic analysis';
-            throw new Error(userMessage);
+        queriesToRun.map(async (q, index) => {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`[QUERY ANALYSIS] Starting analysis for query ${index + 1}/${queriesToRun.length}: "${q}"`);
+            console.log(`[QUERY ANALYSIS] Pipeline: ${pipeline}, Location: ${selectedLocation}`);
           }
+          
+          try {
+            // Step 1: Scrape the query
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[QUERY ANALYSIS] Step 1: Starting scraper for query: "${q}"`);
+            }
+            const scrapeData = pipeline === 'perplexity'
+              ? await callPerplexityScraper(q, selectedLocation)
+              : await callAIScraper(q, selectedLocation);
 
-          const analysisData = await analysisResp.json();
-          if (!analysisData || typeof analysisData !== 'object') {
-            throw new Error('Received invalid analysis data from server');
-          }
-
-          let processedSourcesForRow: any[] | null = null;
-          if (pipeline === 'perplexity') {
-            try {
-              const sourcesResp = await fetch('/api/process-sources', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  sourceLinks: (scrapeWithQuery as any)?.source_links || [],
-                  analysisId: undefined,
-                  pipeline: 'perplexity',
-                }),
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[QUERY ANALYSIS] Step 1 Complete: Scrape data received:`, {
+                success: scrapeData?.success,
+                hasContent: !!scrapeData?.ai_overview_text,
+                contentLength: scrapeData?.ai_overview_text?.length || 0,
+                sourceLinksCount: scrapeData?.source_links?.length || 0,
+                jobId: scrapeData?.job_id
               });
+            }
 
-              if (sourcesResp.ok) {
-                const sourcesData = await sourcesResp.json().catch(() => null);
-                if (sourcesData && sourcesData.success && Array.isArray(sourcesData.sources)) {
-                  processedSourcesForRow = sourcesData.sources;
+            if (!scrapeData || !scrapeData.success) {
+              throw new Error(`Scraper failed for query "${q}": ${scrapeData?.error || 'Unknown error'}`);
+            }
+
+            if (!scrapeData.ai_overview_text || scrapeData.ai_overview_text.length <= 1) {
+              throw new Error(`Scraper returned empty content for query "${q}"`);
+            }
+
+            const scrapeWithQuery = { query: q, ...scrapeData };
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[QUERY ANALYSIS] Step 2: Starting strategic analysis for query: "${q}"`);
+            }
+
+            // Step 2: Strategic analysis
+            const analysisResp = await fetch('/api/strategic-analysis', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                aiSearchJson: scrapeWithQuery,
+                clientProductJson: aiReadyData,
+                analysisId: undefined,
+                pipeline,
+              }),
+            });
+
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[QUERY ANALYSIS] Step 2 Response: Status ${analysisResp.status} for query: "${q}"`);
+            }
+
+            if (!analysisResp.ok) {
+              const analysisError = await analysisResp.json().catch(() => ({}));
+              const userMessage = (analysisError as any)?.error || 'Failed to perform strategic analysis';
+              if (process.env.NODE_ENV !== 'production') {
+                console.error(`[QUERY ANALYSIS] Step 2 Failed:`, {
+                  query: q,
+                  status: analysisResp.status,
+                  error: analysisError,
+                  userMessage
+                });
+              }
+              throw new Error(`Analysis failed for query "${q}": ${userMessage}`);
+            }
+
+            const analysisData = await analysisResp.json();
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[QUERY ANALYSIS] Step 2 Complete: Analysis data received for query: "${q}"`, {
+                hasAnalysis: !!analysisData,
+                analysisKeys: Object.keys(analysisData || {})
+              });
+            }
+
+            if (!analysisData || typeof analysisData !== 'object') {
+              throw new Error(`Received invalid analysis data from server for query "${q}"`);
+            }
+
+            // Step 3: Process sources (for Perplexity only)
+            let processedSourcesForRow: any[] | null = null;
+            if (pipeline === 'perplexity') {
+              if (process.env.NODE_ENV !== 'production') {
+                console.log(`[QUERY ANALYSIS] Step 3: Processing sources for query: "${q}"`);
+              }
+              try {
+                const sourcesResp = await fetch('/api/process-sources', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    sourceLinks: (scrapeWithQuery as any)?.source_links || [],
+                    analysisId: undefined,
+                    pipeline: 'perplexity',
+                  }),
+                });
+
+                if (process.env.NODE_ENV !== 'production') {
+                  console.log(`[QUERY ANALYSIS] Step 3 Response: Status ${sourcesResp.status} for query: "${q}"`);
+                }
+
+                if (sourcesResp.ok) {
+                  const sourcesData = await sourcesResp.json().catch(() => null);
+                  if (process.env.NODE_ENV !== 'production') {
+                    console.log(`[QUERY ANALYSIS] Step 3 Complete: Sources data received for query: "${q}"`, {
+                      success: sourcesData?.success,
+                      sourcesCount: sourcesData?.sources?.length || 0
+                    });
+                  }
+                  
+                  if (sourcesData && sourcesData.success && Array.isArray(sourcesData.sources)) {
+                    processedSourcesForRow = sourcesData.sources;
+                  }
+                } else {
+                  if (process.env.NODE_ENV !== 'production') {
+                    console.warn(`[QUERY ANALYSIS] Step 3 Failed: Sources processing failed for query: "${q}", Status: ${sourcesResp.status}`);
+                  }
+                }
+              } catch (e) {
+                if (process.env.NODE_ENV !== 'production') {
+                  console.error(`[QUERY ANALYSIS] Step 3 Error: Sources processing error for query: "${q}":`, e);
+                }
+                if (process.env.NODE_ENV !== 'production') {
+                  console.warn('[Process Sources] Per-query failed:', e);
                 }
               }
-            } catch (e) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.warn('[Process Sources] Per-query failed:', e);
-              }
             }
-          }
 
-          return {
-            query: q,
-            scrapeWithQuery,
-            analysisData,
-            processedSourcesForRow,
-          };
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[QUERY ANALYSIS] SUCCESS: Query "${q}" completed successfully`);
+            }
+            return {
+              query: q,
+              scrapeWithQuery,
+              analysisData,
+              processedSourcesForRow,
+            };
+          } catch (error) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.error(`[QUERY ANALYSIS] FAILED: Query "${q}" failed with error:`, error);
+            }
+            throw error;
+          }
         })
       );
 
@@ -2024,16 +2657,40 @@ function OptimizePageContent() {
         .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
         .map((r) => r.value);
 
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[QUERY ANALYSIS] SUMMARY: ${perQuerySuccess.length}/${queriesToRun.length} queries succeeded`);
+      }
+
       if (perQuerySuccess.length === 0) {
-        throw new Error('All selected queries failed. Please try again.');
+        const perQueryFailures = perQuerySettled
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map((r) => r.reason);
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.error(`[QUERY ANALYSIS] COMPLETE FAILURE: All ${queriesToRun.length} queries failed:`, {
+            totalQueries: queriesToRun.length,
+            failedQueries: queriesToRun,
+            errors: perQueryFailures,
+            pipeline,
+            location: selectedLocation
+          });
+        }
+        
+        throw new Error(`All selected queries failed. Please try again. Check console for details.`);
       }
 
       const perQueryFailures = perQuerySettled
         .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
         .map((r) => r.reason);
 
-      if (perQueryFailures.length > 0 && process.env.NODE_ENV !== 'production') {
-        console.warn('[Multi-query] Some per-query runs failed:', perQueryFailures);
+      if (perQueryFailures.length > 0) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`[QUERY ANALYSIS] PARTIAL FAILURE: ${perQueryFailures.length}/${queriesToRun.length} queries failed:`, {
+            failedQueries: perQueryFailures,
+            pipeline,
+            location: selectedLocation
+          });
+        }
       }
 
       successfulQueriesRun = perQuerySuccess
@@ -2141,6 +2798,7 @@ function OptimizePageContent() {
                     pipeline === 'perplexity' ? r.scrapeWithQuery : null,
                   google_raw_serp_results:
                     pipeline === 'google_overview' ? r.scrapeWithQuery : null,
+                  snapshot_id: snapshotId,
                 }),
               });
 
@@ -2216,38 +2874,37 @@ function OptimizePageContent() {
             console.error('Credit deduction error after analysis:', creditError);
           }
 
-          // 11) Mark the used queries in Supabase ONLY after successful inserts
+          // 11) Mark the used queries - they are now tracked in analysis tables
+          // The used status will be fetched from analysis tables on next load
           if (queryDataString) {
-            let currentQueryData: QueryData | null = null;
-            try {
-              currentQueryData = JSON.parse(queryDataString) as QueryData;
-            } catch (error) {
-              console.warn('Failed to parse saved query data:', error);
-            }
-
-            if (currentQueryData) {
-              const updatedQueryData: QueryData = {
-                ...currentQueryData,
-                used: {
-                  perplexity:
-                    pipeline === 'perplexity'
-                      ? [...new Set([...currentQueryData.used.perplexity, ...successfulQueriesRun])]
-                      : currentQueryData.used.perplexity,
-                  google:
-                    pipeline === 'google_overview'
-                      ? [...new Set([...currentQueryData.used.google, ...successfulQueriesRun])]
-                      : currentQueryData.used.google,
-                },
-              };
-              await updateQueryDataInSupabase(user.id, updatedQueryData);
-              setQueryData(updatedQueryData);
-              setUsedPerplexityQueries(updatedQueryData.used.perplexity);
-              setUsedGoogleQueries(updatedQueryData.used.google);
-              // Remove used queries from selected queries
-              setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q: string) => !updatedQueryData.used.perplexity.includes(q)));
-              setSelectedGoogleQueries(selectedGoogleQueries.filter((q: string) => !updatedQueryData.used.google.includes(q)));
-              finalQueryData = updatedQueryData;
-            }
+            // Update local state with used queries
+            const usedPerplexity = pipeline === 'perplexity' 
+              ? [...new Set([...usedPerplexityQueries, ...successfulQueriesRun])]
+              : usedPerplexityQueries;
+            const usedGoogle = pipeline === 'google_overview'
+              ? [...new Set([...usedGoogleQueries, ...successfulQueriesRun])]
+              : usedGoogleQueries;
+            
+            setUsedPerplexityQueries(usedPerplexity);
+            setUsedGoogleQueries(usedGoogle);
+            
+            // Remove used queries from selected queries
+            setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q: string) => !usedPerplexity.includes(q)));
+            setSelectedGoogleQueries(selectedGoogleQueries.filter((q: string) => !usedGoogle.includes(q)));
+            
+            // Update queryData for consistency
+            const updatedQueryData: QueryData = {
+              all: {
+                perplexity: allPerplexityQueries,
+                google: allGoogleQueries,
+              },
+              used: {
+                perplexity: usedPerplexity,
+                google: usedGoogle,
+              },
+            };
+            setQueryData(updatedQueryData);
+            finalQueryData = updatedQueryData;
           }
 
           // Update analysis_history with product_id and available analysis IDs from the split tables
@@ -2262,11 +2919,19 @@ function OptimizePageContent() {
                 perplexityAnalysisId: savedPerplexityAnalysisId,
               }),
             });
+            console.log('Analysis history updated successfully');
           } catch (historyError) {
             console.error('Failed to update analysis history:', historyError);
           }
+          
+          // Update snapshot status to completed after successful save
+          await updateSnapshotStatus(snapshotId, 'completed', successfulQueriesRun.length);
+          console.log('[Snapshot] Snapshot status updated to completed:', snapshotId);
         } catch (analysisSaveError) {
           console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
+          // Update snapshot status to failed if save fails
+          await updateSnapshotStatus(snapshotId, 'failed', successfulQueriesRun.length);
+          console.error('[Snapshot] Snapshot status updated to failed due to save error:', snapshotId);
         }
       }
 
@@ -2295,15 +2960,20 @@ function OptimizePageContent() {
     }
   };
 
-  const startAnalysisWithBothQueries = async () => {
+  const startAnalysisWithBothQueries = async (
+    snapshotId: string | null,
+    perplexityQueriesParam?: string[],
+    googleQueriesParam?: string[]
+  ) => {
     if (!user) {
       setServerError('Please sign in to analyze products');
       router.push('/auth');
       return;
     }
     
-    const perplexityQueries = selectedPerplexityQueries.filter((q) => q && q.trim()).slice(0, maxPerplexityQueries);
-    const googleQueries = selectedGoogleQueries.filter((q) => q && q.trim()).slice(0, maxGoogleQueries);
+    // Use provided parameters or fall back to state
+    const perplexityQueries = (perplexityQueriesParam || selectedPerplexityQueries).filter((q) => q && q.trim()).slice(0, maxPerplexityQueries);
+    const googleQueries = (googleQueriesParam || selectedGoogleQueries).filter((q) => q && q.trim()).slice(0, maxGoogleQueries);
 
     const perplexityQuery = perplexityQueries[0] || null;
     const googleQuery = googleQueries[0] || null;
@@ -2360,10 +3030,26 @@ function OptimizePageContent() {
 
     try {
       // 3) Mirror old behavior per query (run in parallel): scrape -> analyze (+sources)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[BOTH QUERIES] Starting analysis - Perplexity: ${perplexityQueries.length}, Google: ${googleQueries.length}`);
+      }
+      
       const [perplexityPerQuery, googlePerQuery] = await Promise.all([
         Promise.allSettled(
-          perplexityQueries.map(async (q) => {
+          perplexityQueries.map(async (q, index) => {
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[BOTH QUERIES] Perplexity ${index + 1}/${perplexityQueries.length}: "${q}"`);
+            }
+            
             const scrapeData = await callPerplexityScraper(q, selectedLocation);
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[BOTH QUERIES] Perplexity scrape complete for "${q}":`, {
+                success: scrapeData?.success,
+                hasContent: !!scrapeData?.ai_overview_text,
+                contentLength: scrapeData?.ai_overview_text?.length || 0
+              });
+            }
+
             const scrapeWithQuery = { query: q, ...scrapeData };
 
             const analysisResp = await fetch('/api/strategic-analysis', {
@@ -2379,15 +3065,26 @@ function OptimizePageContent() {
               }),
             });
 
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[BOTH QUERIES] Perplexity analysis response for "${q}": ${analysisResp.status}`);
+            }
+
             if (!analysisResp.ok) {
               const analysisError = await analysisResp.json().catch(() => ({}));
               const userMessage = (analysisError as any)?.error || 'Failed to perform strategic analysis';
+              if (process.env.NODE_ENV !== 'production') {
+                console.error(`[BOTH QUERIES] Perplexity analysis failed for "${q}":`, userMessage);
+              }
               throw new Error(userMessage);
             }
 
             const analysisData = await analysisResp.json();
             if (!analysisData || typeof analysisData !== 'object') {
               throw new Error('Received invalid Perplexity analysis data from server');
+            }
+
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[BOTH QUERIES] Perplexity analysis complete for "${q}"`);
             }
 
             let processedSourcesForRow: any[] | null = null;
@@ -2425,8 +3122,21 @@ function OptimizePageContent() {
           })
         ),
         Promise.allSettled(
-          googleQueries.map(async (q) => {
-            const scrapeData = await callGoogleOverviewScraper(q, selectedLocation);
+          googleQueries.map(async (q, index) => {
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[BOTH QUERIES] Google ${index + 1}/${googleQueries.length}: "${q}"`);
+            }
+            
+            const scrapeData = await callAIScraper(q, selectedLocation);
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[BOTH QUERIES] Google scrape complete for "${q}":`, {
+                success: scrapeData?.success,
+                hasContent: !!scrapeData?.ai_overview_text,
+                contentLength: scrapeData?.ai_overview_text?.length || 0,
+                jobId: scrapeData?.job_id
+              });
+            }
+
             const scrapeWithQuery = { query: q, ...scrapeData };
 
             const analysisResp = await fetch('/api/strategic-analysis', {
@@ -2442,15 +3152,26 @@ function OptimizePageContent() {
               }),
             });
 
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[BOTH QUERIES] Google analysis response for "${q}": ${analysisResp.status}`);
+            }
+
             if (!analysisResp.ok) {
               const analysisError = await analysisResp.json().catch(() => ({}));
               const userMessage = (analysisError as any)?.error || 'Failed to perform strategic analysis';
+              if (process.env.NODE_ENV !== 'production') {
+                console.error(`[BOTH QUERIES] Google analysis failed for "${q}":`, userMessage);
+              }
               throw new Error(userMessage);
             }
 
             const analysisData = await analysisResp.json();
             if (!analysisData || typeof analysisData !== 'object') {
               throw new Error('Received invalid Google analysis data from server');
+            }
+
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[BOTH QUERIES] Google analysis complete for "${q}"`);
             }
 
             return {
@@ -2470,8 +3191,47 @@ function OptimizePageContent() {
         .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
         .map((r) => r.value);
 
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[BOTH QUERIES] SUMMARY: Perplexity: ${perplexitySuccess.length}/${perplexityQueries.length}, Google: ${googleSuccess.length}/${googleQueries.length}`);
+      }
+
       if (perplexitySuccess.length === 0 && googleSuccess.length === 0) {
-        throw new Error('No successful analysis results were produced');
+        const perplexityFailures = perplexityPerQuery
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map((r) => r.reason);
+        const googleFailures = googlePerQuery
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map((r) => r.reason);
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.error(`[BOTH QUERIES] COMPLETE FAILURE: All queries failed:`, {
+            perplexityQueries,
+            googleQueries,
+            perplexityFailures,
+            googleFailures,
+            location: selectedLocation
+          });
+        }
+        
+        throw new Error('No successful analysis results were produced. Check console for details.');
+      }
+
+      if (perplexitySuccess.length < perplexityQueries.length) {
+        const perplexityFailures = perplexityPerQuery
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map((r) => r.reason);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`[BOTH QUERIES] PARTIAL PERPLEXITY FAILURE:`, perplexityFailures);
+        }
+      }
+
+      if (googleSuccess.length < googleQueries.length) {
+        const googleFailures = googlePerQuery
+          .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+          .map((r) => r.reason);
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`[BOTH QUERIES] PARTIAL GOOGLE FAILURE:`, googleFailures);
+        }
       }
 
       perplexityScrapesForHistory = perplexitySuccess.map((r: any) => r.scrapeWithQuery);
@@ -2581,6 +3341,7 @@ function OptimizePageContent() {
                     processed_sources: productRecord.processedSources || [],
                     google_raw_serp_results: r.scrapeWithQuery,
                     perplexity_raw_serp_results: null,
+                    snapshot_id: snapshotId,
                   }),
                 });
 
@@ -2613,6 +3374,7 @@ function OptimizePageContent() {
                       r.processedSourcesForRow ?? (productRecord.processedSources || []),
                     perplexity_raw_serp_results: r.scrapeWithQuery,
                     google_raw_serp_results: null,
+                    snapshot_id: snapshotId,
                   }),
                 });
 
@@ -2699,17 +3461,23 @@ function OptimizePageContent() {
               const { google: usedGoogleFromAnalysis, perplexity: usedPerplexityFromAnalysis } = 
                 await fetchUsedQueriesFromAnalysisClient(savedProductId);
               
+              // Update local state with used queries from analysis tables
+              setUsedPerplexityQueries(usedPerplexityFromAnalysis);
+              setUsedGoogleQueries(usedGoogleFromAnalysis);
+              
+              // Update queryData for consistency
               const updatedQueryData: QueryData = {
-                ...currentQueryData,
+                all: {
+                  perplexity: allPerplexityQueries,
+                  google: allGoogleQueries,
+                },
                 used: {
                   perplexity: usedPerplexityFromAnalysis,
                   google: usedGoogleFromAnalysis,
                 },
               };
-              await updateQueryDataInSupabase(user.id, updatedQueryData);
               setQueryData(updatedQueryData);
-              setUsedPerplexityQueries(usedPerplexityFromAnalysis);
-              setUsedGoogleQueries(usedGoogleFromAnalysis);
+              
               // Remove used queries from selected queries
               setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q: string) => !updatedQueryData.used.perplexity.includes(q)));
               setSelectedGoogleQueries(selectedGoogleQueries.filter((q: string) => !updatedQueryData.used.google.includes(q)));
@@ -2729,11 +3497,19 @@ function OptimizePageContent() {
                 perplexityAnalysisId: savedPerplexityAnalysisId,
               }),
             });
+            console.log('Analysis history updated successfully');
           } catch (historyError) {
             console.error('Failed to update analysis history:', historyError);
           }
+          
+          // Update snapshot status to completed after successful save
+          await updateSnapshotStatus(snapshotId, 'completed', perplexityQueriesRun.length + googleQueriesRun.length);
+          console.log('[Snapshot] Snapshot status updated to completed:', snapshotId);
         } catch (analysisSaveError) {
           console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
+          // Update snapshot status to failed if save fails
+          await updateSnapshotStatus(snapshotId, 'failed', perplexityQueriesRun.length + googleQueriesRun.length);
+          console.error('[Snapshot] Snapshot status updated to failed due to save error:', snapshotId);
           // Do not block user from seeing results if history save fails
         }
       }
@@ -2758,100 +3534,136 @@ function OptimizePageContent() {
     }
   };
 
-  const handleSubmitWithGeneratedQueries = async (aiReadyData: any) => {
-    // This function uses the already generated queries for analysis
-    // (queries were already generated by handleGenerateQueryOnly)
-    try {
-      // Determine what to run based on actual selected queries, not pipeline state
-      const analysisMode = getAnalysisMode();
-      const runPerplexity = analysisMode === 'all' || analysisMode === 'perplexity';
-      const runGoogle = analysisMode === 'all' || analysisMode === 'google_overview';
+  // const handleSubmitWithGeneratedQueries = async (aiReadyData: any) => {
+  //   // This function uses the already generated queries for analysis
+  //   // (queries were already generated by handleGenerateQueryOnly)
+    
+  //   // Declare snapshotId outside try block to make it accessible in catch
+  //   let snapshotId: string | null = null;
+    
+  //   try {
+  //     // Part 0: Create analysis snapshot before starting analysis
+  //     if (selectedBatchId && currentProductId) {
+  //       try {
+  //         if (process.env.NODE_ENV !== 'production') {
+  //           console.log('[Snapshot Debug] handleSubmitWithGeneratedQueries - Creating snapshot with:', {
+  //             productId: currentProductId,
+  //             batchId: selectedBatchId
+  //           });
+  //         }
+  //         snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId);
+  //         setCurrentSnapshotId(snapshotId);
+  //         console.log('[Snapshot] Snapshot created:', snapshotId);
+  //       } catch (snapshotError: any) {
+  //         console.error('[Snapshot] Failed to create snapshot:', snapshotError);
+  //         setServerError(snapshotError.message || 'Failed to initialize analysis tracking. Please try again.');
+  //         return;
+  //       }
+  //     } else {
+  //       if (process.env.NODE_ENV !== 'production') {
+  //         console.log('[Snapshot Debug] handleSubmitWithGeneratedQueries - Skipping snapshot creation - missing conditions:', {
+  //           selectedBatchId,
+  //           currentProductId,
+  //           reason: !selectedBatchId ? 'No batch selected' : !currentProductId ? 'No current product' : 'Unknown'
+  //         });
+  //       }
+  //     }
       
-      let perplexityScraperResponse: any = null;
-      let googleScraperResponse: any = null;
+  //     // Determine what to run based on actual selected queries, not pipeline state
+  //     const analysisMode = getAnalysisMode();
+  //     const runPerplexity = analysisMode === 'all' || analysisMode === 'perplexity';
+  //     const runGoogle = analysisMode === 'all' || analysisMode === 'google_overview';
       
-      setIsAnalyzing(true);
+  //     let perplexityScraperResponse: any = null;
+  //     let googleScraperResponse: any = null;
       
-      if (runPerplexity && runGoogle) {
-        console.log("Running both Perplexity and Google analysis with existing queries");
-        // Use currently selected queries, not hardcoded first queries
-        const perplexityQuery = selectedPerplexityQueries[0] || allPerplexityQueries[0];
-        const googleQuery = selectedGoogleQueries[0] || allGoogleQueries[0];
+  //     setIsAnalyzing(true);
+      
+  //     if (runPerplexity && runGoogle) {
+  //       console.log("Running both Perplexity and Google analysis with existing queries");
+  //       // Use currently selected queries, not hardcoded first queries
+  //       const perplexityQuery = selectedPerplexityQueries[0] || allPerplexityQueries[0];
+  //       const googleQuery = selectedGoogleQueries[0] || allGoogleQueries[0];
         
-        console.log("Using Perplexity-optimized query:", perplexityQuery);
-        console.log("Using Google-optimized query:", googleQuery);
+  //       console.log("Using Perplexity-optimized query:", perplexityQuery);
+  //       console.log("Using Google-optimized query:", googleQuery);
         
-        const [perplexityResult, googleResult] = await Promise.all([
-          callPerplexityScraper(perplexityQuery!, selectedLocation),
-          callGoogleOverviewScraper(googleQuery!, selectedLocation),
-        ]);
-        perplexityScraperResponse = perplexityResult;
-        googleScraperResponse = googleResult;
-      } else if (runPerplexity) {
-        // Use currently selected Perplexity query
-        const queryToUse = selectedPerplexityQueries[0] || allPerplexityQueries[0];
-        perplexityScraperResponse = await callPerplexityScraper(queryToUse!, selectedLocation);
-      } else if (runGoogle) {
-        // Use currently selected Google query
-        const queryToUse = selectedGoogleQueries[0] || allGoogleQueries[0];
-        googleScraperResponse = await callGoogleOverviewScraper(queryToUse!, selectedLocation);
-      }
+  //       const [perplexityResult, googleResult] = await Promise.all([
+  //         callPerplexityScraper(perplexityQuery!, selectedLocation),
+  //         callAIScraper(googleQuery!, selectedLocation),
+  //       ]);
+  //       perplexityScraperResponse = perplexityResult;
+  //       googleScraperResponse = googleResult;
+  //     } else if (runPerplexity) {
+  //       // Use currently selected Perplexity query
+  //       const queryToUse = selectedPerplexityQueries[0] || allPerplexityQueries[0];
+  //       perplexityScraperResponse = await callPerplexityScraper(queryToUse!, selectedLocation);
+  //     } else if (runGoogle) {
+  //       // Use currently selected Google query
+  //       const queryToUse = selectedGoogleQueries[0] || allGoogleQueries[0];
+  //       googleScraperResponse = await callAIScraper(queryToUse!, selectedLocation);
+  //     }
 
-        const scraperResponse = perplexityScraperResponse || googleScraperResponse;
-        console.log("Scraper response:", scraperResponse);
+  //       const scraperResponse = perplexityScraperResponse || googleScraperResponse;
+  //       console.log("Scraper response:", scraperResponse);
         
-        if (!scraperResponse || !scraperResponse.data) {
-          throw new Error('No data received from scraper');
-        }
+  //       if (!scraperResponse || !scraperResponse.data) {
+  //         throw new Error('No data received from scraper');
+  //       }
 
-        const analysisId = scraperResponse.analysisId;
-        console.log("Analysis ID:", analysisId);
+  //       const analysisId = scraperResponse.analysisId;
+  //       console.log("Analysis ID:", analysisId);
 
-        // Save product to Supabase
-        const productToSave: OptimizedProduct = {
-          id: '', // Will be set by Supabase
-          name: aiReadyData.product_name || 'Untitled Product',
-          description: aiReadyData.description || 'No description',
-          createdAt: new Date().toISOString(),
-          formData: aiReadyData,
-          analysis: scraperResponse.data.analysis,
-          googleOverviewAnalysis: googleScraperResponse?.data.analysis,
-        };
+  //       // Save product to Supabase
+  //       const productToSave: OptimizedProduct = {
+  //         id: '', // Will be set by Supabase
+  //         name: aiReadyData.product_name || 'Untitled Product',
+  //         description: aiReadyData.description || 'No description',
+  //         createdAt: new Date().toISOString(),
+  //         formData: aiReadyData,
+  //         analysis: scraperResponse.data.analysis,
+  //         googleOverviewAnalysis: googleScraperResponse?.data.analysis,
+  //       };
 
-        let savedProductId: string | null = null;
-        if (currentProductId) {
-          // Existing product: update with latest analysis
-          await updateProductInSupabase(currentProductId, user!.id);
-          savedProductId = currentProductId;
-        } else {
-          // New product: create in Supabase
-          savedProductId = await saveProductToSupabase(productToSave, user!.id, generatedQuery);
-          if (savedProductId) {
-            setCurrentProductId(savedProductId);
-          }
-        }
+  //       let savedProductId: string | null = null;
+  //       if (currentProductId) {
+  //         // Existing product: update with latest analysis
+  //         await updateProductInSupabase(currentProductId, user!.id);
+  //         savedProductId = currentProductId;
+  //       } else {
+  //         // New product: create in Supabase
+  //         savedProductId = await saveProductToSupabase(productToSave, user!.id, generatedQuery);
+  //         if (savedProductId) {
+  //           setCurrentProductId(savedProductId);
+  //         }
+  //       }
 
-        // Navigate based on the pipeline
-        if (runPerplexity && runGoogle) {
-          // When both are running, prioritize Perplexity results
-          router.push('/results');
-        } else if (runPerplexity) {
-          router.push('/results');
-        } else if (runGoogle) {
-          router.push('/results/google');
-        }
+  //       // Navigate based on the pipeline
+  //       if (runPerplexity && runGoogle) {
+  //         // When both are running, prioritize Perplexity results
+  //         router.push('/results');
+  //       } else if (runPerplexity) {
+  //         router.push('/results');
+  //       } else if (runGoogle) {
+  //         router.push('/results/google');
+  //       }
 
-    } catch (analysisError) {
-      console.error('Analysis error:', analysisError);
-      const friendly = 'A server error occurred while analyzing your product. Please check your internet connection and try again. If the issue persists, please contact the provider.';
-      const msg = (analysisError instanceof Error && analysisError.message && analysisError.message.trim().length > 0)
-        ? `${friendly}\n\nDetails: ${analysisError.message}`
-        : friendly;
-      setAnalysisError(msg);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+  //       // Update snapshot status to completed after successful analysis
+  //       await updateSnapshotStatus(snapshotId, 'completed');
+
+  //   } catch (analysisError) {
+  //     console.error('Analysis error:', analysisError);
+  //     // Update snapshot status to failed if an error occurs during analysis
+  //     await updateSnapshotStatus(snapshotId, 'failed');
+  //     const friendly = 'A server error occurred while analyzing your product. Please check your internet connection and try again. If the issue persists, please contact the provider.';
+  //     const msg = (analysisError instanceof Error && analysisError.message && analysisError.message.trim().length > 0)
+  //       ? `${friendly}\n\nDetails: ${analysisError.message}`
+  //       : friendly;
+  //     setAnalysisError(msg);
+  //   } finally {
+  //     setIsAnalyzing(false);
+  //   }
+  // };
   
   const loadDummyData = () => {
     // Reset to original scraped data if available, otherwise clear the form
@@ -2904,6 +3716,8 @@ function OptimizePageContent() {
       
       // Successfully generated queries, now switch to Generated Query section
       setActiveSection('query');
+      setSelectedBatchId(null);
+      await loadQueryBatches();
       console.log('Queries generated successfully, switched to Generated Query section');
       
     } catch (error) {
@@ -2912,475 +3726,524 @@ function OptimizePageContent() {
     }
   };
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
     
-    // Check authentication
-    if (!user) {
-      setServerError('Please sign in to analyze products');
-      router.push('/auth');
-      return;
-    }
+  //   // Check authentication
+  //   if (!user) {
+  //     setServerError('Please sign in to analyze products');
+  //     router.push('/auth');
+  //     return;
+  //   }
     
-    // Check credits availability before starting (without deducting)
-    const analysisMode = getAnalysisMode();
-    const requiredCredits = analysisMode === 'all' ? 2 : 1;
-    try {
-      const creditCheckResponse = await fetch('/api/analyze/check-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          creditsRequired: requiredCredits,
-        }),
-      });
+  //   // Check credits availability before starting (without deducting)
+  //   const analysisMode = getAnalysisMode();
+  //   const requiredCredits = analysisMode === 'all' ? 2 : 1;
+  //   try {
+  //     const creditCheckResponse = await fetch('/api/analyze/check-credits', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({
+  //         userId: user.id,
+  //         creditsRequired: requiredCredits,
+  //       }),
+  //     });
 
-      const creditCheckData = await creditCheckResponse.json();
+  //     const creditCheckData = await creditCheckResponse.json();
 
-      if (!creditCheckData.hasEnoughCredits) {
-        setServerError(`Insufficient credits. Required: ${requiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`);
-        return;
-      }
-      if (typeof creditCheckData.currentCredits === 'number') {
-        setUserCredits(creditCheckData.currentCredits);
-      }
+  //     if (!creditCheckData.hasEnoughCredits) {
+  //       setServerError(`Insufficient credits. Required: ${requiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`);
+  //       return;
+  //     }
+  //     if (typeof creditCheckData.currentCredits === 'number') {
+  //       setUserCredits(creditCheckData.currentCredits);
+  //     }
       
-      console.log('Credit check passed, proceeding with analysis');
-    } catch (creditError) {
-      console.error('Credit check error:', creditError);
-      setServerError('Failed to verify credits. Please try again.');
-      return;
-    }
+  //     console.log('Credit check passed, proceeding with analysis');
+  //   } catch (creditError) {
+  //     console.error('Credit check error:', creditError);
+  //     setServerError('Failed to verify credits. Please try again.');
+  //     return;
+  //   }
     
-    // Prepare the current form data for AI workflow
-    const aiReadyData = prepareDataForAI(formData);
+  //   // Part 0: Create analysis snapshot before starting analysis
+  //   let snapshotId: string | null = null;
+  //   if (process.env.NODE_ENV !== 'production') {
+  //     console.log('[Snapshot Debug] Checking conditions:', {
+  //       selectedBatchId,
+  //       currentProductId,
+  //       hasBatch: !!selectedBatchId,
+  //       hasProduct: !!currentProductId
+  //     });
+  //   }
     
-    console.log("Form submitted with current user data:", formData);
-    console.log("Data prepared for AI workflow:", aiReadyData);
+  //   if (selectedBatchId && currentProductId) {
+  //     try {
+  //       if (process.env.NODE_ENV !== 'production') {
+  //         console.log('[Snapshot Debug] Creating snapshot with:', {
+  //           productId: currentProductId,
+  //           batchId: selectedBatchId
+  //         });
+  //       }
+  //       snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId);
+  //       setCurrentSnapshotId(snapshotId);
+  //       console.log('[Snapshot] Snapshot created:', snapshotId);
+  //     } catch (snapshotError: any) {
+  //       console.error('[Snapshot] Failed to create snapshot:', snapshotError);
+  //       setServerError(snapshotError.message || 'Failed to initialize analysis tracking. Please try again.');
+  //       return;
+  //     }
+  //   } else {
+  //     if (process.env.NODE_ENV !== 'production') {
+  //       console.log('[Snapshot Debug] Skipping snapshot creation - missing conditions:', {
+  //         selectedBatchId,
+  //         currentProductId,
+  //         reason: !selectedBatchId ? 'No batch selected' : !currentProductId ? 'No current product' : 'Unknown'
+  //       });
+  //     }
+  //   }
     
-    // Generate a per-run analysisId for token aggregation/logging
-    const analysisId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-
-    // Part 1: Generate search query from the product data
-    setIsGeneratingQuery(true);
-    setQueryGenerationError(null);
-    setServerError(null);
+  //   // Prepare the current form data for AI workflow
+  //   const aiReadyData = prepareDataForAI(formData);
     
-    try {
-      const queryResult = await generateQueryFromData(aiReadyData, analysisId);
+  //   console.log("Form submitted with current user data:", formData);
+  //   console.log("Data prepared for AI workflow:", aiReadyData);
+    
+  //   // Generate a per-run analysisId for token aggregation/logging
+  //   const analysisId = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+  //     ? crypto.randomUUID()
+  //     : Math.random().toString(36).slice(2);
+
+  //   // Part 1: Generate search query from the product data
+  //   setIsGeneratingQuery(true);
+  //   setQueryGenerationError(null);
+  //   setServerError(null);
+    
+  //   try {
+  //     const queryResult = await generateQueryFromData(aiReadyData, analysisId);
       
-      if (!queryResult) {
-        // Query generation failed - error already set by generateQueryFromData
-        setIsGeneratingQuery(false);
-        return;
-      }
+  //     if (!queryResult) {
+  //       // Query generation failed - error already set by generateQueryFromData
+  //       setIsGeneratingQuery(false);
+  //       return;
+  //     }
       
-      // Handle both single query (string) and dual query (object) cases
-      const isDualQuery = typeof queryResult === 'object' && 'perplexityQuery' in queryResult;
-      const perplexityQuery = isDualQuery 
-        ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).perplexityQuery
-        : (queryResult as string);
-      const googleQuery = isDualQuery
-        ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).googleQuery
-        : (queryResult as string);
+  //     // Handle both single query (string) and dual query (object) cases
+  //     const isDualQuery = typeof queryResult === 'object' && 'perplexityQuery' in queryResult;
+  //     const perplexityQuery = isDualQuery 
+  //       ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).perplexityQuery
+  //       : (queryResult as string);
+  //     const googleQuery = isDualQuery
+  //       ? (queryResult as { perplexityQuery: string | null; googleQuery: string | null }).googleQuery
+  //       : (queryResult as string);
       
-      // Set the primary query for display (prefer Perplexity if available)
-      const primaryQuery = perplexityQuery || googleQuery || '';
-      if (!primaryQuery) {
-        setQueryGenerationError('Failed to generate a valid search query');
-        setIsGeneratingQuery(false);
-        return;
-      }
+  //     // Set the primary query for display (prefer Perplexity if available)
+  //     const primaryQuery = perplexityQuery || googleQuery || '';
+  //     if (!primaryQuery) {
+  //       setQueryGenerationError('Failed to generate a valid search query');
+  //       setIsGeneratingQuery(false);
+  //       return;
+  //     }
       
-      console.log("Generated query for optimization:", primaryQuery);
+  //     console.log("Generated query for optimization:", primaryQuery);
 
-      // Persist both queries in a structured JSON string for Supabase and results pages
-      const generatedQueriesPayload = JSON.stringify({
-        perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
-        googleQuery: googleQuery ? [googleQuery] : [],
-      });
+  //     // Persist both queries in a structured JSON string for Supabase and results pages
+  //     const generatedQueriesPayload = JSON.stringify({
+  //       perplexityQuery: perplexityQuery ? [perplexityQuery] : [],
+  //       googleQuery: googleQuery ? [googleQuery] : [],
+  //     });
 
-      setGeneratedQuery(generatedQueriesPayload);
+  //     setGeneratedQuery(generatedQueriesPayload);
       
-      // Part 2.1: Call the selected scraper APIs
-      setIsAnalyzing(true);
-      setAnalysisError(null);
+  //     // Part 2.1: Call the selected scraper APIs
+  //     setIsAnalyzing(true);
+  //     setAnalysisError(null);
       
-      try {
-        const runPerplexity = analysisMode === 'perplexity' || analysisMode === 'all';
-        const runGoogle = analysisMode === 'google_overview' || analysisMode === 'all';
+  //     try {
+  //       const runPerplexity = analysisMode === 'perplexity' || analysisMode === 'all';
+  //       const runGoogle = analysisMode === 'google_overview' || analysisMode === 'all';
 
-        let perplexityScraperResponse: any | null = null;
-        let googleScraperResponse: any | null = null;
+  //       let perplexityScraperResponse: any | null = null;
+  //       let googleScraperResponse: any | null = null;
 
-        if (runPerplexity && runGoogle) {
-          // Use pipeline-specific queries when both are running
-          const perplexityQueryToUse = perplexityQuery || primaryQuery;
-          const googleQueryToUse = googleQuery || primaryQuery;
+  //       if (runPerplexity && runGoogle) {
+  //         // Use pipeline-specific queries when both are running
+  //         const perplexityQueryToUse = perplexityQuery || primaryQuery;
+  //         const googleQueryToUse = googleQuery || primaryQuery;
           
-          console.log("Using Perplexity-optimized query:", perplexityQueryToUse);
-          console.log("Using Google-optimized query:", googleQueryToUse);
+  //         console.log("Using Perplexity-optimized query:", perplexityQueryToUse);
+  //         console.log("Using Google-optimized query:", googleQueryToUse);
           
-          try {
-            const [perplexityResult, googleResult] = await Promise.all([
-              callPerplexityScraper(perplexityQueryToUse, selectedLocation),
-              callGoogleOverviewScraper(googleQueryToUse, selectedLocation),
-            ]);
-            perplexityScraperResponse = perplexityResult;
-            googleScraperResponse = googleResult;
-          } catch (error: any) {
-            console.error('Scraper API call failed:', error);
-            setServerError(
-              'We apologize for the inconvenience. Our AI search service encountered an issue while gathering competitor data. ' +
-              'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
-              'Your credits have not been deducted.'
-            );
-            setIsAnalyzing(false);
-            setIsGeneratingQuery(false);
-            return;
-          }
-        } else if (runPerplexity) {
-          const queryToUse = perplexityQuery || primaryQuery;
-          try {
-            perplexityScraperResponse = await callPerplexityScraper(queryToUse, selectedLocation);
-          } catch (error: any) {
-            console.error('Perplexity scraper failed:', error);
-            setServerError(
-              'We apologize for the inconvenience. Our Perplexity AI search service encountered an issue while gathering competitor data. ' +
-              'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
-              'Your credits have not been deducted.'
-            );
-            setIsAnalyzing(false);
-            setIsGeneratingQuery(false);
-            return;
-          }
-        } else if (runGoogle) {
-          const queryToUse = googleQuery || primaryQuery;
-          try {
-            googleScraperResponse = await callGoogleOverviewScraper(queryToUse, selectedLocation);
-          } catch (error: any) {
-            console.error('Google scraper failed:', error);
-            setServerError(
-              'We apologize for the inconvenience. Our Google AI Overview service encountered an issue while gathering competitor data. ' +
-              'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
-              'Your credits have not been deducted.'
-            );
-            setIsAnalyzing(false);
-            setIsGeneratingQuery(false);
-            return;
-          }
-        }
+  //         try {
+  //           const [perplexityResult, googleResult] = await Promise.all([
+  //             callPerplexityScraper(perplexityQueryToUse, selectedLocation),
+  //             callAIScraper(googleQueryToUse, selectedLocation),
+  //           ]);
+  //           perplexityScraperResponse = perplexityResult;
+  //           googleScraperResponse = googleResult;
+  //         } catch (error: any) {
+  //           console.error('Scraper API call failed:', error);
+  //           setServerError(
+  //             'We apologize for the inconvenience. Our AI search service encountered an issue while gathering competitor data. ' +
+  //             'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
+  //             'Your credits have not been deducted.'
+  //           );
+  //           await updateSnapshotStatus(currentSnapshotId, 'failed');
+  //           setIsAnalyzing(false);
+  //           setIsGeneratingQuery(false);
+  //           return;
+  //         }
+  //       } else if (runPerplexity) {
+  //         const queryToUse = perplexityQuery || primaryQuery;
+  //         try {
+  //           perplexityScraperResponse = await callPerplexityScraper(queryToUse, selectedLocation);
+  //         } catch (error: any) {
+  //           console.error('Perplexity scraper failed:', error);
+  //           setServerError(
+  //             'We apologize for the inconvenience. Our Perplexity AI search service encountered an issue while gathering competitor data. ' +
+  //             'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
+  //             'Your credits have not been deducted.'
+  //           );
+  //           await updateSnapshotStatus(currentSnapshotId, 'failed');
+  //           setIsAnalyzing(false);
+  //           setIsGeneratingQuery(false);
+  //           return;
+  //         }
+  //       } else if (runGoogle) {
+  //         const queryToUse = googleQuery || primaryQuery;
+  //         try {
+  //           googleScraperResponse = await callAIScraper(queryToUse, selectedLocation);
+  //         } catch (error: any) {
+  //           console.error('Google scraper failed:', error);
+  //           setServerError(
+  //             'We apologize for the inconvenience. Our Google AI Overview service encountered an issue while gathering competitor data. ' +
+  //             'This may be due to temporary service limitations or rate limits. Please try again in a few moments. ' +
+  //             'Your credits have not been deducted.'
+  //           );
+  //           await updateSnapshotStatus(currentSnapshotId, 'failed');
+  //           setIsAnalyzing(false);
+  //           setIsGeneratingQuery(false);
+  //           return;
+  //         }
+  //       }
 
-          const scraperResponse = perplexityScraperResponse || googleScraperResponse;
-          console.log("Scraper response:", scraperResponse);
+  //         const scraperResponse = perplexityScraperResponse || googleScraperResponse;
+  //         console.log("Scraper response:", scraperResponse);
           
-          // Store raw source links from primary scraper (Perplexity preferred)
-          if (scraperResponse.source_links && Array.isArray(scraperResponse.source_links)) {
-            setSourceLinks(scraperResponse.source_links);
-            console.log(`[Source Links] Stored ${scraperResponse.source_links.length} raw source links`);
-          }
+  //         // Store raw source links from primary scraper (Perplexity preferred)
+  //         if (scraperResponse.source_links && Array.isArray(scraperResponse.source_links)) {
+  //           setSourceLinks(scraperResponse.source_links);
+  //           console.log(`[Source Links] Stored ${scraperResponse.source_links.length} raw source links`);
+  //         }
           
-          // Part 2.2: Run strategic analysis for selected engines (and sources for Perplexity)
-          const analysisPromises: Promise<Response | null>[] = [];
+  //         // Part 2.2: Run strategic analysis for selected engines (and sources for Perplexity)
+  //         const analysisPromises: Promise<Response | null>[] = [];
 
-          let perplexityAnalysisIndex: number | null = null;
-          let googleAnalysisIndex: number | null = null;
-          let sourcesIndex: number | null = null;
+  //         let perplexityAnalysisIndex: number | null = null;
+  //         let googleAnalysisIndex: number | null = null;
+  //         let sourcesIndex: number | null = null;
 
-          if (runPerplexity && perplexityScraperResponse) {
-            perplexityAnalysisIndex = analysisPromises.length;
-            analysisPromises.push(
-              fetch('/api/strategic-analysis', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  aiSearchJson: perplexityScraperResponse,
-                  clientProductJson: aiReadyData,
-                  analysisId,
-                  pipeline: 'perplexity',
-                }),
-              })
-            );
+  //         if (runPerplexity && perplexityScraperResponse) {
+  //           perplexityAnalysisIndex = analysisPromises.length;
+  //           analysisPromises.push(
+  //             fetch('/api/strategic-analysis', {
+  //               method: 'POST',
+  //               headers: {
+  //                 'Content-Type': 'application/json',
+  //               },
+  //               body: JSON.stringify({
+  //                 aiSearchJson: perplexityScraperResponse,
+  //                 clientProductJson: aiReadyData,
+  //                 analysisId,
+  //                 pipeline: 'perplexity',
+  //               }),
+  //             })
+  //           );
 
-            sourcesIndex = analysisPromises.length;
-            analysisPromises.push(
-              fetch('/api/process-sources', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  sourceLinks: perplexityScraperResponse.source_links || [],
-                  analysisId,
-                  pipeline: 'perplexity',
-                }),
-              })
-            );
-          }
+  //           sourcesIndex = analysisPromises.length;
+  //           analysisPromises.push(
+  //             fetch('/api/process-sources', {
+  //               method: 'POST',
+  //               headers: {
+  //                 'Content-Type': 'application/json',
+  //               },
+  //               body: JSON.stringify({
+  //                 sourceLinks: perplexityScraperResponse.source_links || [],
+  //                 analysisId,
+  //                 pipeline: 'perplexity',
+  //               }),
+  //             })
+  //           );
+  //         }
 
-          if (runGoogle && googleScraperResponse) {
-            googleAnalysisIndex = analysisPromises.length;
-            analysisPromises.push(
-              fetch('/api/strategic-analysis', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  aiSearchJson: googleScraperResponse,
-                  clientProductJson: aiReadyData,
-                  analysisId,
-                  pipeline: 'google_overview',
-                }),
-              })
-            );
-          }
+  //         if (runGoogle && googleScraperResponse) {
+  //           googleAnalysisIndex = analysisPromises.length;
+  //           analysisPromises.push(
+  //             fetch('/api/strategic-analysis', {
+  //               method: 'POST',
+  //               headers: {
+  //                 'Content-Type': 'application/json',
+  //               },
+  //               body: JSON.stringify({
+  //                 aiSearchJson: googleScraperResponse,
+  //                 clientProductJson: aiReadyData,
+  //                 analysisId,
+  //                 pipeline: 'google_overview',
+  //               }),
+  //             })
+  //           );
+  //         }
 
-          const results = await Promise.all(analysisPromises);
+  //         const results = await Promise.all(analysisPromises);
 
-          const getResponse = (index: number | null): Response | null =>
-            index !== null ? (results[index] as Response) : null;
+  //         const getResponse = (index: number | null): Response | null =>
+  //           index !== null ? (results[index] as Response) : null;
 
-          const perplexityAnalysisResponse = getResponse(perplexityAnalysisIndex);
-          const sourcesResponse = getResponse(sourcesIndex);
-          const googleAnalysisResponse = getResponse(googleAnalysisIndex);
+  //         const perplexityAnalysisResponse = getResponse(perplexityAnalysisIndex);
+  //         const sourcesResponse = getResponse(sourcesIndex);
+  //         const googleAnalysisResponse = getResponse(googleAnalysisIndex);
 
-          // Process sources result (Perplexity only for now)
-          if (sourcesResponse && sourcesResponse.ok) {
-            try {
-              const sourcesData = await sourcesResponse.json();
-              if (sourcesData.success && sourcesData.sources) {
-                setProcessedSources(sourcesData.sources);
-                console.log(`[Process Sources] Stored ${sourcesData.sources.length} processed sources`);
-              }
-            } catch (sourcesError) {
-              console.error('[Process Sources] Failed to parse response:', sourcesError);
-              // Don't fail the entire flow if source processing fails
-            }
-          } else if (sourcesResponse) {
-            console.error('[Process Sources] API call failed:', sourcesResponse.status);
-            // Don't fail the entire flow if source processing fails
-          }
+  //         // Process sources result (Perplexity only for now)
+  //         if (sourcesResponse && sourcesResponse.ok) {
+  //           try {
+  //             const sourcesData = await sourcesResponse.json();
+  //             if (sourcesData.success && sourcesData.sources) {
+  //               setProcessedSources(sourcesData.sources);
+  //               console.log(`[Process Sources] Stored ${sourcesData.sources.length} processed sources`);
+  //             }
+  //           } catch (sourcesError) {
+  //             console.error('[Process Sources] Failed to parse response:', sourcesError);
+  //             // Don't fail the entire flow if source processing fails
+  //           }
+  //         } else if (sourcesResponse) {
+  //           console.error('[Process Sources] API call failed:', sourcesResponse.status);
+  //           // Don't fail the entire flow if source processing fails
+  //         }
 
-          let primaryAnalysis: OptimizationAnalysis | null = null;
-          let perplexityAnalysis: OptimizationAnalysis | null = null;
-          let googleAnalysis: OptimizationAnalysis | null = null;
+  //         let primaryAnalysis: OptimizationAnalysis | null = null;
+  //         let perplexityAnalysis: OptimizationAnalysis | null = null;
+  //         let googleAnalysis: OptimizationAnalysis | null = null;
 
-          if (perplexityAnalysisResponse) {
-            if (!perplexityAnalysisResponse.ok) {
-              const analysisError = await perplexityAnalysisResponse.json();
-              const userMessage = analysisError.error || 'Failed to perform strategic analysis';
-              console.error('Perplexity strategic analysis failed:', analysisError);
-              throw new Error(userMessage);
-            }
-            const perplexityData = await perplexityAnalysisResponse.json();
-            if (!perplexityData || typeof perplexityData !== 'object') {
-              throw new Error('Received invalid Perplexity analysis data from server');
-            }
-            console.log('Perplexity strategic analysis completed:', perplexityData);
-            setOptimizationAnalysis(perplexityData);
-            perplexityAnalysis = perplexityData as OptimizationAnalysis;
-            primaryAnalysis = perplexityAnalysis;
-            setAnalysisError(null); // Clear analysisError after successful analysis
-          }
+  //         if (perplexityAnalysisResponse) {
+  //           if (!perplexityAnalysisResponse.ok) {
+  //             const analysisError = await perplexityAnalysisResponse.json();
+  //             const userMessage = analysisError.error || 'Failed to perform strategic analysis';
+  //             console.error('Perplexity strategic analysis failed:', analysisError);
+  //             throw new Error(userMessage);
+  //           }
+  //           const perplexityData = await perplexityAnalysisResponse.json();
+  //           if (!perplexityData || typeof perplexityData !== 'object') {
+  //             throw new Error('Received invalid Perplexity analysis data from server');
+  //           }
+  //           console.log('Perplexity strategic analysis completed:', perplexityData);
+  //           setOptimizationAnalysis(perplexityData);
+  //           perplexityAnalysis = perplexityData as OptimizationAnalysis;
+  //           primaryAnalysis = perplexityAnalysis;
+  //           setAnalysisError(null); // Clear analysisError after successful analysis
+  //         }
 
-          if (googleAnalysisResponse) {
-            try {
-              if (googleAnalysisResponse.ok) {
-                const googleData = await googleAnalysisResponse.json();
-                console.log('Google AI Overview strategic analysis completed:', googleData);
-                setGoogleOverviewAnalysis(googleData);
-                googleAnalysis = googleData as OptimizationAnalysis;
-                if (!primaryAnalysis) {
-                  primaryAnalysis = googleAnalysis;
-                }
-              } else {
-                const googleError = await googleAnalysisResponse.json().catch(() => null);
-                console.error('Google AI Overview strategic analysis failed:', {
-                  status: googleAnalysisResponse.status,
-                  error: googleError,
-                });
-              }
-            } catch (googleAnalysisParseError) {
-              console.error('Failed to handle Google AI Overview strategic analysis response:', googleAnalysisParseError);
-            }
-          }
+  //         if (googleAnalysisResponse) {
+  //           try {
+  //             if (googleAnalysisResponse.ok) {
+  //               const googleData = await googleAnalysisResponse.json();
+  //               console.log('Google AI Overview strategic analysis completed:', googleData);
+  //               setGoogleOverviewAnalysis(googleData);
+  //               googleAnalysis = googleData as OptimizationAnalysis;
+  //               if (!primaryAnalysis) {
+  //                 primaryAnalysis = googleAnalysis;
+  //               }
+  //             } else {
+  //               const googleError = await googleAnalysisResponse.json().catch(() => null);
+  //               console.error('Google AI Overview strategic analysis failed:', {
+  //                 status: googleAnalysisResponse.status,
+  //                 error: googleError,
+  //               });
+  //             }
+  //           } catch (googleAnalysisParseError) {
+  //             console.error('Failed to handle Google AI Overview strategic analysis response:', googleAnalysisParseError);
+  //           }
+  //         }
 
-          if (!primaryAnalysis) {
-            throw new Error('No successful analysis results were produced');
-          }
+  //         if (!primaryAnalysis) {
+  //           throw new Error('No successful analysis results were produced');
+  //         }
 
-          // Deduct credits only after successful analysis
-          try {
-            const creditResponse = await fetch('/api/analyze', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: user.id,
-                creditsRequired: requiredCredits,
-              }),
-            });
+  //         // Deduct credits only after successful analysis
+  //         try {
+  //           const creditResponse = await fetch('/api/analyze', {
+  //             method: 'POST',
+  //             headers: { 'Content-Type': 'application/json' },
+  //             body: JSON.stringify({
+  //               userId: user.id,
+  //               creditsRequired: requiredCredits,
+  //             }),
+  //           });
 
-            const creditData = await creditResponse.json();
+  //           const creditData = await creditResponse.json();
 
-            if (!creditData.success) {
-              console.error('Failed to deduct credits after successful analysis');
-              // Don't block the user from seeing results, just log the error
-            } else {
-              console.log('Credit deducted successfully after analysis completion');
-              adjustUserCredits(-requiredCredits);
-            }
-          } catch (creditError) {
-            console.error('Credit deduction error after analysis:', creditError);
-            // Don't block the user from seeing results
-          }
+  //           if (!creditData.success) {
+  //             console.error('Failed to deduct credits after successful analysis');
+  //             // Don't block the user from seeing results, just log the error
+  //           } else {
+  //             console.log('Credit deducted successfully after analysis completion');
+  //             adjustUserCredits(-requiredCredits);
+  //           }
+  //         } catch (creditError) {
+  //           console.error('Credit deduction error after analysis:', creditError);
+  //           // Don't block the user from seeing results
+  //         }
           
-          // Persist the analysis result as a product, keeping Perplexity and Google separate
-          const productRecord = createProductRecord(perplexityAnalysis, googleAnalysis);
-          addProduct(productRecord);
+  //         // Persist the analysis result as a product, keeping Perplexity and Google separate
+  //         const productRecord = createProductRecord(perplexityAnalysis, googleAnalysis);
+  //         addProduct(productRecord);
           
-          // Save to Supabase if user is authenticated
-          let savedGoogleAnalysisId: string | null = null;
-          let savedPerplexityAnalysisId: string | null = null;
-          if (user) {
-            try {
-              let savedProductId: string | null = null;
-              if (currentProductId) {
-                // Existing product: update with latest state
-                await updateProductInSupabase(currentProductId, user.id);
-                savedProductId = currentProductId;
-              } else {
-                // New product: create in Supabase
-                savedProductId = await saveProductToSupabase(productRecord, user.id, generatedQueriesPayload);
-                console.log('Product saved to Supabase successfully with ID:', savedProductId);
-                if (savedProductId) {
-                  setCurrentProductId(savedProductId);
-                }
-              }
+  //         // Save to Supabase if user is authenticated
+  //         let savedGoogleAnalysisId: string | null = null;
+  //         let savedPerplexityAnalysisId: string | null = null;
+  //         if (user) {
+  //           try {
+  //             let savedProductId: string | null = null;
+  //             if (currentProductId) {
+  //               // Existing product: update with latest state
+  //               await updateProductInSupabase(currentProductId, user.id);
+  //               savedProductId = currentProductId;
+  //             } else {
+  //               // New product: create in Supabase
+  //               savedProductId = await saveProductToSupabase(productRecord, user.id, generatedQueriesPayload);
+  //               console.log('Product saved to Supabase successfully with ID:', savedProductId);
+  //               if (savedProductId) {
+  //                 setCurrentProductId(savedProductId);
+  //               }
+  //             }
 
-              // Also persist this specific analysis run into the split analysis tables for history
-              if (savedProductId) {
-                try {
-                  const boundedPerplexityQueries = selectedPerplexityQueries
-                    .map((q) => (typeof q === 'string' ? q.trim() : ''))
-                    .filter((q) => q.length > 0)
-                    .slice(0, maxPerplexityQueries);
-                  const boundedGoogleQueries = selectedGoogleQueries
-                    .map((q) => (typeof q === 'string' ? q.trim() : ''))
-                    .filter((q) => q.length > 0)
-                    .slice(0, maxGoogleQueries);
+  //             // Also persist this specific analysis run into the split analysis tables for history
+  //             if (savedProductId) {
+  //               try {
+  //                 const boundedPerplexityQueries = selectedPerplexityQueries
+  //                   .map((q) => (typeof q === 'string' ? q.trim() : ''))
+  //                   .filter((q) => q.length > 0)
+  //                   .slice(0, maxPerplexityQueries);
+  //                 const boundedGoogleQueries = selectedGoogleQueries
+  //                   .map((q) => (typeof q === 'string' ? q.trim() : ''))
+  //                   .filter((q) => q.length > 0)
+  //                   .slice(0, maxGoogleQueries);
 
-                  const serializedPerplexity = serializeQueriesForHistory(boundedPerplexityQueries);
-                  const serializedGoogle = serializeQueriesForHistory(boundedGoogleQueries);
+  //                 const serializedPerplexity = serializeQueriesForHistory(boundedPerplexityQueries);
+  //                 const serializedGoogle = serializeQueriesForHistory(boundedGoogleQueries);
 
-                  if (String(process.env.NODE_ENV) === 'debug' && process.env.NODE_ENV !== 'production') {
-                    console.log('[DEBUG][product-analyses] handleSubmit save', {
-                      product_id: savedProductId,
-                      boundedPerplexityQueries,
-                      boundedGoogleQueries,
-                      serializedPerplexity,
-                      serializedGoogle,
-                    });
-                  }
+  //                 if (String(process.env.NODE_ENV) === 'debug' && process.env.NODE_ENV !== 'production') {
+  //                   console.log('[DEBUG][product-analyses] handleSubmit save', {
+  //                     product_id: savedProductId,
+  //                     boundedPerplexityQueries,
+  //                     boundedGoogleQueries,
+  //                     serializedPerplexity,
+  //                     serializedGoogle,
+  //                   });
+  //                 }
 
-                  const analysisResponse = await fetch('/api/product-analyses', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      product_id: savedProductId,
-                      optimization_query: serializedPerplexity,
-                      google_search_query: serializedGoogle,
-                      optimization_analysis: perplexityAnalysis || null,
-                      google_overview_analysis: googleAnalysis || null,
-                      combined_analysis:
-                        perplexityAnalysis && googleAnalysis
-                          ? { perplexity: perplexityAnalysis, google: googleAnalysis }
-                          : null,
-                      source_links: productRecord.sourceLinks || [],
-                      processed_sources: productRecord.processedSources || [],
-                    }),
-                  });
+  //                 const analysisResponse = await fetch('/api/product-analyses', {
+  //                   method: 'POST',
+  //                   headers: { 'Content-Type': 'application/json' },
+  //                   body: JSON.stringify({
+  //                     product_id: savedProductId,
+  //                     optimization_query: serializedPerplexity,
+  //                     google_search_query: serializedGoogle,
+  //                     optimization_analysis: perplexityAnalysis || null,
+  //                     google_overview_analysis: googleAnalysis || null,
+  //                     combined_analysis:
+  //                       perplexityAnalysis && googleAnalysis
+  //                         ? { perplexity: perplexityAnalysis, google: googleAnalysis }
+  //                         : null,
+  //                     source_links: productRecord.sourceLinks || [],
+  //                     processed_sources: productRecord.processedSources || [],
+  //                     snapshot_id: currentSnapshotId,
+  //                   }),
+  //                 });
 
-                  if (analysisResponse.ok) {
-                    const analysisData = await analysisResponse.json();
-                    savedGoogleAnalysisId = analysisData.googleAnalysis?.id || analysisData.analysis?.google_analysis_id || null;
-                    savedPerplexityAnalysisId = analysisData.perplexityAnalysis?.id || analysisData.analysis?.perplexity_analysis_id || null;
-                    console.log('Analysis saved to product_analysis tables with IDs:', {
-                      google: savedGoogleAnalysisId,
-                      perplexity: savedPerplexityAnalysisId,
-                    });
-                  }
-                } catch (analysisSaveError) {
-                  console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
-                  // Do not block user from seeing results if history save fails
-                }
-              }
+  //                 if (analysisResponse.ok) {
+  //                   const analysisData = await analysisResponse.json();
+  //                   savedGoogleAnalysisId = analysisData.googleAnalysis?.id || analysisData.analysis?.google_analysis_id || null;
+  //                   savedPerplexityAnalysisId = analysisData.perplexityAnalysis?.id || analysisData.analysis?.perplexity_analysis_id || null;
+  //                   console.log('Analysis saved to product_analysis tables with IDs:', {
+  //                     google: savedGoogleAnalysisId,
+  //                     perplexity: savedPerplexityAnalysisId,
+  //                   });
+  //                   // Update snapshot status to completed after successful save
+  //                   await updateSnapshotStatus(currentSnapshotId, 'completed');
+  //                 }
+  //               } catch (analysisSaveError) {
+  //                 console.error('Failed to save analysis history to product_analysis tables:', analysisSaveError);
+  //                 // Update snapshot status to failed if save fails
+  //                 await updateSnapshotStatus(currentSnapshotId, 'failed');
+  //                 // Do not block user from seeing results if history save fails
+  //               }
+  //             }
 
-              // Update analysis_history with product_id and available analysis IDs from the split tables
-              if (savedProductId) {
-                try {
-                  await fetch('/api/analyze/update-history', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      userId: user.id,
-                      productId: savedProductId,
-                      googleAnalysisId: savedGoogleAnalysisId,
-                      perplexityAnalysisId: savedPerplexityAnalysisId,
-                    }),
-                  });
-                  console.log('Analysis history updated with product_id and split analysis IDs');
-                } catch (historyError) {
-                  console.error('Failed to update analysis history:', historyError);
-                }
-              }
-            } catch (saveError) {
-              console.error('Failed to save product to Supabase:', saveError);
-              // Don't block navigation on save failure
-            }
-          }
+  //             // Update analysis_history with product_id and available analysis IDs from the split tables
+  //             if (savedProductId) {
+  //               try {
+  //                 await fetch('/api/analyze/update-history', {
+  //                   method: 'POST',
+  //                   headers: { 'Content-Type': 'application/json' },
+  //                   body: JSON.stringify({
+  //                     userId: user.id,
+  //                     productId: savedProductId,
+  //                     googleAnalysisId: savedGoogleAnalysisId,
+  //                     perplexityAnalysisId: savedPerplexityAnalysisId,
+  //                     snapshot_id: currentSnapshotId,
+  //                   }),
+  //                 });
+  //                 console.log('Analysis history updated with product_id, split analysis IDs, and snapshot_id');
+  //               } catch (historyError) {
+  //                 console.error('Failed to update analysis history:', historyError);
+  //               }
+  //             }
+  //           } catch (saveError) {
+  //             console.error('Failed to save product to Supabase:', saveError);
+  //             // Don't block navigation on save failure
+  //           }
+  //         }
           
-          // Route based on which engines ran: Perplexity (including "all") goes to /results; Google-only goes to /results/google
-          const ranPerplexity = analysisMode === 'perplexity' || analysisMode === 'all';
-          router.push(ranPerplexity ? "/results" : "/results/google");
+  //         // Route based on which engines ran: Perplexity (including "all") goes to /results; Google-only goes to /results/google
+  //         const ranPerplexity = analysisMode === 'perplexity' || analysisMode === 'all';
+  //         router.push(ranPerplexity ? "/results" : "/results/google");
           
-        } catch (error: any) {
-          console.error('Analysis error:', error);
+  //       } catch (error: any) {
+  //         console.error('Analysis error:', error);
           
-          // Enhanced error categorization and user feedback
-          if (error?.name === 'ScraperError') {
-            setAnalysisError(error.message || 'Our scraper service was unable to retrieve competitor data. Please review the URL or retry in a moment.');
-          } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK' || !navigator.onLine) {
-            setServerError('Unable to connect to the analysis server. Please check your internet connection and try again.');
-            router.push("/results");
-          } else if (error.message.includes('timeout') || error.name === 'TimeoutError') {
-            setAnalysisError('The analysis is taking longer than expected. This usually happens with complex products. Please try again.');
-            router.push("/results");
-          } else if (error.message.includes('AI analysis service')) {
-            // User-friendly message for parsing errors
-            setAnalysisError('We encountered a temporary issue processing your analysis. Our system has logged this error. Please try again in a moment.');
-            router.push("/results");
-          } else {
-            // Generic fallback with helpful context
-            const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during analysis';
-            setAnalysisError(`${errorMessage}. If this persists, please contact support with your product URL.`);
-            router.push("/results");
-          }
-        } finally {
-          setIsAnalyzing(false);
-        }
-    } catch (error) {
-      // This catch handles any unexpected errors in handleSubmit
-      console.error('Unexpected error in handleSubmit:', error);
-      setServerError('An unexpected error occurred. Please try again.');
-      setIsGeneratingQuery(false);
-      setIsAnalyzing(false);
-    }
-  };
+  //         // Update snapshot status to failed if an error occurs during analysis
+  //         await updateSnapshotStatus(currentSnapshotId, 'failed');
+          
+  //         // Enhanced error categorization and user feedback
+  //         if (error?.name === 'ScraperError') {
+  //           setAnalysisError(error.message || 'Our scraper service was unable to retrieve competitor data. Please review the URL or retry in a moment.');
+  //         } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK' || !navigator.onLine) {
+  //           setServerError('Unable to connect to the analysis server. Please check your internet connection and try again.');
+  //           router.push("/results");
+  //         } else if (error.message.includes('timeout') || error.name === 'TimeoutError') {
+  //           setAnalysisError('The analysis is taking longer than expected. This usually happens with complex products. Please try again.');
+  //           router.push("/results");
+  //         } else if (error.message.includes('AI analysis service')) {
+  //           // User-friendly message for parsing errors
+  //           setAnalysisError('We encountered a temporary issue processing your analysis. Our system has logged this error. Please try again in a moment.');
+  //           router.push("/results");
+  //         } else {
+  //           // Generic fallback with helpful context
+  //           const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred during analysis';
+  //           setAnalysisError(`${errorMessage}. If this persists, please contact support with your product URL.`);
+  //           router.push("/results");
+  //         }
+  //       } finally {
+  //         setIsAnalyzing(false);
+  //       }
+  //   } catch (error) {
+  //     // This catch handles any unexpected errors in handleSubmit
+  //     console.error('Unexpected error in handleSubmit:', error);
+  //     setServerError('An unexpected error occurred. Please try again.');
+  //     setIsGeneratingQuery(false);
+  //     setIsAnalyzing(false);
+  //   }
+  // };
 
   return (
     <Box
@@ -3424,6 +4287,25 @@ function OptimizePageContent() {
           <Typography level="h4" sx={{ color: textPrimary, fontWeight: 600 }}>
             GodsEye
           </Typography>
+          {currentProductId && (() => {
+            const currentProduct = products.find(p => p.id === currentProductId);
+            return currentProduct?.name ? (
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                px: 2,
+                py: 0.5,
+                border: `1px solid ${borderColor}`,
+                borderRadius: '6px',
+                backgroundColor: 'rgba(46, 212, 122, 0.08)',
+                ml: 2
+              }}>
+                <Typography level="body-sm" sx={{ color: textSecondary, fontWeight: 500 }}>
+                  {currentProduct.name}
+                </Typography>
+              </Box>
+            ) : null;
+          })()}
         </Box>
         <Button
           type="button"
@@ -3503,6 +4385,7 @@ function OptimizePageContent() {
               color="neutral"
               onClick={() => {
                 setActiveSection("query");
+                setSelectedBatchId(null);
                 setShowSOVCards(false);
                 setShowDeepAnalysis(false);
               }}
@@ -5204,6 +6087,259 @@ function OptimizePageContent() {
         </Card>
         )}
 
+        {/* Check Implementation Modal */}
+        <Modal
+          open={checkImplementationModalOpen}
+          onClose={() => setCheckImplementationModalOpen(false)}
+          slotProps={{ backdrop: { sx: modalBackdropSx } }}
+        >
+          <ModalDialog
+            variant="outlined"
+            sx={{
+              ...modalDialogBaseSx,
+              maxWidth: 520,
+              border: "1px solid rgba(255, 193, 7, 0.2)",
+              boxShadow: "0 40px 120px rgba(255, 193, 7, 0.1)",
+            }}
+          >
+            <ModalClose onClick={() => setCheckImplementationModalOpen(false)} />
+            <Typography
+              level="h3"
+              sx={{
+                mb: 2,
+                color: "rgba(255, 193, 7, 0.85)",
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  fontSize: "1.6rem",
+                  lineHeight: 1,
+                }}
+              >
+                ⚠️
+              </Box>
+              Check Implementation
+            </Typography>
+            <Typography
+              sx={{
+                color: textSecondary,
+                mb: 3,
+                lineHeight: 1.7,
+              }}
+            >
+              Before proceeding, please confirm:
+            </Typography>
+            <Stack spacing={2} sx={{ mb: 4 }}>
+              <Typography
+                sx={{
+                  color: textPrimary,
+                  fontSize: "0.95rem",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 1,
+                }}
+              >
+                <Box component="span" sx={{ color: "rgba(46, 212, 122, 0.7)" }}>✓</Box>
+                Have you completed the implementation of all recommended changes?
+              </Typography>
+              <Typography
+                sx={{
+                  color: textPrimary,
+                  fontSize: "0.95rem",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 1,
+                }}
+              >
+                <Box component="span" sx={{ color: "rgba(46, 212, 122, 0.7)" }}>✓</Box>
+                Has your site been recrawled or crawled by Google Search Console after the changes?
+              </Typography>
+            </Stack>
+            <Box
+              sx={{
+                p: 2.5,
+                backgroundColor: "rgba(243, 91, 100, 0.04)",
+                border: "1px solid rgba(243, 91, 100, 0.15)",
+                borderRadius: "8px",
+                mb: 4,
+              }}
+            >
+              <Typography
+                sx={{
+                  color: "rgba(248, 113, 113, 0.85)",
+                  fontSize: "0.9rem",
+                  fontWeight: 500,
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 1,
+                }}
+              >
+                <Box component="span">⚠️</Box>
+                Warning: If the implementation is not complete, this check will be useless and you will lose credits.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
+              <Button
+                type="button"
+                variant="outlined"
+                onClick={() => setCheckImplementationModalOpen(false)}
+                sx={{
+                  borderColor: "rgba(255, 193, 7, 0.25)",
+                  color: "rgba(242, 245, 250, 0.8)",
+                  "&:hover": {
+                    borderColor: "rgba(255, 193, 7, 0.35)",
+                    backgroundColor: "rgba(255, 193, 7, 0.06)",
+                  },
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setCheckImplementationModalOpen(false);
+                  void handleReOptimizeSelectedQueries();
+                }}
+                sx={{
+                  backgroundColor: "rgba(255, 193, 7, 0.15)",
+                  color: "rgba(255, 193, 7, 0.9)",
+                  fontWeight: 600,
+                  px: 3,
+                  border: "1px solid rgba(255, 193, 7, 0.25)",
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 193, 7, 0.2)",
+                    borderColor: "rgba(255, 193, 7, 0.35)",
+                  },
+                }}
+              >
+                Confirm & Check
+              </Button>
+            </Stack>
+          </ModalDialog>
+        </Modal>
+
+        <Modal
+          open={checkImplementationIncompleteModalOpen}
+          onClose={() => setCheckImplementationIncompleteModalOpen(false)}
+          slotProps={{ backdrop: { sx: modalBackdropSx } }}
+        >
+          <ModalDialog
+            variant="outlined"
+            sx={{
+              ...modalDialogBaseSx,
+              maxWidth: 620,
+              border: "1px solid rgba(255, 193, 7, 0.2)",
+              boxShadow: "0 40px 120px rgba(255, 193, 7, 0.1)",
+            }}
+          >
+            <ModalClose onClick={() => setCheckImplementationIncompleteModalOpen(false)} />
+            <Typography
+              level="h3"
+              sx={{
+                mb: 2,
+                color: "rgba(255, 193, 7, 0.85)",
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  fontSize: "1.6rem",
+                  lineHeight: 1,
+                }}
+              >
+                ⚠️
+              </Box>
+              Check Implementation (Incomplete Batch)
+            </Typography>
+
+            <Typography
+              sx={{
+                color: textSecondary,
+                mb: 2.5,
+                lineHeight: 1.7,
+              }}
+            >
+              There are some remaining queries to re-run. The list is given below. Confirm "Run Check" to run them.
+            </Typography>
+
+            <Box
+              sx={{
+                p: 2,
+                backgroundColor: "rgba(255, 193, 7, 0.06)",
+                border: "1px solid rgba(255, 193, 7, 0.18)",
+                borderRadius: "8px",
+                mb: 3,
+              }}
+            >
+              <Typography sx={{ color: textPrimary, fontSize: "0.95rem", fontWeight: 600, mb: 1.25 }}>
+                Queries to be analyzed
+              </Typography>
+
+              <Stack spacing={1}>
+                {usedPerplexityQueries
+                  .filter(q => allPerplexityQueries.includes(q) && !hasQueryBeenReanalyzed(q, 'perplexity'))
+                  .map((q, idx) => (
+                    <Typography key={`ci-px-${idx}`} sx={{ color: textPrimary, fontSize: "0.9rem" }}>
+                      Perplexity: {q}
+                    </Typography>
+                  ))}
+                {usedGoogleQueries
+                  .filter(q => allGoogleQueries.includes(q) && !hasQueryBeenReanalyzed(q, 'google_overview'))
+                  .map((q, idx) => (
+                    <Typography key={`ci-go-${idx}`} sx={{ color: textPrimary, fontSize: "0.9rem" }}>
+                      Google: {q}
+                    </Typography>
+                  ))}
+              </Stack>
+            </Box>
+
+            <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
+              <Button
+                type="button"
+                variant="outlined"
+                onClick={() => setCheckImplementationIncompleteModalOpen(false)}
+                sx={{
+                  borderColor: "rgba(255, 193, 7, 0.25)",
+                  color: "rgba(242, 245, 250, 0.8)",
+                  "&:hover": {
+                    borderColor: "rgba(255, 193, 7, 0.35)",
+                    backgroundColor: "rgba(255, 193, 7, 0.06)",
+                  },
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setCheckImplementationIncompleteModalOpen(false);
+                  void handleCheckImplementationIncompleteBatch();
+                }}
+                sx={{
+                  backgroundColor: "rgba(255, 193, 7, 0.15)",
+                  color: "rgba(255, 193, 7, 0.9)",
+                  fontWeight: 600,
+                  px: 3,
+                  border: "1px solid rgba(255, 193, 7, 0.25)",
+                  "&:hover": {
+                    backgroundColor: "rgba(255, 193, 7, 0.2)",
+                    borderColor: "rgba(255, 193, 7, 0.35)",
+                  },
+                }}
+              >
+                Run Check
+              </Button>
+            </Stack>
+          </ModalDialog>
+        </Modal>
+
         {/* Generated Query Section */}
         {activeSection === "query" && (
           <Card
@@ -5217,30 +6353,190 @@ function OptimizePageContent() {
               boxShadow: "0 24px 60px rgba(2, 4, 7, 0.55)",
             }}
           >
-            <Typography level="h2" sx={{ mb: 3, color: textPrimary, textAlign: "center" }}>
-              Generated Search Queries
-            </Typography>
-            
-            {/* Analysis Mode Display */}
-            <Box sx={{ mb: 4, textAlign: "center" }}>
-              <Chip
-                size="md"
-                variant="soft"
-                sx={{
-                  backgroundColor: getAnalysisModeDisplay().color === '#2ED47A' 
-                    ? "rgba(46, 212, 122, 0.12)" 
-                    : "rgba(243, 91, 100, 0.12)",
-                  color: getAnalysisModeDisplay().color,
-                  fontWeight: 600,
-                  px: 3,
-                }}
-              >
-                {getAnalysisModeDisplay().text}
-              </Chip>
+            {!selectedBatchId ? (
+              <Box sx={{ mb: 4 }}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    p: 2.5,
+                    mb: 3,
+                    backgroundColor: "rgba(17, 19, 24, 0.55)",
+                    border: `1px dashed rgba(46, 212, 122, 0.35)`
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                    <Typography level="title-md" sx={{ color: textPrimary }}>
+                      Batches
+                    </Typography>
+                    <Tooltip title="Coming Soon" placement="top" arrow>
+                      <span>
+                        <Button
+                          size="sm"
+                          onClick={handleGenerateQueryOnly}
+                          loading={isGeneratingQuery}
+                          disabled
+                          sx={{
+                            backgroundColor: "transparent",
+                            border: "1px solid rgba(242, 245, 250, 0.25)",
+                            color: "rgba(242, 245, 250, 0.5)",
+                            fontWeight: 600,
+                            cursor: "not-allowed",
+                            "&:hover": {
+                              backgroundColor: "transparent",
+                              borderColor: "rgba(242, 245, 250, 0.25)",
+                            },
+                          }}
+                        >
+                          Generate New Batch
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Box>
+                  <Typography level="body-xs" sx={{ mt: 1, color: "rgba(242, 245, 250, 0.65)" }}>
+                    this will generate new set of query
+                  </Typography>
+                </Card>
+
+                {isLoadingBatches ? (
+                  <Typography level="body-sm" sx={{ color: textSecondary, textAlign: 'center', mt: 2 }}>
+                    Loading batches...
+                  </Typography>
+                ) : queryBatches.length === 0 ? (
+                  <Typography level="body-sm" sx={{ color: textSecondary, textAlign: 'center', mt: 2 }}>
+                    No batches yet. Generate a new batch to see queries.
+                  </Typography>
+                ) : (
+                  <Stack spacing={2}>
+                    {queryBatches.map((batch: any) => (
+                      <Card
+                        key={batch.id}
+                        variant="outlined"
+                        sx={{
+                          p: 2.5,
+                          backgroundColor: "rgba(17, 19, 24, 0.6)",
+                          border: "1px solid rgba(46, 212, 122, 0.22)",
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography level="title-md" sx={{ color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {batch.name}
+                            </Typography>
+                            {batch.description ? (
+                              <Typography level="body-xs" sx={{ mt: 0.5, color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {batch.description}
+                              </Typography>
+                            ) : null}
+                          </Box>
+                          <Button
+                            size="sm"
+                            variant="outlined"
+                            loading={isLoadingBatchQueries && selectedBatchId === batch.id}
+                            onClick={() => loadQueriesForBatch(batch.id)}
+                            sx={{
+                              borderColor: "rgba(46, 212, 122, 0.3)",
+                              color: "#2ED47A",
+                              fontWeight: 600,
+                              minWidth: 90,
+                              "&:hover": {
+                                backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                borderColor: "rgba(46, 212, 122, 0.5)",
+                              },
+                            }}
+                          >
+                            Open
+                          </Button>
+                        </Box>
+                      </Card>
+                    ))}
+                  </Stack>
+                )}
+              </Box>
+            ) : (
+              <Box>
+                <Typography level="h2" sx={{ mb: 3, color: textPrimary, textAlign: "center" }}>
+                  Generated Search Queries
+                </Typography>
+                
+                {/* Analysis Mode Display */}
+                <Box sx={{ mb: 4, textAlign: "center" }}>
+                  <Chip
+                    size="md"
+                    variant="soft"
+                    sx={{
+                      backgroundColor: getAnalysisModeDisplay().color === '#2ED47A' 
+                        ? "rgba(46, 212, 122, 0.12)" 
+                        : "rgba(243, 91, 100, 0.12)",
+                      color: getAnalysisModeDisplay().color,
+                      fontWeight: 600,
+                      px: 3,
+                    }}
+                  >
+                    {getAnalysisModeDisplay().text}
+                  </Chip>
+                </Box>
+                
+                <Box sx={{ mb: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography level="title-md" sx={{ color: textPrimary }}>
+                      {queryBatches.find((b: any) => b.id === selectedBatchId)?.name || 'Batch'}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" spacing={1.5}>
+                    <Button
+                      size="sm"
+                      variant="outlined"
+                      onClick={() => {
+                        setSelectedBatchId(null);
+                        setAllPerplexityQueries([]);
+                        setAllGoogleQueries([]);
+                        setSelectedPerplexityQueries([]);
+                        setSelectedGoogleQueries([]);
+                      }}
+                      sx={{
+                        borderColor: "rgba(242, 245, 250, 0.25)",
+                        color: textPrimary,
+                        "&:hover": {
+                          backgroundColor: "rgba(242, 245, 250, 0.08)",
+                          borderColor: "rgba(242, 245, 250, 0.35)",
+                        },
+                      }}
+                    >
+                      Back to Batches
+                    </Button>
+                    <Tooltip title="Coming Soon" placement="top" arrow>
+                      <span>
+                        <Button
+                          size="sm"
+                          onClick={handleGenerateQueryOnly}
+                          loading={isGeneratingQuery}
+                          disabled
+                          sx={{
+                            backgroundColor: "transparent",
+                            border: "1px solid rgba(242, 245, 250, 0.25)",
+                            color: "rgba(242, 245, 250, 0.5)",
+                            fontWeight: 600,
+                            cursor: "not-allowed",
+                            "&:hover": {
+                              backgroundColor: "transparent",
+                              borderColor: "rgba(242, 245, 250, 0.25)",
+                            },
+                          }}
+                        >
+                          Generate New Batch
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  </Stack>
+                </Box>
+              </Box>
             </Box>
+            )}
             
             {/* Perplexity Queries Section */}
-            {allPerplexityQueries.length > 0 && (
+            {selectedBatchId && allPerplexityQueries.length > 0 && (
               <Box sx={{ mb: 4 }}>
                 <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
                   <Typography level="title-md" sx={{ color: textPrimary }}>
@@ -5251,7 +6547,8 @@ function OptimizePageContent() {
                   </Chip>
                 </Box>
                 <Stack spacing={2}>
-                  {allPerplexityQueries.map((query, index) => (
+                  {allPerplexityQueries.map((query, index) => {
+                    return (
                     <Card
                       key={`perplexity-${index}`}
                       variant="outlined"
@@ -5261,19 +6558,14 @@ function OptimizePageContent() {
                         border: selectedPerplexityQueries.includes(query)
                           ? "2px solid rgba(46, 212, 122, 0.5)"
                           : "1px solid rgba(46, 212, 122, 0.2)",
-                        cursor: usedPerplexityQueries.includes(query) ? "not-allowed" : "pointer",
                         transition: "all 0.2s ease",
-                        "&:hover": {
-                          backgroundColor: usedPerplexityQueries.includes(query) ? "transparent" : "rgba(46, 212, 122, 0.08)",
-                          borderColor: usedPerplexityQueries.includes(query) ? "1px solid rgba(46, 212, 122, 0.2)" : "rgba(46, 212, 122, 0.4)",
-                        },
                       }}
-                      onClick={() => !usedPerplexityQueries.includes(query) && handleQuerySelection(query, 'perplexity')}
                     >
                       <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
                         <Checkbox
                           checked={selectedPerplexityQueries.includes(query) || usedPerplexityQueries.includes(query)}
                           disabled={usedPerplexityQueries.includes(query)}
+                          onChange={() => handleQuerySelection(query, 'perplexity')}
                           sx={{
                             "& .MuiCheckbox-root": {
                               color: usedPerplexityQueries.includes(query) ? "#6c757d" : "#2ED47A",
@@ -5357,30 +6649,116 @@ function OptimizePageContent() {
                                     Used
                                   </Chip>
                                 )}
-                                {usedPerplexityQueries.includes(query) ? (
-                                  <Tooltip title="View Perplexity analysis result" placement="top">
-                                    <Button
-                                      size="sm"
-                                      variant="outlined"
-                                      loading={loadingResultKey === `perplexity-${query}`}
-                                      disabled={loadingResultKey === `perplexity-${query}`}
-                                      onClick={() => handleViewAnalysisResult(query, 'perplexity')}
-                                      sx={{
-                                        minWidth: 90,
-                                        borderColor: "rgba(46, 212, 122, 0.3)",
-                                        color: "#2ED47A",
-                                        fontWeight: 600,
-                                        fontSize: "0.75rem",
-                                        "&:hover": {
-                                          backgroundColor: "rgba(46, 212, 122, 0.1)",
-                                          borderColor: "rgba(46, 212, 122, 0.5)",
-                                        },
-                                      }}
-                                    >
-                                      🔍 Result
-                                    </Button>
-                                  </Tooltip>
-                                ) : (
+                                {usedPerplexityQueries.includes(query) ? (() => {
+                                    const analyses = getAnalysesForQuery(query, 'perplexity');
+                                    const analysisCount = analyses.length;
+                                    const trend = getTrendIndicator(analyses);
+                                    
+                                    return (
+                                      <Box sx={{ position: 'relative' }}>
+                                        <Tooltip title="View Perplexity analysis result" placement="top">
+                                          <Button
+                                            size="sm"
+                                            variant="outlined"
+                                            loading={loadingResultKey === `perplexity-${query}`}
+                                            disabled={loadingResultKey === `perplexity-${query}`}
+                                            onClick={() => handleViewAnalysisResult(query, 'perplexity')}
+                                            onContextMenu={handleResultMenuOpen}
+                                            sx={{
+                                              minWidth: analysisCount > 1 ? 110 : 90,
+                                              borderColor: "rgba(46, 212, 122, 0.3)",
+                                              color: "#2ED47A",
+                                              fontWeight: 600,
+                                              fontSize: "0.75rem",
+                                              position: 'relative',
+                                              boxShadow: analysisCount > 1 ? '0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.1)' : 'none',
+                                              "&:hover": {
+                                                backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                                borderColor: "rgba(46, 212, 122, 0.5)",
+                                              },
+                                            }}
+                                          >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                              <Typography sx={{ fontSize: '0.75rem' }}>
+                                                📄 Result
+                                              </Typography>
+                                              {analysisCount > 1 && (
+                                                <Chip
+                                                  size="sm"
+                                                  variant="solid"
+                                                  sx={{
+                                                    ml: 0.5,
+                                                    backgroundColor: "rgba(46, 212, 122, 0.2)",
+                                                    color: "#2ED47A",
+                                                    fontSize: "0.7rem",
+                                                    fontWeight: 600,
+                                                    minWidth: 20,
+                                                    height: 20,
+                                                    borderRadius: '10px',
+                                                  }}
+                                                >
+                                                  {analysisCount}
+                                                </Chip>
+                                              )}
+                                              {trend && (
+                                                <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#2ED47A' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
+                                                  {trend.icon}
+                                                </Typography>
+                                              )}
+                                            </Box>
+                                          </Button>
+                                        </Tooltip>
+                                        {analysisCount > 1 && (
+                                          <Menu
+                                            anchorEl={resultMenuAnchor}
+                                            open={Boolean(resultMenuAnchor)}
+                                            onClose={handleResultMenuClose}
+                                            sx={{
+                                              '& .MuiList-root': {
+                                                py: 0.5,
+                                              },
+                                            }}
+                                          >
+                                            <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                              <Typography level="title-sm" sx={{ color: '#2ED47A', fontWeight: 600 }}>
+                                                Analysis History
+                                              </Typography>
+                                            </Box>
+                                            {analyses.map((analysis: any, index: number) => (
+                                              <MenuItem
+                                                key={analysis.id}
+                                                onClick={() => handleViewAnalysisById(analysis.id, 'perplexity')}
+                                                sx={{
+                                                  py: 0.75,
+                                                  px: 1.5,
+                                                  display: 'flex',
+                                                  justifyContent: 'space-between',
+                                                  alignItems: 'center',
+                                                  '&:hover': {
+                                                    backgroundColor: 'rgba(46, 212, 122, 0.1)',
+                                                  },
+                                                }}
+                                              >
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                  <Typography level="body-sm" sx={{ fontSize: '0.8rem' }}>
+                                                    {index === 0 ? 'Latest' : index === 1 ? 'v2' : `v${index + 1}`}
+                                                  </Typography>
+                                                  {index === 0 && trend && (
+                                                    <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#2ED47A' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
+                                                      {trend.icon}
+                                                    </Typography>
+                                                  )}
+                                                </Box>
+                                                <Typography level="body-sm" sx={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                                  {formatRelativeTime(analysis.created_at)}
+                                                </Typography>
+                                              </MenuItem>
+                                            ))}
+                                          </Menu>
+                                        )}
+                                      </Box>
+                                    );
+                                  })() : (
                                   <Tooltip title="Edit query" placement="top">
                                     <IconButton
                                       size="sm"
@@ -5405,13 +6783,14 @@ function OptimizePageContent() {
                         </Box>
                       </Box>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </Stack>
               </Box>
             )}
             
             {/* Google Queries Section */}
-            {allGoogleQueries.length > 0 && (
+            {selectedBatchId && allGoogleQueries.length > 0 && (
               <Box sx={{ mb: 4 }}>
                 <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
                   <Typography level="title-md" sx={{ color: textPrimary }}>
@@ -5422,7 +6801,8 @@ function OptimizePageContent() {
                   </Chip>
                 </Box>
                 <Stack spacing={2}>
-                  {allGoogleQueries.map((query, index) => (
+                  {allGoogleQueries.map((query, index) => {
+                    return (
                     <Card
                       key={`google-${index}`}
                       variant="outlined"
@@ -5432,19 +6812,14 @@ function OptimizePageContent() {
                         border: selectedGoogleQueries.includes(query)
                           ? "2px solid rgba(46, 212, 122, 0.5)"
                           : "1px solid rgba(46, 212, 122, 0.2)",
-                        cursor: usedGoogleQueries.includes(query) ? "not-allowed" : "pointer",
                         transition: "all 0.2s ease",
-                        "&:hover": {
-                          backgroundColor: usedGoogleQueries.includes(query) ? "transparent" : "rgba(46, 212, 122, 0.08)",
-                          borderColor: usedGoogleQueries.includes(query) ? "1px solid rgba(46, 212, 122, 0.2)" : "rgba(46, 212, 122, 0.4)",
-                        },
                       }}
-                      onClick={() => !usedGoogleQueries.includes(query) && handleQuerySelection(query, 'google_overview')}
                     >
                       <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
                         <Checkbox
                           checked={selectedGoogleQueries.includes(query) || usedGoogleQueries.includes(query)}
                           disabled={usedGoogleQueries.includes(query)}
+                          onChange={() => handleQuerySelection(query, 'google_overview')}
                           sx={{
                             "& .MuiCheckbox-root": {
                               color: usedGoogleQueries.includes(query) ? "#6c757d" : "#2ED47A",
@@ -5551,30 +6926,116 @@ function OptimizePageContent() {
                                     Used
                                   </Chip>
                                 )}
-                                {usedGoogleQueries.includes(query) ? (
-                                  <Tooltip title="View Google AI Overview analysis result" placement="top">
-                                    <Button
-                                      size="sm"
-                                      variant="outlined"
-                                      loading={loadingResultKey === `google_overview-${query}`}
-                                      disabled={loadingResultKey === `google_overview-${query}`}
-                                      onClick={() => handleViewAnalysisResult(query, 'google_overview')}
-                                      sx={{
-                                        minWidth: 90,
-                                        borderColor: "rgba(66, 133, 244, 0.3)",
-                                        color: "#4285F4",
-                                        fontWeight: 600,
-                                        fontSize: "0.75rem",
-                                        "&:hover": {
-                                          backgroundColor: "rgba(66, 133, 244, 0.1)",
-                                          borderColor: "rgba(66, 133, 244, 0.5)",
-                                        },
-                                      }}
-                                    >
-                                      🌐 Result
-                                    </Button>
-                                  </Tooltip>
-                                ) : (
+                                {usedGoogleQueries.includes(query) ? (() => {
+                                    const analyses = getAnalysesForQuery(query, 'google_overview');
+                                    const analysisCount = analyses.length;
+                                    const trend = getTrendIndicator(analyses);
+                                    
+                                    return (
+                                      <Box sx={{ position: 'relative' }}>
+                                        <Tooltip title="View Google AI Overview analysis result" placement="top">
+                                          <Button
+                                            size="sm"
+                                            variant="outlined"
+                                            loading={loadingResultKey === `google_overview-${query}`}
+                                            disabled={loadingResultKey === `google_overview-${query}`}
+                                            onClick={() => handleViewAnalysisResult(query, 'google_overview')}
+                                            onContextMenu={handleResultMenuOpen}
+                                            sx={{
+                                              minWidth: analysisCount > 1 ? 110 : 90,
+                                              borderColor: "rgba(66, 133, 244, 0.3)",
+                                              color: "#4285F4",
+                                              fontWeight: 600,
+                                              fontSize: "0.75rem",
+                                              position: 'relative',
+                                              boxShadow: analysisCount > 1 ? '0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.1)' : 'none',
+                                              "&:hover": {
+                                                backgroundColor: "rgba(66, 133, 244, 0.1)",
+                                                borderColor: "rgba(66, 133, 244, 0.5)",
+                                              },
+                                            }}
+                                          >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                              <Typography sx={{ fontSize: '0.75rem' }}>
+                                                🌐 Result
+                                              </Typography>
+                                              {analysisCount > 1 && (
+                                                <Chip
+                                                  size="sm"
+                                                  variant="solid"
+                                                  sx={{
+                                                    ml: 0.5,
+                                                    backgroundColor: "rgba(66, 133, 244, 0.2)",
+                                                    color: "#4285F4",
+                                                    fontSize: "0.7rem",
+                                                    fontWeight: 600,
+                                                    minWidth: 20,
+                                                    height: 20,
+                                                    borderRadius: '10px',
+                                                  }}
+                                                >
+                                                  {analysisCount}
+                                                </Chip>
+                                              )}
+                                              {trend && (
+                                                <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#4285F4' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
+                                                  {trend.icon}
+                                                </Typography>
+                                              )}
+                                            </Box>
+                                          </Button>
+                                        </Tooltip>
+                                        {analysisCount > 1 && (
+                                          <Menu
+                                            anchorEl={resultMenuAnchor}
+                                            open={Boolean(resultMenuAnchor)}
+                                            onClose={handleResultMenuClose}
+                                            sx={{
+                                              '& .MuiList-root': {
+                                                py: 0.5,
+                                              },
+                                            }}
+                                          >
+                                            <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                              <Typography level="title-sm" sx={{ color: '#4285F4', fontWeight: 600 }}>
+                                                Analysis History
+                                              </Typography>
+                                            </Box>
+                                            {analyses.map((analysis: any, index: number) => (
+                                              <MenuItem
+                                                key={analysis.id}
+                                                onClick={() => handleViewAnalysisById(analysis.id, 'google_overview')}
+                                                sx={{
+                                                  py: 0.75,
+                                                  px: 1.5,
+                                                  display: 'flex',
+                                                  justifyContent: 'space-between',
+                                                  alignItems: 'center',
+                                                  '&:hover': {
+                                                    backgroundColor: 'rgba(66, 133, 244, 0.1)',
+                                                  },
+                                                }}
+                                              >
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                  <Typography level="body-sm" sx={{ fontSize: '0.8rem' }}>
+                                                    {index === 0 ? 'Latest' : index === 1 ? 'v2' : `v${index + 1}`}
+                                                  </Typography>
+                                                  {index === 0 && trend && (
+                                                    <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#4285F4' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
+                                                      {trend.icon}
+                                                    </Typography>
+                                                  )}
+                                                </Box>
+                                                <Typography level="body-sm" sx={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                                  {formatRelativeTime(analysis.created_at)}
+                                                </Typography>
+                                              </MenuItem>
+                                            ))}
+                                          </Menu>
+                                        )}
+                                      </Box>
+                                    );
+                                  })() : (
                                   <Tooltip title="Edit query (minimum 6 words for AI Overview)" placement="top">
                                     <IconButton
                                       size="sm"
@@ -5599,7 +7060,8 @@ function OptimizePageContent() {
                         </Box>
                       </Box>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </Stack>
               </Box>
             )}
@@ -5726,40 +7188,46 @@ function OptimizePageContent() {
                 </Box>
               </Box>
             )}
-            {hasLoadedQueriesForProduct && !isLoadingQueries && !isGeneratingQuery && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
+            
+            {/* No queries in selected batch */}
+            {selectedBatchId && !isLoadingBatchQueries && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
               <Box sx={{ textAlign: "center", py: 8 }}>
                 <Typography level="h3" sx={{ mb: 2, color: textPrimary }}>
-                  No Queries Generated Yet
+                  No Queries in This Batch
                 </Typography>
                 <Typography level="body-md" sx={{ mb: 4, color: textSecondary }}>
-                  Please fill in the product data and click "Optimize for AI Search" to generate queries.
+                  This batch doesn't contain any queries. Generate a new batch to get started.
                 </Typography>
-                <Button
-                  onClick={() => setActiveSection("product")}
-                  sx={{
-                    minWidth: 200,
-                    borderRadius: "999px",
-                    backgroundColor: accentColor,
-                    color: "#0D0F14",
-                    fontWeight: 600,
-                    px: 3,
-                    border: "1px solid rgba(46, 212, 122, 0.36)",
-                    boxShadow: "0 10px 26px rgba(46, 212, 122, 0.25)",
-                    transition: "all 0.25s ease",
-                    "&:hover": {
-                      backgroundColor: "#26B869",
-                      borderColor: "rgba(46, 212, 122, 0.48)",
-                      boxShadow: "0 12px 32px rgba(46, 212, 122, 0.3)",
-                    },
-                  }}
-                >
-                  Go to Product Data
-                </Button>
+                <Tooltip title="Coming Soon" placement="top" arrow>
+                  <span>
+                    <Button
+                      onClick={handleGenerateQueryOnly}
+                      loading={isGeneratingQuery}
+                      disabled
+                      sx={{
+                        minWidth: 200,
+                        borderRadius: "999px",
+                        backgroundColor: "transparent",
+                        border: "1px solid rgba(242, 245, 250, 0.25)",
+                        color: "rgba(242, 245, 250, 0.5)",
+                        fontWeight: 600,
+                        cursor: "not-allowed",
+                        px: 3,
+                        "&:hover": {
+                          backgroundColor: "transparent",
+                          borderColor: "rgba(242, 245, 250, 0.25)",
+                        },
+                      }}
+                    >
+                      Generate New Batch
+                    </Button>
+                  </span>
+                </Tooltip>
               </Box>
             )}
             
             {/* Optimize for AI Search Button - Single unified button */}
-            {(allPerplexityQueries.length > 0 || allGoogleQueries.length > 0) && (
+            {selectedBatchId && (allPerplexityQueries.length > 0 || allGoogleQueries.length > 0) && (
               <Box sx={{ mt: 6, textAlign: "center" }}>
                 {/* Loading Indicators */}
                 {(isPerplexityScraping || isGoogleScraping) && (
@@ -5829,8 +7297,53 @@ function OptimizePageContent() {
                     {getAnalysisModeDisplay().text}
                   </Chip>
                   
-                  {/* Optimize for AI Search Button - Right aligned */}
-                  <Button
+                  {/* Buttons - Right aligned */}
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    {/* Check Implementation Button */}
+                    {usedPerplexityQueries.length >= 3 && usedGoogleQueries.length >= 3 && (
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        onClick={() => {
+                          const hasOddPerplexity = usedPerplexityQueries.some(q => allPerplexityQueries.includes(q) && hasQueryBeenReanalyzed(q, 'perplexity'));
+                          const hasOddGoogle = usedGoogleQueries.some(q => allGoogleQueries.includes(q) && hasQueryBeenReanalyzed(q, 'google_overview'));
+                          const count = (hasOddPerplexity || hasOddGoogle)
+                            ? usedPerplexityQueries.filter(q => allPerplexityQueries.includes(q) && !hasQueryBeenReanalyzed(q, 'perplexity')).length +
+                              usedGoogleQueries.filter(q => allGoogleQueries.includes(q) && !hasQueryBeenReanalyzed(q, 'google_overview')).length
+                            : usedPerplexityQueries.length + usedGoogleQueries.length;
+                          
+                          if (count === 0) {
+                            setCheckImplementationModalOpen(true);
+                          } else {
+                            setCheckImplementationIncompleteModalOpen(true);
+                          }
+                        }}
+                        sx={{
+                          borderColor: "rgba(255, 193, 7, 0.25)",
+                          color: "rgba(255, 193, 7, 0.85)",
+                          fontWeight: 600,
+                          px: 3,
+                          py: 1.5,
+                          "&:hover": {
+                            backgroundColor: "rgba(255, 193, 7, 0.06)",
+                            borderColor: "rgba(255, 193, 7, 0.35)",
+                          },
+                        }}
+                      >
+                        {(() => {
+                          const hasOddPerplexity = usedPerplexityQueries.some(q => allPerplexityQueries.includes(q) && hasQueryBeenReanalyzed(q, 'perplexity'));
+                          const hasOddGoogle = usedGoogleQueries.some(q => allGoogleQueries.includes(q) && hasQueryBeenReanalyzed(q, 'google_overview'));
+                          const count = (hasOddPerplexity || hasOddGoogle)
+                            ? usedPerplexityQueries.filter(q => allPerplexityQueries.includes(q) && !hasQueryBeenReanalyzed(q, 'perplexity')).length +
+                              usedGoogleQueries.filter(q => allGoogleQueries.includes(q) && !hasQueryBeenReanalyzed(q, 'google_overview')).length
+                            : usedPerplexityQueries.length + usedGoogleQueries.length;
+                          return count === 0 ? 'Check Implementation' : `Check Implementation (${count})`;
+                        })()}
+                      </Button>
+                    )}
+                    
+                    {/* Optimize for AI Search Button */}
+                    <Button
                     type="button"
                     disabled={isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)}
                     onClick={async () => {
@@ -5882,6 +7395,7 @@ function OptimizePageContent() {
                      isGoogleScraping ? 'Running Google Analysis...' :
                      `Optimize for AI Search (${selectedPerplexityQueries.length + selectedGoogleQueries.length})`}
                   </Button>
+                  </Box>
                 </Box>
               </Box>
             )}

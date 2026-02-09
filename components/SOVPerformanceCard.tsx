@@ -6,6 +6,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import ReactMarkdown from "react-markdown";
 import { triggerSovAnalysis } from "@/lib/sovAnalysisApi";
 import { useSovSnapshotListener } from "@/hooks/useSovSnapshotListener";
 import { OptimizedProduct } from "@/app/optimize/types";
@@ -32,11 +33,13 @@ interface SOVPerformanceCardProps {
 
 export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisClick, isDeepAnalysisActive, product }: SOVPerformanceCardProps) {
   const [snapshot, setSnapshot] = useState<SOVSnapshot | null>(null);
+  const [previousSnapshot, setPreviousSnapshot] = useState<SOVSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTriggeringAnalysis, setIsTriggeringAnalysis] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [isSovUpToDate, setIsSovUpToDate] = useState(false);
 
   const {
     status: liveSovStatus,
@@ -44,6 +47,110 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
     markProcessing,
     markCompleted,
   } = useSovSnapshotListener(productId, engine);
+
+  // Helper function to calculate growth/decline
+  const calculateGrowth = (current: number, previous: number | null) => {
+    if (previous === null) return null;
+    const change = current - previous;
+
+    // Avoid divide-by-zero. When previous is 0, show point change instead of %.
+    if (previous === 0) {
+      return {
+        change,
+        percentageChange: null as number | null,
+        isGrowth: change > 0,
+        isDecline: change < 0,
+        isNeutral: change === 0,
+        displayMode: 'points' as const,
+      };
+    }
+
+    const percentageChange = (change / previous) * 100;
+    return {
+      change,
+      percentageChange,
+      isGrowth: change > 0,
+      isDecline: change < 0,
+      isNeutral: change === 0,
+      displayMode: 'percent' as const,
+    };
+  };
+
+  // Component to display score with growth indicator
+  const ScoreWithGrowth = ({ current, previous, label, getColor }: { 
+    current: number; 
+    previous: number | null; 
+    label: string; 
+    getColor: (score: number) => string;
+  }) => {
+    const growth = calculateGrowth(current, previous);
+    
+    return (
+      <Stack spacing={1} sx={{ flex: 1, alignItems: 'center' }}>
+        <Typography level="body-sm" sx={{ 
+          color: "rgba(162, 167, 180, 0.88)",
+          fontSize: "0.875rem",
+          fontWeight: 500,
+          textAlign: "center",
+        }}>
+          {label}
+        </Typography>
+        <Box sx={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 0.5 }}>
+          <Typography level="h1" sx={{ 
+            color: getColor(current),
+            fontSize: "2.5rem",
+            fontWeight: 700,
+            lineHeight: 1,
+            textAlign: "center",
+          }}>
+            {current}%
+          </Typography>
+          {growth && (
+            <Typography level="body-xs" sx={{ 
+              color: growth.isGrowth ? "#2ED47A" : growth.isDecline ? "#F44336" : "#A2A7B4",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+              pb: 0.5,
+            }}>
+              {growth.isNeutral
+                ? (growth.displayMode === 'points' ? '→ +0' : '→ 0.0%')
+                : growth.displayMode === 'points'
+                  ? (growth.isGrowth
+                    ? `↑ +${Math.abs(growth.change).toFixed(0)}`
+                    : `↓ -${Math.abs(growth.change).toFixed(0)}`)
+                  : (growth.isGrowth
+                    ? `↑ ${Math.abs(growth.percentageChange ?? 0).toFixed(1)}%`
+                    : `↓ ${Math.abs(growth.percentageChange ?? 0).toFixed(1)}%`)
+              }
+            </Typography>
+          )}
+        </Box>
+        <Box sx={{ 
+          width: "100%", 
+          height: "4px", 
+          backgroundColor: "rgba(46, 212, 122, 0.1)",
+          borderRadius: "2px",
+          overflow: "hidden",
+        }}>
+          <Box sx={{ 
+            width: `${current}%`,
+            height: "100%",
+            backgroundColor: getColor(current),
+            borderRadius: "2px",
+          }} />
+        </Box>
+        {previous !== null && (
+          <Typography level="body-xs" sx={{ 
+            color: "rgba(162, 167, 180, 0.75)",
+            fontSize: "0.75rem",
+            textAlign: "center",
+          }}>
+            Previous: {previous}%
+          </Typography>
+        )}
+      </Stack>
+    );
+  };
 
   const fetchSOVData = async () => {
     try {
@@ -67,11 +174,13 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
 
       const data = await response.json();
 
-      if (data.snapshot) {
-        setSnapshot(data.snapshot);
+      if (data.latestSnapshot) {
+        setSnapshot(data.latestSnapshot);
+        setPreviousSnapshot(data.previousSnapshot);
         setError(null);
       } else {
         setSnapshot(null);
+        setPreviousSnapshot(null);
         setError('No Share of Voice data available for this product.');
       }
     } catch (err) {
@@ -102,13 +211,32 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventNonce]);
 
+  // Check SOV progress to determine if up to date
+  useEffect(() => {
+    const checkSovProgress = async () => {
+      if (!productId) return;
+      
+      try {
+        const { checkLatestSovProgress } = await import('@/lib/sovProgressCheck');
+        const progress = await checkLatestSovProgress(productId, engine);
+        setIsSovUpToDate(progress.status === 'complete');
+      } catch (error) {
+        console.error('Failed to check SOV progress:', error);
+        setIsSovUpToDate(false);
+      }
+    };
+
+    checkSovProgress();
+  }, [productId, engine, eventNonce]); // Re-check when snapshot updates
+
   const runSovAnalysis = async () => {
     if (!productId) return;
-    if (isTriggeringAnalysis || liveSovStatus === 'processing') return;
+    if (isTriggeringAnalysis) return;
 
     setActionError(null);
     setActionSuccess(null);
     setIsTriggeringAnalysis(true);
+    setIsSovUpToDate(false);
     markProcessing();
 
     const result = await triggerSovAnalysis({
@@ -122,15 +250,19 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
       if (result.message) {
         console.log('SOV Analysis message:', result.message);
         setActionSuccess(result.message + ' (No new queries found to analyze)');
+        setIsSovUpToDate(true);
         markCompleted();
       } else {
         // Analysis was accepted. Snapshot update comes via realtime.
         setActionSuccess('Request submitted successfully. This may take a few minutes.');
+        // Don't set isSovUpToDate here - wait for actual completion
       }
       setTimeout(() => setActionSuccess(null), 5000);
     } else {
       setActionError(result.error || 'Failed to start SOV analysis.');
-      markCompleted();
+      setIsSovUpToDate(false);
+      // Don't mark as completed when analysis fails - keep it in processing state
+      // This allows user to retry
     }
 
     setIsTriggeringAnalysis(false);
@@ -277,7 +409,7 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
             color="danger"
             startDecorator={<AnalyticsIcon />}
             onClick={runSovAnalysis}
-            disabled={isTriggeringAnalysis || liveSovStatus === 'processing' || (!product?.analyses || product.analyses.length === 0)}
+            disabled={isTriggeringAnalysis || (!product?.analyses || product.analyses.length === 0)}
             sx={{
               width: "100%",
               backgroundColor: "#F35B64",
@@ -296,7 +428,7 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
               },
             }}
           >
-            {liveSovStatus === 'processing' ? 'Analyzing…' : isTriggeringAnalysis ? 'Starting…' : 'Start SOV Analysis'}
+            {isTriggeringAnalysis ? 'Starting…' : 'Start SOV Analysis'}
           </Button>
           
           <Tooltip 
@@ -385,110 +517,24 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
 
       {/* Middle Section (3 Big Numbers) */}
       <Stack direction="row" spacing={3} sx={{ mb: 3, py: 2 }}>
-        {/* Metric 1: Visibility (SOV) */}
-        <Stack spacing={1} sx={{ flex: 1, alignItems: 'center' }}>
-          <Typography level="body-sm" sx={{ 
-            color: "rgba(162, 167, 180, 0.88)",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            textAlign: "center",
-          }}>
-            Visibility
-          </Typography>
-          <Typography level="h1" sx={{ 
-            color: getVisibilityColor(snapshot.global_sov_score),
-            fontSize: "2.5rem",
-            fontWeight: 700,
-            lineHeight: 1,
-            textAlign: "center",
-          }}>
-            {snapshot.global_sov_score}%
-          </Typography>
-          <Box sx={{ 
-            width: "100%", 
-            height: "4px", 
-            backgroundColor: "rgba(46, 212, 122, 0.1)",
-            borderRadius: "2px",
-            overflow: "hidden",
-          }}>
-            <Box sx={{ 
-              width: `${snapshot.global_sov_score}%`,
-              height: "100%",
-              backgroundColor: getVisibilityColor(snapshot.global_sov_score),
-              borderRadius: "2px",
-            }} />
-          </Box>
-        </Stack>
-
-        {/* Metric 2: Trust (Citations) */}
-        <Stack spacing={1} sx={{ flex: 1, alignItems: 'center' }}>
-          <Typography level="body-sm" sx={{ 
-            color: "rgba(162, 167, 180, 0.88)",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            textAlign: "center",
-          }}>
-            Citation Rate
-          </Typography>
-          <Typography level="h1" sx={{ 
-            color: getTrustColor(snapshot.citation_score),
-            fontSize: "2.5rem",
-            fontWeight: 700,
-            lineHeight: 1,
-            textAlign: "center",
-          }}>
-            {snapshot.citation_score}%
-          </Typography>
-          <Box sx={{ 
-            width: "100%", 
-            height: "4px", 
-            backgroundColor: "rgba(46, 212, 122, 0.1)",
-            borderRadius: "2px",
-            overflow: "hidden",
-          }}>
-            <Box sx={{ 
-              width: `${snapshot.citation_score}%`,
-              height: "100%",
-              backgroundColor: getTrustColor(snapshot.citation_score),
-              borderRadius: "2px",
-            }} />
-          </Box>
-        </Stack>
-
-        {/* Metric 3: Category Relevance */}
-        <Stack spacing={1} sx={{ flex: 1, alignItems: 'center' }}>
-          <Typography level="body-sm" sx={{ 
-            color: "rgba(162, 167, 180, 0.88)",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            textAlign: "center",
-          }}>
-            Category Relevance
-          </Typography>
-          <Typography level="h1" sx={{ 
-            color: getReputationColor(snapshot.category_relevance),
-            fontSize: "2.5rem",
-            fontWeight: 700,
-            lineHeight: 1,
-            textAlign: "center",
-          }}>
-            {snapshot.category_relevance}%
-          </Typography>
-          <Box sx={{ 
-            width: "100%", 
-            height: "4px", 
-            backgroundColor: "rgba(46, 212, 122, 0.1)",
-            borderRadius: "2px",
-            overflow: "hidden",
-          }}>
-            <Box sx={{ 
-              width: `${snapshot.category_relevance}%`,
-              height: "100%",
-              backgroundColor: getReputationColor(snapshot.category_relevance),
-              borderRadius: "2px",
-            }} />
-          </Box>
-        </Stack>
+        <ScoreWithGrowth 
+          current={Number(snapshot.global_sov_score)}
+          previous={previousSnapshot ? Number(previousSnapshot.global_sov_score) : null}
+          label="Visibility"
+          getColor={getVisibilityColor}
+        />
+        <ScoreWithGrowth 
+          current={Number(snapshot.citation_score)}
+          previous={previousSnapshot ? Number(previousSnapshot.citation_score) : null}
+          label="Citation Rate"
+          getColor={getTrustColor}
+        />
+        <ScoreWithGrowth 
+          current={Number(snapshot.category_relevance)}
+          previous={previousSnapshot ? Number(previousSnapshot.category_relevance) : null}
+          label="Category Relevance"
+          getColor={getReputationColor}
+        />
       </Stack>
 
       <Divider sx={{ backgroundColor: "rgba(46, 212, 122, 0.14)" }} />
@@ -502,13 +548,73 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
           borderRadius: "8px",
           minWidth: "850px",
         }}>
-          <Typography level="body-md" sx={{ 
-            color: "#F2F5FA",
-            lineHeight: 1.6,
-            fontWeight: 500,
-          }}>
+          <ReactMarkdown 
+            components={{
+              p: ({ children }) => (
+                <Typography level="body-md" sx={{ 
+                  color: "#F2F5FA",
+                  lineHeight: 1.6,
+                  fontWeight: 500,
+                  mb: 1,
+                }}>
+                  {children}
+                </Typography>
+              ),
+              ul: ({ children }) => (
+                <Box component="ul" sx={{ 
+                  color: "#F2F5FA",
+                  lineHeight: 1.6,
+                  fontWeight: 500,
+                  pl: 3,
+                  mb: 1,
+                }}>
+                  {children}
+                </Box>
+              ),
+              ol: ({ children }) => (
+                <Box component="ol" sx={{ 
+                  color: "#F2F5FA",
+                  lineHeight: 1.6,
+                  fontWeight: 500,
+                  pl: 3,
+                  mb: 1,
+                }}>
+                  {children}
+                </Box>
+              ),
+              li: ({ children }) => (
+                <Typography level="body-md" component="li" sx={{ 
+                  color: "#F2F5FA",
+                  lineHeight: 1.6,
+                  fontWeight: 500,
+                  mb: 0.5,
+                }}>
+                  {children}
+                </Typography>
+              ),
+              strong: ({ children }) => (
+                <Typography level="body-md" component="strong" sx={{ 
+                  color: "#F2F5FA",
+                  lineHeight: 1.6,
+                  fontWeight: 700,
+                }}>
+                  {children}
+                </Typography>
+              ),
+              em: ({ children }) => (
+                <Typography level="body-md" component="em" sx={{ 
+                  color: "#F2F5FA",
+                  lineHeight: 1.6,
+                  fontWeight: 500,
+                  fontStyle: 'italic',
+                }}>
+                  {children}
+                </Typography>
+              ),
+            }}
+          >
             {snapshot.narrative_summary}
-          </Typography>
+          </ReactMarkdown>
         </Box>
         
         {/* Action Buttons */}
@@ -547,24 +653,23 @@ export default function SOVPerformanceCard({ productId, engine, onDeepAnalysisCl
             color="success"
             startDecorator={<RefreshIcon />}
             onClick={runSovAnalysis}
-            disabled={isTriggeringAnalysis || liveSovStatus === 'processing'}
+            disabled={isTriggeringAnalysis || isSovUpToDate}
             sx={{
               flex: 1,
-              backgroundColor: "#2ED47A",
+              backgroundColor: isSovUpToDate ? "#10B981" : "#2ED47A",
               color: "#0D0F14",
               "&:hover": {
-                backgroundColor: "#26B869",
+                backgroundColor: isSovUpToDate ? "#059669" : "#26B869",
                 boxShadow: "0 4px 12px rgba(46, 212, 122, 0.3)",
               },
-              fontWeight: 600,
-              py: 1.2,
               "&:disabled": {
                 cursor: "not-allowed",
                 opacity: 0.6,
+                backgroundColor: "#10B981",
               },
             }}
           >
-            {liveSovStatus === 'processing' ? 'Analyzing…' : isTriggeringAnalysis ? 'Starting…' : 'Refresh Analysis'}
+            {isTriggeringAnalysis ? 'Starting…' : isSovUpToDate ? 'Up to date' : 'Refresh Analysis'}
           </Button>
         </Stack>
 

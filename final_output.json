@@ -1,31 +1,50 @@
 {
   "product": {
-    "product_name": "AI driven MMP",
-    "description": "This AI-driven MMP (likely Mobile Measurement Partner) helps businesses turn customer data into powerful insights. It enables detailed tracking of top-performing distribution channels, monitoring actions down to individual clicks, downloads, and onboardings.",
-    "general_product_type": "Software",
-    "specific_product_type": "Marketing Analytics Platform",
-    "specifications": {},
+    "product_name": "D up transdermal patches",
+    "description": "D Up transdermal patches are formulated with scientifically and clinically proven ingredients to deliver Vitamin D3, Vitamin K2, Calcium, and Magnesium. These key nutrients are designed to support overall health, improve immunity, bone strength, and energy levels, while also uplifting mood and reducing deficiencies.",
+    "general_product_type": "Health Supplement",
+    "specific_product_type": "Transdermal Patch",
+    "specifications": {
+      "delivered_nutrients": "Vitamin D3, Vitamin K2, Calcium, and Magnesium"
+    },
     "features": [
       {
-        "name": "AI-driven insights",
-        "description": "Leverages artificial intelligence to derive powerful insights from customer data."
+        "name": "Scientifically and clinically proven ingredients",
+        "description": "The formulation utilizes ingredients that have undergone scientific and clinical validation."
       },
       {
-        "name": "Distribution channel tracking",
-        "description": "Tracks top-performing distribution channels."
+        "name": "Transdermal delivery",
+        "description": "The product utilizes transdermal patches for nutrient delivery."
       },
       {
-        "name": "Granular action tracking",
-        "description": "Monitors user actions down to the click, download, and onboard levels."
+        "name": "Supports overall health",
+        "description": "The combination of nutrients aims to contribute to general well-being."
+      },
+      {
+        "name": "Improves immunity",
+        "description": "The patches are designed to enhance the body's immune system."
+      },
+      {
+        "name": "Improves bone strength",
+        "description": "Key nutrients are included to bolster bone health."
+      },
+      {
+        "name": "Improves energy levels",
+        "description": "The product aims to increase and sustain energy."
+      },
+      {
+        "name": "Uplifts mood",
+        "description": "Ingredients are intended to positively affect mood."
+      },
+      {
+        "name": "Reduces deficiencies",
+        "description": "The product helps to address and mitigate nutritional deficiencies."
       }
     ],
-    "targeted_market": "Businesses that rely on understanding customer acquisition and performance across various distribution channels, likely in the mobile app or digital marketing space.",
-    "problem_product_is_solving": "Lack of clear visibility into the effectiveness of distribution channels and the ability to attribute customer actions to specific sources. Difficulty in deriving actionable insights from customer data.",
-    "formulation_attribution": null
+    "targeted_market": "Individuals seeking convenient and effective ways to supplement their diet with essential nutrients like Vitamin D3, K2, Calcium, and Magnesium, particularly those looking to improve bone health, immunity, energy, and mood, or address nutrient deficiencies.",
+    "problem_product_is_solving": "The product addresses issues related to nutrient deficiencies, poor immunity, weakened bone strength, low energy levels, and low mood. It offers a solution for individuals who may have difficulty absorbing nutrients orally or prefer a transdermal delivery method.",
+    "formulation_attribution": "D up by Patch up"
   },
-  "extraction_method": "selectors-fallback",
-  "missing_fields": [
-    "formulation_attribution",
-    "specifications"
-  ]
+  "extraction_method": "product-json-endpoint",
+  "missing_fields": []
 }

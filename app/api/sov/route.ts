@@ -35,32 +35,34 @@ export async function GET(request: Request) {
 
     const supabase = getSupabaseAdminClient();
 
-    // Fetch the most recent snapshot for this product and engine
-    const { data: snapshotData, error: snapshotError } = await supabase
+    // Fetch the latest 2 snapshots for this product and engine
+    const { data: snapshotsData, error: snapshotsError } = await supabase
       .from('sov_product_snapshots')
       .select('*')
       .eq('product_id', productId)
       .eq('engine', engine)
       .order('analyzed_at', { ascending: false })
-      .limit(1)
-      .single() as { data: SOVSnapshot | null; error: any };
+      .limit(2) as { data: SOVSnapshot[] | null; error: any };
 
-    if (snapshotError || !snapshotData) {
-      if (snapshotError?.code === 'PGRST116') {
+    if (snapshotsError || !snapshotsData || snapshotsData.length === 0) {
+      if (snapshotsError?.code === 'PGRST116') {
         return NextResponse.json(
           { error: 'No Share of Voice data available for this product.' },
           { status: 404 }
         );
       }
-      console.error('Snapshot fetch error:', snapshotError);
+      console.error('Snapshot fetch error:', snapshotsError);
       return NextResponse.json(
         { error: 'Failed to load Share of Voice data.' },
         { status: 500 }
       );
     }
 
+    const latestSnapshot = snapshotsData[0];
+    const previousSnapshot = snapshotsData[1] || null;
+
     // Fetch insights for this product and engine (separate fetch, no join)
-    const insightsLimit = snapshotData.total_queries_analyzed || 20;
+    const insightsLimit = latestSnapshot.total_queries_analyzed || 20;
     const { data: insightsData, error: insightsError } = await supabase
       .from('sov_query_insights')
       .select('*')
@@ -75,7 +77,8 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      snapshot: snapshotData,
+      latestSnapshot,
+      previousSnapshot,
       insights: insightsData || []
     });
 
