@@ -30,7 +30,7 @@ export function getAIModeConfig(): AIModeConfig {
       displayName: 'New AI Mode',
       usesJobPolling: true,
       pollingInterval: 3000, // 3 seconds
-      maxPollAttempts: 60, // 3 minutes total (60 * 3s
+      maxPollAttempts: 60, // 3 minutes total (60 * 3s)
     }
   };
   
