@@ -26,7 +26,7 @@ export function getAIModeConfig(): AIModeConfig {
     },
     new_ai_mode: {
       mode: 'new_ai_mode',
-      scraperEndpoint: process.env.NEXT_PUBLIC_NEW_AI_MODE_SCRAPER || 'https://godseye-aimodescraper-production.up.railway.app/api/v1/scrape',
+      scraperEndpoint: process.env.NEXT_PUBLIC_NEW_AI_MODE_SCRAPER || 'https://discerning-dream-production-a744.up.railway.app/api/v1/scrape',
       displayName: 'New AI Mode',
       usesJobPolling: true,
       pollingInterval: 3000, // 3 seconds
