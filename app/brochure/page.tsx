@@ -51,16 +51,16 @@ export default function BrochurePage() {
 
 
     return (
-        <Box sx={{ minHeight: "100vh", backgroundColor: "#0D0F14", py: 8 }}>
+        <Box sx={{ minHeight: "100vh", backgroundColor: "#0D0F14", py: { xs: 4, md: 8 } }}>
             <Container maxWidth="lg">
 
                 {/* Page 1: Cover / Hook */}
-                <Stack spacing={4} sx={{ alignItems: "center", mb: 8, py: 8 }}>
+                <Stack spacing={4} sx={{ alignItems: "center", mb: 0, py: { xs: 4, md: 8 } }}>
                     <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                        <Box component="img" src="/GodsEye.png" alt="GodsEye Logo" sx={{ width: 48, height: 48 }} />
-                        <Typography level="h3" sx={{ color: primaryColor, fontWeight: 700 }}>GodsEye</Typography>
+                        <Box component="img" src="/GodsEye.png" alt="GodsEye Logo" sx={{ width: 40, height: 40 }} />
+                        <Typography level="h2" sx={{ color: primaryColor, fontWeight: 800, fontSize: '3rem', letterSpacing: '-0.02em' }}>GodsEye</Typography>
                     </Stack>
-                    <Typography level="h1" sx={{ textAlign: "center", color: primaryColor, fontSize: { xs: "2.5rem", md: "3.5rem" }, fontWeight: 800, lineHeight: 1.1 }}>
+                    <Typography level="h1" sx={{ textAlign: "center", color: primaryColor, fontSize: { xs: "2rem", md: "3.5rem" }, fontWeight: 800, lineHeight: 1.1 }}>
                         Your customers are asking AI who to trust.<br />
                         <Box component="span" sx={{ color: accentColor }}>Is your brand the answer?</Box>
                     </Typography>
@@ -83,11 +83,11 @@ export default function BrochurePage() {
                     </Card>
                 </Stack>
 
-                <Divider sx={{ my: 8, opacity: 0.1 }} />
+                <Divider sx={{ my: 4, opacity: 0.1 }} />
 
                 {/* Page 2: The Problem */}
-                <Stack spacing={4} sx={{ mb: 8 }}>
-                    <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700 }}>
+                <Stack spacing={4} sx={{ mb: { xs: 4, md: 8 } }}>
+                    <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
                         The way people search has changed.<br />
                         <Box component="span" sx={{ color: dangerColor }}>Your visibility strategy hasn't.</Box>
                     </Typography>
@@ -96,52 +96,80 @@ export default function BrochurePage() {
                         Two or three years ago, people searched Google, saw 10 links, and clicked. Today, they open ChatGPT, Perplexity, or Google AI Mode and ask a question. They get one answer. They trust it. They act on it.
                     </Typography>
 
-                    <Card variant="outlined" sx={{ backgroundColor: cardBg, borderColor: borderColor, p: 4 }}>
+                    <Card variant="outlined" sx={{ backgroundColor: cardBg, borderColor: borderColor, p: { xs: 2.5, md: 4 } }}>
                         <Typography level="title-lg" sx={{ color: primaryColor, mb: 2 }}>
                             Here's what that means for your business:
                         </Typography>
 
-                        <Table
-                            aria-label="SEO vs AEO Comparison"
-                            size="lg"
-                            variant="outlined"
-                            sx={{
-                                '--Table-headerUnderlineThickness': '1px',
-                                '--TableCell-headBackground': 'rgba(13, 15, 20, 0.6)',
-                                backgroundColor: 'transparent',
-                                borderRadius: '12px',
-                                borderColor: borderColor,
-                                '& thead th:nth-of-type(1)': { width: '30%' },
-                                '& thead th:nth-of-type(2)': { width: '35%' },
-                                '& thead th:nth-of-type(3)': { width: '35%' },
-                                mb: 4
-                            }}
-                        >
-                            <thead>
-                                <tr>
-                                    <th style={{ color: secondaryColor }}>Feature</th>
-                                    <th style={{ color: "#FFF", fontWeight: 700 }}>SEO (Google)</th>
-                                    <th style={{ color: accentColor, fontWeight: 700 }}>AEO (AI Search)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style={{ color: secondaryColor }}>Goal</td>
-                                    <td style={{ color: "#FFF" }}>Ranked in list</td>
-                                    <td style={{ color: "#FFF" }}>Recommended as answer</td>
-                                </tr>
-                                <tr>
-                                    <td style={{ color: secondaryColor }}>User Action</td>
-                                    <td style={{ color: "#FFF" }}>Click a link</td>
-                                    <td style={{ color: "#FFF" }}>Read and decide</td>
-                                </tr>
-                                <tr>
-                                    <td style={{ color: secondaryColor }}>Key Metric</td>
-                                    <td style={{ color: "#FFF" }}>Traffic Volume</td>
-                                    <td style={{ color: "#FFF" }}>Trust & Answer Share</td>
-                                </tr>
-                            </tbody>
-                        </Table>
+                        {/* Mobile View: Stacked Comparison Cards */}
+                        <Stack spacing={2} sx={{ display: { xs: 'flex', md: 'none' }, mb: 4 }}>
+                            {[
+                                { feature: "Goal", seo: "Ranked in list", aeo: "Recommended as answer" },
+                                { feature: "User Action", seo: "Click a link", aeo: "Read and decide" },
+                                { feature: "Key Metric", seo: "Traffic Volume", aeo: "Trust & Answer Share" }
+                            ].map((item, index) => (
+                                <Card key={index} variant="soft" sx={{ backgroundColor: "rgba(13, 15, 20, 0.6)", borderColor: borderColor }}>
+                                    <Typography level="title-sm" sx={{ color: secondaryColor, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.75rem' }}>
+                                        {item.feature}
+                                    </Typography>
+                                    <Divider sx={{ opacity: 0.1, my: 1.5 }} />
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                                        <Box>
+                                            <Typography level="body-xs" sx={{ color: "rgba(255,255,255,0.5)", mb: 0.5 }}>SEO (Google)</Typography>
+                                            <Typography level="title-md" sx={{ color: "#FFF" }}>{item.seo}</Typography>
+                                        </Box>
+                                        <Box>
+                                            <Typography level="body-xs" sx={{ color: accentColor, mb: 0.5, opacity: 0.8 }}>AEO (AI Search)</Typography>
+                                            <Typography level="title-md" sx={{ color: "#FFF" }}>{item.aeo}</Typography>
+                                        </Box>
+                                    </Box>
+                                </Card>
+                            ))}
+                        </Stack>
+
+                        {/* Desktop View: Comparison Table */}
+                        <Box sx={{ display: { xs: 'none', md: 'block' }, overflowX: 'auto', mb: 4 }}>
+                            <Table
+                                aria-label="SEO vs AEO Comparison"
+                                size="lg"
+                                variant="outlined"
+                                sx={{
+                                    '--Table-headerUnderlineThickness': '1px',
+                                    '--TableCell-headBackground': 'rgba(13, 15, 20, 0.6)',
+                                    backgroundColor: 'transparent',
+                                    borderRadius: '12px',
+                                    borderColor: borderColor,
+                                    '& thead th:nth-of-type(1)': { width: '20%' },
+                                    '& thead th:nth-of-type(2)': { width: '40%' },
+                                    '& thead th:nth-of-type(3)': { width: '40%' },
+                                }}
+                            >
+                                <thead>
+                                    <tr>
+                                        <th style={{ color: secondaryColor }}>Feature</th>
+                                        <th style={{ color: "#FFF", fontWeight: 700 }}>SEO (Google)</th>
+                                        <th style={{ color: accentColor, fontWeight: 700 }}>AEO (AI Search)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style={{ color: secondaryColor }}>Goal</td>
+                                        <td style={{ color: "#FFF" }}>Ranked in list</td>
+                                        <td style={{ color: "#FFF" }}>Recommended as answer</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{ color: secondaryColor }}>User Action</td>
+                                        <td style={{ color: "#FFF" }}>Click a link</td>
+                                        <td style={{ color: "#FFF" }}>Read and decide</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{ color: secondaryColor }}>Key Metric</td>
+                                        <td style={{ color: "#FFF" }}>Traffic Volume</td>
+                                        <td style={{ color: "#FFF" }}>Trust & Answer Share</td>
+                                    </tr>
+                                </tbody>
+                            </Table>
+                        </Box>
                         <Stack spacing={2}>
                             <Box sx={{ display: 'flex', gap: 2 }}>
                                 <TrendingUpIcon sx={{ color: dangerColor }} />
@@ -167,10 +195,10 @@ export default function BrochurePage() {
                 </Stack>
 
                 {/* Page 3: What GodsEye Does */}
-                <Stack spacing={4} sx={{ mb: 8 }}>
+                <Stack spacing={4} sx={{ mb: { xs: 4, md: 8 } }}>
                     <Box>
                         <Chip variant="soft" color="success" sx={{ mb: 2 }}>The Solution</Chip>
-                        <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700 }}>
+                        <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
                             We find exactly where you're losing — and tell you exactly how to fix it.
                         </Typography>
                     </Box>
@@ -218,15 +246,15 @@ export default function BrochurePage() {
                     </Box>
                 </Stack>
 
-                <Divider sx={{ my: 8, opacity: 0.1 }} />
+                <Divider sx={{ my: { xs: 4, md: 8 }, opacity: 0.1 }} />
 
                 {/* Page 4: Business Impact */}
-                <Stack spacing={4} sx={{ mb: 8 }}>
-                    <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700 }}>
+                <Stack spacing={4} sx={{ mb: { xs: 4, md: 8 } }}>
+                    <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
                         If GodsEye were running your AEO — here's what would change.
                     </Typography>
 
-                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 4 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 4 }}>
                         <Card variant="soft" sx={{ backgroundColor: "rgba(46, 212, 122, 0.05)", p: 3 }}>
                             <Typography level="title-lg" sx={{ color: accentColor, mb: 1 }}>If you're in EdTech</Typography>
                             <Typography level="body-md" sx={{ color: secondaryColor }}>
@@ -237,6 +265,12 @@ export default function BrochurePage() {
                             <Typography level="title-lg" sx={{ color: "#9333EA", mb: 1 }}>If you're in SaaS</Typography>
                             <Typography level="body-md" sx={{ color: secondaryColor }}>
                                 Founders use AI to shortlist tools. If ChatGPT recommends your competitor, you never even get a trial signup.
+                            </Typography>
+                        </Card>
+                        <Card variant="soft" sx={{ backgroundColor: "rgba(59, 130, 246, 0.05)", p: 3 }}>
+                            <Typography level="title-lg" sx={{ color: "#3B82F6", mb: 1 }}>If you're in D2C</Typography>
+                            <Typography level="body-md" sx={{ color: secondaryColor }}>
+                                Shoppers ask "best protein powder" or "top rated skincare". If AI doesn't recommend your brand, you lose the sale instantly.
                             </Typography>
                         </Card>
                     </Box>
@@ -257,8 +291,8 @@ export default function BrochurePage() {
                 </Stack>
 
                 {/* Page 5: Why GodsEye */}
-                <Stack spacing={4} sx={{ mb: 8 }}>
-                    <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700 }}>
+                <Stack spacing={4} sx={{ mb: { xs: 4, md: 8 } }}>
+                    <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
                         This window is open. It won't be for long.
                     </Typography>
                     <Typography level="body-lg" sx={{ color: secondaryColor }}>
@@ -329,7 +363,7 @@ export default function BrochurePage() {
                     </Stack>
                 </Card>
 
-                <Box sx={{ textAlign: 'center', mt: 8, opacity: 0.6 }}>
+                <Box sx={{ textAlign: 'center', mt: { xs: 4, md: 8 }, opacity: 0.6 }}>
                     <Typography level="body-md" sx={{ color: primaryColor, mb: 1, fontWeight: 500 }}>
                         GodsEye: Total visibility into the AI-driven internet.
                     </Typography>

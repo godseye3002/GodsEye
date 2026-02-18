@@ -92,6 +92,34 @@ export default function LandingPage() {
               GodsEye
             </Typography>
           </Box>
+
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 4, alignItems: 'center' }}>
+            <Typography
+              component="a"
+              href="/mcp-documentation"
+              level="body-md"
+              sx={{ color: '#A2A7B4', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#2ED47A' } }}
+            >
+              Documentation
+            </Typography>
+            <Typography
+              component="a"
+              href="/brochure"
+              level="body-md"
+              sx={{ color: '#A2A7B4', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#2ED47A' } }}
+            >
+              Client Brochure
+            </Typography>
+            <Typography
+              component="a"
+              href="/brochure"
+              level="body-md"
+              sx={{ color: '#A2A7B4', textDecoration: 'none', fontWeight: 500, '&:hover': { color: '#2ED47A' } }}
+            >
+              Blog
+            </Typography>
+          </Box>
+
           <Button
             onClick={() => router.push("/products")}
             variant="solid"
@@ -182,7 +210,7 @@ export default function LandingPage() {
             lineHeight: 1.6,
           }}
         >
-          Optimize your products for Perplexity, Google AI Overview, and ChatGPT. 
+          Optimize your products for Perplexity, Google AI Overview, and ChatGPT.
           Get strategic insights and competitive analysis powered by advanced AI.
         </Typography>
 
@@ -278,7 +306,7 @@ export default function LandingPage() {
             mb: 6,
           }}
         >
-          Comprehensive tools to analyze, optimize, and track your product's visibility 
+          Comprehensive tools to analyze, optimize, and track your product's visibility
           in AI-powered search engines.
         </Typography>
 
