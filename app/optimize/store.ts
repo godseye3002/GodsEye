@@ -63,7 +63,16 @@ interface ProductStoreState {
   sourceLinks: any[];
   currentProductId: string | null;
   selectedPipeline: "perplexity" | "google_overview" | "all";
+
   isNewProductSession: boolean;
+  selectedBatchId: string | null;
+
+  // UI State Persistence
+  activeSection: string;
+  showSOVCards: boolean;
+  showDeepAnalysis: boolean;
+  sovCardEngine: 'perplexity' | 'google' | null;
+
   setFormData: (updater: FormUpdater) => void;
   setOriginalScrapedData: (data: ProductFormData | null) => void;
   setMissingFields: (fields: string[]) => void;
@@ -105,6 +114,12 @@ interface ProductStoreState {
   setCurrentProductId: (id: string | null) => void;
   setSelectedPipeline: (pipeline: "perplexity" | "google_overview" | "all") => void;
   setIsNewProductSession: (value: boolean) => void;
+  setSelectedBatchId: (id: string | null) => void;
+  // UI State Setters
+  setActiveSection: (section: string) => void;
+  setShowSOVCards: (show: boolean) => void;
+  setShowDeepAnalysis: (show: boolean) => void;
+  setSovCardEngine: (engine: 'perplexity' | 'google' | null) => void;
 }
 
 export const useProductStore = create<ProductStoreState>()(
@@ -142,6 +157,13 @@ export const useProductStore = create<ProductStoreState>()(
       currentProductId: null,
       selectedPipeline: "all",
       isNewProductSession: false,
+      selectedBatchId: null,
+      // Default UI State
+      activeSection: "product",
+      showSOVCards: false,
+      showDeepAnalysis: false,
+      sovCardEngine: null,
+
       setFormData: (updater) =>
         set((state) => ({
           formData:
@@ -229,13 +251,18 @@ export const useProductStore = create<ProductStoreState>()(
           queryData: null,
           sourceLinks: [],
           processedSources: [],
+          // Reset UI state
+          activeSection: "product",
+          showSOVCards: false,
+          showDeepAnalysis: false,
+          sovCardEngine: null,
         })),
       loadProductsFromSupabase: async (userId: string) => {
         try {
           const response = await fetch(`/api/products?userId=${userId}`);
           if (!response.ok) throw new Error('Failed to load products');
           const { products } = await response.json();
-          
+
           // Transform Supabase products to OptimizedProduct format
           const transformedProducts = products.map((p: any) => {
             const specs = p.specifications || {};
@@ -250,21 +277,21 @@ export const useProductStore = create<ProductStoreState>()(
             // Compute latest Perplexity analysis (if any)
             const latestPerplexity = perplexityAnalyses.length > 0
               ? perplexityAnalyses.reduce((latest: any, curr: any) => {
-                  if (!latest) return curr;
-                  const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
-                  const currTime = curr.created_at ? new Date(curr.created_at).getTime() : 0;
-                  return currTime > latestTime ? curr : latest;
-                }, perplexityAnalyses[0])
+                if (!latest) return curr;
+                const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
+                const currTime = curr.created_at ? new Date(curr.created_at).getTime() : 0;
+                return currTime > latestTime ? curr : latest;
+              }, perplexityAnalyses[0])
               : null;
 
             // Compute latest Google analysis (if any)
             const latestGoogle = googleAnalyses.length > 0
               ? googleAnalyses.reduce((latest: any, curr: any) => {
-                  if (!latest) return curr;
-                  const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
-                  const currTime = curr.created_at ? new Date(curr.created_at).getTime() : 0;
-                  return currTime > latestTime ? curr : latest;
-                }, googleAnalyses[0])
+                if (!latest) return curr;
+                const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
+                const currTime = curr.created_at ? new Date(curr.created_at).getTime() : 0;
+                return currTime > latestTime ? curr : latest;
+              }, googleAnalyses[0])
               : null;
 
             // Maintain existing top-level fallbacks for backward compatibility
@@ -339,131 +366,17 @@ export const useProductStore = create<ProductStoreState>()(
               deep_analysis_perplexity_up_to_date: perplexityUpToDate,
             };
           });
-          
+
           set((state) => ({
             products: transformedProducts,
             currentProductId:
               // 1. If we have an ID, keep it.
-              state.currentProductId 
-              // 2. CRITICAL FIX: If we are in a "New Product" session, force it to remain null.
-              ? state.currentProductId 
-              : (state.isNewProductSession ? null : (transformedProducts[0]?.id || null)),
+              state.currentProductId
+                // 2. CRITICAL FIX: If we are in a "New Product" session, force it to remain null.
+                ? state.currentProductId
+                : (state.isNewProductSession ? null : (transformedProducts[0]?.id || null)),
           }));
-          
-          // Load query data from the queries table using user_id and product_id
-          if (products.length > 0 && userId) {
-            // Find the current product from the products list
-            const currentState = get();
-            const currentProduct = products.find((p: any) => p.id === currentState.currentProductId) || products[0];
-            if (process.env.NODE_ENV !== 'production') {
-              console.log('[Store] Loading queries for:', { 
-                userId, 
-                currentProductId: currentState.currentProductId,
-                productId: currentProduct.id,
-                productName: currentProduct.name 
-              });
-            }
-            try {
-              const response = await fetch(`/api/queries?userId=${userId}&productId=${currentProduct.id}`);
-              if (response.ok) {
-                const { queries } = await response.json();
-                if (process.env.NODE_ENV !== 'production') {
-                  console.log('[Store] Fetched queries:', { 
-                    count: queries?.length || 0,
-                    sample: queries?.slice(0, 2).map((q: any) => ({ 
-                      id: q.id, 
-                      product_id: q.product_id, 
-                      text: q.query_text?.substring(0, 50) + '...' 
-                    }))
-                  });
-                }
-                
-                // Group queries by similar length
-                const queryLengths = queries.map((query: any) => ({
-                  text: query.query_text,
-                  wordCount: query.query_text.trim().split(/\s+/).length
-                }));
 
-                // Sort by word count to find natural grouping
-                queryLengths.sort((a: any, b: any) => b.wordCount - a.wordCount);
-
-                // Find the natural split point for similar length grouping
-                let splitIndex = 0;
-                
-                // Find the largest gap in word counts to determine grouping
-                let largestGap = 0;
-                for (let i = 0; i < queryLengths.length - 1; i++) {
-                  const gap = queryLengths[i].wordCount - queryLengths[i + 1].wordCount;
-                  if (gap > largestGap) {
-                    largestGap = gap;
-                    splitIndex = i + 1;
-                  }
-                }
-
-                // If no significant gap found, use median as split point
-                if (largestGap < 2) {
-                  splitIndex = Math.floor(queryLengths.length / 2);
-                }
-
-                // Group into long queries (similar length) and rest
-                const allGoogle = queryLengths.slice(0, splitIndex).map((q: any) => q.text).slice(0, 5);
-                const allPerplexity = queryLengths.slice(splitIndex).map((q: any) => q.text).slice(0, 5);
-                
-                // Fetch analysis queries for comparison and update UI state
-                const { google: analysisGoogleQueries, perplexity: analysisPerplexityQueries } = 
-                  await fetchUsedQueriesFromAnalysisClient(currentProduct.id);
-
-                // Update store with validated query data and analysis table data
-                set({
-                  allPerplexityQueries: allPerplexity,
-                  allGoogleQueries: allGoogle,
-                  usedPerplexityQueries: analysisPerplexityQueries,
-                  usedGoogleQueries: analysisGoogleQueries,
-                  // Don't auto-select queries - user must manually select them
-                  selectedPerplexityQueries: [],
-                  selectedGoogleQueries: [],
-                });
-                
-                // Update queryData state for consistency
-                const queryData: QueryData = {
-                  all: {
-                    perplexity: allPerplexity,
-                    google: allGoogle,
-                  },
-                  used: {
-                    perplexity: analysisPerplexityQueries,
-                    google: analysisGoogleQueries,
-                  },
-                };
-                set({ queryData });
-              } else {
-                // No queries found, set empty state
-                set({
-                  allPerplexityQueries: [],
-                  allGoogleQueries: [],
-                  usedPerplexityQueries: [],
-                  usedGoogleQueries: [],
-                  selectedPerplexityQueries: [],
-                  selectedGoogleQueries: [],
-                  queryData: null,
-                });
-              }
-            } catch (error) {
-              if (process.env.NODE_ENV !== 'production') {
-                console.error('[Store] Error loading queries:', error);
-              }
-              // Set empty state on error
-              set({
-                allPerplexityQueries: [],
-                allGoogleQueries: [],
-                usedPerplexityQueries: [],
-                usedGoogleQueries: [],
-                selectedPerplexityQueries: [],
-                selectedGoogleQueries: [],
-                queryData: null,
-              });
-            }
-          }
         } catch (error) {
           if (process.env.NODE_ENV !== 'production') {
             console.error('[Store] Error loading products:', error);
@@ -475,7 +388,7 @@ export const useProductStore = create<ProductStoreState>()(
           const specs = product.formData.specifications || {};
           const generalType = product.formData.general_product_type || specs.general_product_type || '';
           const specificType = product.formData.specific_product_type || specs.specific_product_type || '';
-          
+
           // Generate query data for saving
           let generatedQuery = null;
           if (generatedQueryOverride !== undefined) {
@@ -506,10 +419,10 @@ export const useProductStore = create<ProductStoreState>()(
               generated_query: generatedQuery || null,
             }),
           });
-          
+
           if (!response.ok) throw new Error('Failed to save product');
           const { product: savedProduct } = await response.json();
-          
+
           // Update local state with saved product
           set((state) => ({
             products: [
@@ -523,7 +436,7 @@ export const useProductStore = create<ProductStoreState>()(
             currentProductId: savedProduct.id,
             isNewProductSession: false,
           }));
-          
+
           return savedProduct.id; // Return product ID for analysis_history
         } catch (error) {
           console.error('Error saving product to Supabase:', error);
@@ -621,9 +534,9 @@ export const useProductStore = create<ProductStoreState>()(
           const response = await fetch(`/api/products?productId=${productId}&userId=${userId}`, {
             method: 'DELETE',
           });
-          
+
           if (!response.ok) throw new Error('Failed to delete product');
-          
+
           // Update local state
           set((state) => ({
             products: state.products.filter((product) => product.id !== productId),
@@ -650,7 +563,14 @@ export const useProductStore = create<ProductStoreState>()(
         })),
       setSelectedPipeline: (pipeline) => set({ selectedPipeline: pipeline }),
       setIsNewProductSession: (value) => set({ isNewProductSession: value }),
-      
+      setSelectedBatchId: (id) => set({ selectedBatchId: id }),
+
+      // UI State Setters Implementation
+      setActiveSection: (section) => set({ activeSection: section }),
+      setShowSOVCards: (show) => set({ showSOVCards: show }),
+      setShowDeepAnalysis: (show) => set({ showDeepAnalysis: show }),
+      setSovCardEngine: (engine) => set({ sovCardEngine: engine }),
+
       // Helper functions for query data management
       saveQueriesToSupabase: async (userId: string) => {
         const state = get();
@@ -660,29 +580,29 @@ export const useProductStore = create<ProductStoreState>()(
           }
           return;
         }
-        
+
         // Combine all queries from both categories
         const allQueries = [
           ...state.allPerplexityQueries,
           ...state.allGoogleQueries
         ];
-        
+
         if (allQueries.length === 0) {
           if (process.env.NODE_ENV !== 'production') {
             console.log('[Store] No queries to save');
           }
           return;
         }
-        
+
         if (process.env.NODE_ENV !== 'production') {
-          console.log('[Store] Saving queries:', { 
-            userId, 
+          console.log('[Store] Saving queries:', {
+            userId,
             productId: state.currentProductId,
             queryCount: allQueries.length,
             sampleQueries: allQueries.slice(0, 2)
           });
         }
-        
+
         try {
           const response = await fetch('/api/queries', {
             method: 'POST',
@@ -693,12 +613,12 @@ export const useProductStore = create<ProductStoreState>()(
               queries: allQueries,
             }),
           });
-          
+
           if (!response.ok) {
             const error = await response.json();
             throw new Error(error.error || 'Failed to save queries');
           }
-          
+
           if (process.env.NODE_ENV !== 'production') {
             console.log('[Store] Queries saved successfully to queries table');
           }
@@ -740,15 +660,21 @@ export const useProductStore = create<ProductStoreState>()(
         missingFields: state.missingFields,
         ignoredMissingFields: state.ignoredMissingFields,
         selectedPipeline: state.selectedPipeline,
-        // Do NOT persist query arrays; they should be loaded from Supabase so
-        // backend remains the source of truth for generated queries.
-        allPerplexityQueries: undefined,
-        allGoogleQueries: undefined,
-        selectedPerplexityQueries: undefined,
-        selectedGoogleQueries: undefined,
-        usedPerplexityQueries: undefined,
-        usedGoogleQueries: undefined,
-        queryData: undefined,
+        selectedBatchId: state.selectedBatchId,
+        // Persisted UI State
+        activeSection: state.activeSection,
+        showSOVCards: state.showSOVCards,
+        showDeepAnalysis: state.showDeepAnalysis,
+        sovCardEngine: state.sovCardEngine,
+
+        // Persist Query Arrays (CHANGE: Now persist these so tab state is valid on reload)
+        allPerplexityQueries: state.allPerplexityQueries,
+        allGoogleQueries: state.allGoogleQueries,
+        selectedPerplexityQueries: state.selectedPerplexityQueries,
+        selectedGoogleQueries: state.selectedGoogleQueries,
+        usedPerplexityQueries: state.usedPerplexityQueries,
+        usedGoogleQueries: state.usedGoogleQueries,
+        queryData: state.queryData,
       }),
     }
   )

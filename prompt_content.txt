@@ -16,7 +16,7 @@ Note: The price or any data related to price should not be included in the JSON 
 
 Here is the text content:
 ---
-D up by Patch up
+Based on the information available on their website, here is a detailed breakdown of Phodu Club:
 
-D Up transdermal patches are formulated with scientifically and clinically proven ingredients to deliver Vitamin D3, Vitamin K2, Calcium, and Magnesium—key nutrients proven to support overall health. These patches help improve immunity, bone strength, and energy levels while uplifting mood and reducing deficiencies.
+**Product Name** Phodu Club **Description** Phodu Club is an online educational platform (EdTech) specifically designed to help Indian engineering aspirants prepare for and crack various engineering entrance exams. Operating with the motivational tagline, *"Make the biggest comeback after JEE,"* the platform specializes in post-JEE exams, with a very strong emphasis on **BITSAT** (Birla Institute of Technology and Science Admission Test). It combines structured academic lectures with peer-level mentorship to guide students into top-tier colleges.
 ---

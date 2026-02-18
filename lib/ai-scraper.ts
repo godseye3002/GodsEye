@@ -140,11 +140,24 @@ async function callAIScraperWithJobPolling(
           console.log(`[AI SCRAPER] Response keys:`, Object.keys(result || {}));
         }
 
-        if (result.status === 'completed') {
+        // Check if job is finished (has a record/result)
+        // Stop polling immediately if job is done, regardless of success or failure
+        if (result && (result.status === 'completed' || result.status === 'failed' || 
+            (result.data && (result.data.success === true || result.data.success === false)))) {
           clearInterval(pollInterval);
 
           if (process.env.NODE_ENV !== 'production') {
+            console.log(`[AI SCRAPER] Job finished. Status: ${result.status}`);
             console.log(`[AI SCRAPER] Raw response from server:`, JSON.stringify(result, null, 2));
+          }
+
+          // Check if job failed - throw error immediately with backend message
+          if (result.status === 'failed' || (result.data && result.data.success === false)) {
+            const errorMessage = result.error_message || 
+                               (result.data?.error_message) || 
+                               'Job failed to complete';
+            reject(new Error(errorMessage));
+            return;
           }
 
           // Validate and transform response
@@ -181,11 +194,8 @@ async function callAIScraperWithJobPolling(
             location: transformedData.location,
             timestamp: transformedData.timestamp,
           });
-        } else if (result.status === 'failed') {
-          clearInterval(pollInterval);
-          reject(new Error(result.error_message || 'Job failed to complete'));
         }
-        // If status is 'pending', continue polling
+        // If status is 'pending' or no record exists, continue polling
       } catch (error: any) {
         clearInterval(pollInterval);
         reject(new Error(`Polling error: ${error.message}`));

@@ -56,12 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('not found'));
 
       if (isMissingProfile) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn('[AuthService] Profile not found for user. Clearing session.', {
-          userId: session?.user?.id,
-          timestamp: new Date().toISOString()
-        });
-      }
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[AuthService] Profile not found for user. Clearing session.', {
+            userId: session?.user?.id,
+            timestamp: new Date().toISOString()
+          });
+        }
         setProfile(null);
         setUser(null);
         setSession(null);
@@ -86,7 +86,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[AuthService] Failed to get initial session:', error.message);
+        }
+        // Force cleanup if session is invalid
+        signOut();
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -104,13 +114,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         // Do not block loading on profile fetch; run in background
         fetchProfile(session.user.id).catch((e) => {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('[AuthService] Background profile fetch failed:', {
-            error: e,
-            userId: session?.user?.id,
-            timestamp: new Date().toISOString()
-          });
-        }
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('[AuthService] Background profile fetch failed:', {
+              error: e,
+              userId: session?.user?.id,
+              timestamp: new Date().toISOString()
+            });
+          }
         });
 
         // Update last_login on SIGNED_IN event (includes OAuth)
@@ -122,13 +132,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               body: JSON.stringify({ userId: session.user.id }),
             });
           } catch (loginError) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error('[AuthService] Failed to update last login:', {
-            error: loginError,
-            userId: session?.user?.id,
-            timestamp: new Date().toISOString()
-          });
-        }
+            if (process.env.NODE_ENV !== 'production') {
+              console.error('[AuthService] Failed to update last login:', {
+                error: loginError,
+                userId: session?.user?.id,
+                timestamp: new Date().toISOString()
+              });
+            }
           }
         }
       } else {
@@ -145,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
     });
-    
+
     // Update last_login on successful sign-in
     if (!error && data.user) {
       try {
@@ -165,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Don't block sign-in if this fails
       }
     }
-    
+
     return { error };
   };
 
@@ -201,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await supabase.auth.signOut({ scope: 'global' as any });
-    } catch {}
+    } catch { }
 
     try {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -213,11 +223,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           `sb-${ref}-auth-token#D`,
         ];
         keys.forEach((k) => {
-          try { localStorage.removeItem(k); } catch {}
-          try { sessionStorage.removeItem(k); } catch {}
+          try { localStorage.removeItem(k); } catch { }
+          try { sessionStorage.removeItem(k); } catch { }
         });
       }
-    } catch {}
+    } catch { }
 
     setUser(null);
     setProfile(null);
