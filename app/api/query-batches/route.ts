@@ -16,9 +16,45 @@ export async function GET(request: Request) {
 
     const supabaseAdmin = getSupabaseAdminClient();
 
+    // 1. Fetch all used query texts from analysis tables
+    // This is more reliable than the status flags in the queries table
+    const [googleRes, perplexityRes] = await Promise.all([
+      (supabaseAdmin as any)
+        .from('product_analysis_google')
+        .select('search_query')
+        .eq('product_id', productId)
+        .not('search_query', 'is', null),
+      (supabaseAdmin as any)
+        .from('product_analysis_perplexity')
+        .select('optimization_prompt')
+        .eq('product_id', productId)
+        .not('optimization_prompt', 'is', null)
+    ]);
+
+    const googleData = googleRes.data || [];
+    const perplexityData = perplexityRes.data || [];
+
+    const usedQueriesSet = new Set<string>();
+
+    googleData.forEach((row: any) => {
+      if (row.search_query) usedQueriesSet.add(row.search_query.trim());
+    });
+
+    perplexityData.forEach((row: any) => {
+      if (row.optimization_prompt) usedQueriesSet.add(row.optimization_prompt.trim());
+    });
+
+    // 2. Fetch batches with their queries
     const { data, error } = await (supabaseAdmin as any)
       .from('query_batches')
-      .select('*')
+      .select(`
+        *,
+        batch_queries (
+          queries (
+            query_text
+          )
+        )
+      `)
       .eq('user_id', userId)
       .eq('product_id', productId)
       .order('created_at', { ascending: false });
@@ -33,7 +69,23 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ batches: data || [] });
+    // 3. Map batches and determine usage based on the Set
+    const batches = (data || []).map((batch: any) => {
+      const hasUsedQueries = (batch.batch_queries || []).some((bq: any) => {
+        const q = bq.queries;
+        if (!q || !q.query_text) return false;
+        return usedQueriesSet.has(q.query_text.trim());
+      });
+
+      // Remove the detailed joined data to keep response clean
+      const { batch_queries, ...rest } = batch;
+      return {
+        ...rest,
+        has_used_queries: hasUsedQueries
+      };
+    });
+
+    return NextResponse.json({ batches });
   } catch (error: any) {
     if (process.env.NODE_ENV !== 'production') {
       console.error('[QueryBatches] GET error:', error);
@@ -60,10 +112,10 @@ export async function DELETE(request: Request) {
 
     const supabaseAdmin = getSupabaseAdminClient();
 
-    // 1. Fetch queries linked to this batch
+    // 1. Fetch queries linked to this batch to get their texts and product_id
     const { data: batchQueries, error: fetchError } = await (supabaseAdmin as any)
       .from('batch_queries')
-      .select('query_id, queries(google_status, perplexity_status)')
+      .select('query_id, queries(product_id, query_text)')
       .eq('batch_id', batchId);
 
     if (fetchError) {
@@ -83,22 +135,43 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    // 2. Check for used queries (status is not pending and not not_applicable)
-    const queriesToCheck = (batchQueries || []).map((bq: any) => bq.queries);
-    const hasUsedQueries = queriesToCheck.some((q: any) =>
-      (q?.google_status && q.google_status !== 'pending' && q.google_status !== 'not_applicable') ||
-      (q?.perplexity_status && q.perplexity_status !== 'pending' && q.perplexity_status !== 'not_applicable')
-    );
+    // 2. Check for used queries against analysis tables
+    const productIds = batchQueries.map((bq: any) => bq.queries?.product_id).filter(Boolean);
+    const productId = productIds.length > 0 ? productIds[0] : null;
 
-    if (hasUsedQueries) {
-      return NextResponse.json(
-        { error: 'Cannot delete batch because it lists queries that have been used (or are in progress).' },
-        { status: 400 }
-      );
+    const queryTexts = batchQueries
+      .map((bq: any) => bq.queries?.query_text?.trim())
+      .filter(Boolean);
+
+    if (queryTexts.length > 0 && productId) {
+      // Fetch relevant analyses for this product that match our query texts
+      // Note: Supabase .in() filter works well for arrays of strings
+      const [googleRes, perplexityRes] = await Promise.all([
+        (supabaseAdmin as any)
+          .from('product_analysis_google')
+          .select('search_query', { count: 'exact', head: true })
+          .eq('product_id', productId)
+          .in('search_query', queryTexts),
+        (supabaseAdmin as any)
+          .from('product_analysis_perplexity')
+          .select('optimization_prompt', { count: 'exact', head: true })
+          .eq('product_id', productId)
+          .in('optimization_prompt', queryTexts)
+      ]);
+
+      const googleCount = googleRes.count;
+      const perplexityCount = perplexityRes.count;
+      const isUsed = (googleCount || 0) > 0 || (perplexityCount || 0) > 0;
+
+      if (isUsed) {
+        return NextResponse.json(
+          { error: 'Cannot delete batch because it contains queries that have been used in an analysis.' },
+          { status: 400 }
+        );
+      }
     }
 
     // 3. Identify Orphan Queries
-    // We need to find which of these query_ids are NOT linked to any other batch.
     const queryIds = batchQueries.map((bq: any) => bq.query_id);
 
     // Fetch all batch_queries entries for these query IDs
@@ -118,11 +191,9 @@ export async function DELETE(request: Request) {
     });
 
     // Identify queries that are ONLY used in this batch (count === 1)
-    // Since we are about to delete the link for THIS batch, if count is 1, it means this is the only link.
     const orphanQueryIds = queryIds.filter((id: string) => usageCount[id] === 1);
 
-    // 4. Delete links in batch_queries (must happen before deleting queries if cascading isn't set, or doesn't matter if we delete orphans after)
-    // Actually, if we delete links first, we are safe.
+    // 4. Delete links in batch_queries
     const { error: deleteLinksError } = await (supabaseAdmin as any)
       .from('batch_queries')
       .delete()
@@ -141,8 +212,6 @@ export async function DELETE(request: Request) {
 
       if (deleteQueriesError) {
         console.error('Failed to delete orphan queries:', deleteQueriesError);
-        // We continue, as the batch and links are deleted, so from user POV it's mostly done.
-        // But ideally we should report or retry. For now, just log.
       }
     }
 

@@ -6936,42 +6936,58 @@ function OptimizePageContent() {
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
                           <Box sx={{ minWidth: 0 }}>
-                            <Typography level="title-md" sx={{ color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {batch.name}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                              <Typography level="title-md" sx={{ color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {batch.name}
+                              </Typography>
+                              {batch.created_at && (
+                                <Typography level="body-xs" sx={{ color: "rgba(162, 167, 180, 0.5)", whiteSpace: 'nowrap', pt: 0.2 }}>
+                                  {formatRelativeTime(batch.created_at)}
+                                </Typography>
+                              )}
+                            </Box>
                             {batch.description ? (
-                              <Typography level="body-xs" sx={{ mt: 0.5, color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <Typography level="body-xs" sx={{ color: textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {batch.description}
                               </Typography>
                             ) : null}
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton
-                              size="sm"
-                              variant="outlined"
-                              onClick={(e) => handleDeleteBatch(batch.id, e)}
-                              disabled={isDeletingBatch === batch.id}
-                              sx={{
-                                borderColor: "rgba(243, 91, 100, 0.25)",
-                                color: "#F35B64",
-                                minWidth: 32,
-                                minHeight: 32,
-                                "&:hover": {
-                                  backgroundColor: "rgba(243, 91, 100, 0.1)",
-                                  borderColor: "rgba(243, 91, 100, 0.4)",
-                                },
-                                "&:disabled": {
-                                  color: "rgba(243, 91, 100, 0.4)",
-                                  borderColor: "rgba(243, 91, 100, 0.1)"
-                                }
-                              }}
+                            <Tooltip
+                              title={batch.has_used_queries ? "Cannot delete batch with used queries" : "Delete Batch"}
+                              placement="top"
+                              arrow
                             >
-                              {isDeletingBatch === batch.id ? (
-                                <CircularProgress size="sm" sx={{ '--CircularProgress-size': '16px', color: '#F35B64' }} />
-                              ) : (
-                                <DeleteOutlineIcon fontSize="small" />
-                              )}
-                            </IconButton>
+                              <span>
+                                <IconButton
+                                  size="sm"
+                                  variant="outlined"
+                                  onClick={(e) => handleDeleteBatch(batch.id, e)}
+                                  disabled={isDeletingBatch === batch.id || batch.has_used_queries}
+                                  sx={{
+                                    borderColor: "rgba(243, 91, 100, 0.25)",
+                                    color: "#F35B64",
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                    "&:hover": {
+                                      backgroundColor: "rgba(243, 91, 100, 0.1)",
+                                      borderColor: "rgba(243, 91, 100, 0.4)",
+                                    },
+                                    "&:disabled": {
+                                      color: "rgba(243, 91, 100, 0.4)",
+                                      borderColor: "rgba(243, 91, 100, 0.1)",
+                                      cursor: "not-allowed"
+                                    }
+                                  }}
+                                >
+                                  {isDeletingBatch === batch.id ? (
+                                    <CircularProgress size="sm" sx={{ '--CircularProgress-size': '16px', color: '#F35B64' }} />
+                                  ) : (
+                                    <DeleteOutlineIcon fontSize="small" />
+                                  )}
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                             <Button
                               size="sm"
                               variant="outlined"
