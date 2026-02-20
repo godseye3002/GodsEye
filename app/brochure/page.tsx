@@ -353,11 +353,11 @@ export default function BrochurePage() {
 
                         <Box sx={{ mt: 4, pt: 4, borderTop: "1px solid rgba(255,255,255,0.1)", width: '100%' }}>
                             <Typography level="h3" sx={{ color: "#FFF", mb: 2 }}>The Ask: One conversation. One audit.</Typography>
-                            <Button component="a" href="mailto:santoshpatil2003.2@gmail.com" size="lg" variant="solid" sx={{ backgroundColor: accentColor, color: "#000", "&:hover": { backgroundColor: "#26B869" } }}>
+                            <Button component="a" href="mailto:santoshpatil@godseyes.world" size="lg" variant="solid" sx={{ backgroundColor: accentColor, color: "#000", "&:hover": { backgroundColor: "#26B869" } }}>
                                 Contact Santosh Patil
                             </Button>
                             <Typography level="body-sm" sx={{ color: "rgba(255,255,255,0.6)", mt: 2 }}>
-                                santoshpatil2003.2@gmail.com
+                                santoshpatil@godseyes.world
                             </Typography>
                         </Box>
                     </Stack>
