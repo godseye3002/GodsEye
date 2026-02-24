@@ -1,6 +1,7 @@
 "use client";
 
-import { Box, Container, Stack, Typography, Card, Divider, Button, Chip, Table } from "@mui/joy";
+import { Box, Container, Stack, Typography, Card, Divider, Button, Chip, Table, Avatar } from "@mui/joy";
+import { testimonials } from "@/app/data/testimonials";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import ConstructionIcon from "@mui/icons-material/Construction";
@@ -316,6 +317,69 @@ export default function BrochurePage() {
                                 </Typography>
                             </Box>
                         </Stack>
+                    </Box>
+                </Stack>
+
+                <Divider sx={{ mt: { xs: 4, md: 8 }, mb: { xs: 2, md: 4 }, opacity: 0.1 }} />
+
+                {/* Page 5.5: Testimonials */}
+                <Stack spacing={4} sx={{ mb: { xs: 4, md: 8 } }}>
+                    <Box sx={{ textAlign: "center", mb: 0 }}>
+                        <Typography level="body-sm" sx={{ color: accentColor, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.15em", mb: 1 }}>
+                            Social Proof
+                        </Typography>
+                        <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
+                            What our clients are saying
+                        </Typography>
+                    </Box>
+
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, width: "100%" }}>
+                        {testimonials.map((testimonial) => (
+                            <Card
+                                key={testimonial.id}
+                                variant="outlined"
+                                sx={{
+                                    backgroundColor: "rgba(17, 19, 24, 0.6)",
+                                    borderColor: borderColor,
+                                    p: { xs: 3, md: 4 },
+                                    borderRadius: "16px",
+                                    position: "relative"
+                                }}
+                            >
+                                <Typography
+                                    sx={{
+                                        color: primaryColor,
+                                        fontSize: { xs: "1.05rem", md: "1.15rem" },
+                                        lineHeight: 1.7,
+                                        mb: 3,
+                                        fontStyle: "italic",
+                                        fontWeight: 400,
+                                        whiteSpace: "pre-wrap"
+                                    }}
+                                >
+                                    "{testimonial.content}"
+                                </Typography>
+
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                    <Avatar
+                                        src={testimonial.image}
+                                        sx={{
+                                            width: 56,
+                                            height: 56,
+                                            border: `2px solid rgba(46, 212, 122, 0.3)`,
+                                        }}
+                                    />
+                                    <Box>
+                                        <Typography level="title-md" sx={{ color: primaryColor, fontWeight: 700 }}>
+                                            {testimonial.name}
+                                        </Typography>
+                                        <Typography level="body-sm" sx={{ color: secondaryColor }}>
+                                            {testimonial.title} @ <Box component="span" sx={{ color: accentColor }}>{testimonial.company}</Box>
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            </Card>
+                        ))}
                     </Box>
                 </Stack>
 

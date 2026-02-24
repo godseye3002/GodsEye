@@ -2,8 +2,10 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Typography, Button } from "@mui/joy";
+import { Box, Typography, Button, Avatar } from "@mui/joy";
 import { useAuth } from "@/lib/auth-context";
+import { testimonials } from "@/app/data/testimonials";
+import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -681,6 +683,140 @@ export default function LandingPage() {
           </Box>
         ))}
       </Box>
+      {/* Testimonials Section */}
+      <Box
+        sx={{
+          maxWidth: 1280,
+          mx: "auto",
+          px: { xs: 2, md: 4 },
+          py: { xs: 10, md: 16 },
+          position: "relative",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "120%",
+            height: "120%",
+            background: "radial-gradient(circle, rgba(46, 212, 122, 0.03) 0%, transparent 70%)",
+            zIndex: -1,
+            pointerEvents: "none",
+          }
+        }}
+        data-animate="fade-in-up"
+      >
+        <Box sx={{ mb: 8, textAlign: "center" }}>
+          <Typography
+            level="body-sm"
+            sx={{
+              color: "#2ED47A",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.15em",
+              mb: 2,
+            }}
+          >
+            Social Proof
+          </Typography>
+          <Typography
+            level="h2"
+            sx={{
+              fontSize: { xs: "2.5rem", md: "3.5rem" },
+              fontWeight: 800,
+              color: "#F2F5FA",
+              letterSpacing: "-0.03em",
+              mb: 2,
+            }}
+          >
+            What our clients are saying
+          </Typography>
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", lg: testimonials.length > 1 ? "repeat(2, 1fr)" : "1fr" },
+            gap: 4,
+            maxWidth: 1000,
+            mx: "auto",
+          }}
+        >
+          {testimonials.map((testimonial) => (
+            <Box
+              key={testimonial.id}
+              sx={{
+                p: { xs: 4, md: 6 },
+                borderRadius: "32px",
+                backgroundColor: "rgba(17, 19, 24, 0.6)",
+                border: "1px solid rgba(46, 212, 122, 0.15)",
+                backdropFilter: "blur(10px)",
+                position: "relative",
+                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                "&:hover": {
+                  backgroundColor: "rgba(22, 26, 33, 0.8)",
+                  borderColor: "rgba(46, 212, 122, 0.3)",
+                  transform: "translateY(-6px)",
+                  boxShadow: "0 22px 60px rgba(0, 0, 0, 0.5), 0 0 20px rgba(46, 212, 122, 0.05)",
+                }
+              }}
+            >
+              <FormatQuoteIcon
+                sx={{
+                  fontSize: 48,
+                  color: "rgba(46, 212, 122, 0.2)",
+                  position: "absolute",
+                  top: 32,
+                  right: 32,
+                }}
+              />
+
+              <Typography
+                sx={{
+                  color: "#F2F5FA",
+                  fontSize: { xs: "1.1rem", md: "1.25rem" },
+                  lineHeight: 1.7,
+                  mb: 6,
+                  fontStyle: "italic",
+                  fontWeight: 400,
+                  position: "relative",
+                  zIndex: 1,
+                  letterSpacing: "0.01em",
+                }}
+              >
+                "{testimonial.content}"
+              </Typography>
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
+                <Avatar
+                  src={testimonial.image}
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    border: "2px solid rgba(46, 212, 122, 0.4)",
+                    boxShadow: "0 0 15px rgba(46, 212, 122, 0.2)",
+                  }}
+                />
+                <Box>
+                  <Typography
+                    level="title-lg"
+                    sx={{ color: "#F2F5FA", fontWeight: 700, mb: 0.5, fontSize: "1.2rem" }}
+                  >
+                    {testimonial.name}
+                  </Typography>
+                  <Typography
+                    level="body-md"
+                    sx={{ color: "#A2A7B4", fontWeight: 500 }}
+                  >
+                    {testimonial.title} @ <Box component="span" sx={{ color: "#2ED47A" }}>{testimonial.company}</Box>
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
 
       {/* Final CTA */}
       <Box
