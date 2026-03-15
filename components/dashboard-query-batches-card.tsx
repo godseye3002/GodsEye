@@ -1099,9 +1099,13 @@ export function DashboardQueryBatchesCard() {
                           }
                           sx={{
                             "& .MuiCheckbox-checkbox": {
-                              borderColor: "rgba(46, 212, 122, 0.5) !important",
+                              borderColor: "rgba(255, 255, 255, 0.45) !important",
                               borderWidth: "2px",
                               backgroundColor: "transparent",
+                              transition: "all 0.2s ease",
+                            },
+                            "&:hover .MuiCheckbox-checkbox": {
+                              borderColor: "rgba(46, 212, 122, 0.8) !important",
                             },
                             "&.Mui-checked .MuiCheckbox-checkbox": {
                               backgroundColor: "#2ED47A",
@@ -1143,13 +1147,27 @@ export function DashboardQueryBatchesCard() {
                             }
                             disabled={usedPerplexityQueries.includes(query)}
                             onChange={() => handleQuerySelection(query, "perplexity")}
+                            variant="outlined"
                             sx={{
+                              "& .MuiCheckbox-checkbox": {
+                                borderColor: usedPerplexityQueries.includes(query) ? "rgba(108, 117, 125, 0.3) !important" : "rgba(255, 255, 255, 0.45) !important",
+                                borderWidth: "2px",
+                                backgroundColor: "transparent",
+                                transition: "all 0.2s ease",
+                              },
+                              "&.Mui-checked .MuiCheckbox-checkbox": {
+                                backgroundColor: "#2ED47A",
+                                borderColor: "#2ED47A !important",
+                              },
                               "& .MuiCheckbox-root": {
                                 color: usedPerplexityQueries.includes(query) ? "#6c757d" : "#2ED47A",
                               },
                               "& .MuiCheckbox-disabled": {
                                 color: "#6c757d",
                               },
+                              "&:hover:not(.Mui-disabled) .MuiCheckbox-checkbox": {
+                                borderColor: "#2ED47A !important",
+                              }
                             }}
                           />
                           <Box sx={{ flex: 1 }}>
@@ -1443,13 +1461,27 @@ export function DashboardQueryBatchesCard() {
                             checked={selectedGoogleQueries.includes(query) || usedGoogleQueries.includes(query)}
                             disabled={usedGoogleQueries.includes(query)}
                             onChange={() => handleQuerySelection(query, "google_overview")}
+                            variant="outlined"
                             sx={{
+                              "& .MuiCheckbox-checkbox": {
+                                borderColor: usedGoogleQueries.includes(query) ? "rgba(108, 117, 125, 0.3) !important" : "rgba(255, 255, 255, 0.45) !important",
+                                borderWidth: "2px",
+                                backgroundColor: "transparent",
+                                transition: "all 0.2s ease",
+                              },
+                              "&.Mui-checked .MuiCheckbox-checkbox": {
+                                backgroundColor: "#2ED47A",
+                                borderColor: "#2ED47A !important",
+                              },
                               "& .MuiCheckbox-root": {
                                 color: usedGoogleQueries.includes(query) ? "#6c757d" : "#2ED47A",
                               },
                               "& .MuiCheckbox-disabled": {
                                 color: "#6c757d",
                               },
+                              "&:hover:not(.Mui-disabled) .MuiCheckbox-checkbox": {
+                                borderColor: "#2ED47A !important",
+                              }
                             }}
                           />
                           <Box sx={{ flex: 1 }}>
@@ -1840,13 +1872,27 @@ export function DashboardQueryBatchesCard() {
                             checked={selectedChatgptQueries.includes(query) || usedChatgptQueries.includes(query)}
                             disabled={usedChatgptQueries.includes(query)}
                             onChange={() => handleQuerySelection(query, "chatgpt")}
+                            variant="outlined"
                             sx={{
+                              "& .MuiCheckbox-checkbox": {
+                                borderColor: usedChatgptQueries.includes(query) ? "rgba(108, 117, 125, 0.3) !important" : "rgba(255, 255, 255, 0.45) !important",
+                                borderWidth: "2px",
+                                backgroundColor: "transparent",
+                                transition: "all 0.2s ease",
+                              },
+                              "&.Mui-checked .MuiCheckbox-checkbox": {
+                                backgroundColor: "#2ED47A",
+                                borderColor: "#2ED47A !important",
+                              },
                               "& .MuiCheckbox-root": {
                                 color: usedChatgptQueries.includes(query) ? "#6c757d" : "#2ED47A",
                               },
                               "& .MuiCheckbox-disabled": {
                                 color: "#6c757d",
                               },
+                              "&:hover:not(.Mui-disabled) .MuiCheckbox-checkbox": {
+                                borderColor: "#2ED47A !important",
+                              }
                             }}
                           />
                           <Box sx={{ flex: 1 }}>
