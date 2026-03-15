@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
@@ -34,6 +35,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+
+  const isPublicPage = pathname?.startsWith('/privacy-policy');
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -85,6 +89,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    if (isPublicPage) {
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
@@ -148,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isPublicPage]);
 
   const signInWithEmail = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({

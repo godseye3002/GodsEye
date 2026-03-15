@@ -21,6 +21,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const restrictedDomains = [
   "gmail.com",
@@ -87,7 +88,7 @@ export default function AuthPage() {
         signUpPassword,
         signUpName || undefined
       );
-      
+
       if (alreadyExists) {
         setMode('signin');
         setSignInEmail(signUpEmail);
@@ -112,7 +113,7 @@ export default function AuthPage() {
         setAuthError(friendly);
         return;
       }
-      
+
       setShowConfirmationDialog(true);
     } catch (err) {
       console.error('Unexpected error:', err);
@@ -128,7 +129,7 @@ export default function AuthPage() {
     setAuthError(null);
     try {
       const { error } = await signInWithEmail(signInEmail, signInPassword);
-      
+
       if (error) {
         const raw = ((error as any)?.message || '').toLowerCase();
         const isInvalid = raw.includes('invalid') || raw.includes('credential');
@@ -146,7 +147,7 @@ export default function AuthPage() {
         setAuthError('We couldn\'t sign you in right now. Please try again.');
         return;
       }
-      
+
       // Success - redirect to products
       router.push("/products");
     } catch (err) {
@@ -162,11 +163,11 @@ export default function AuthPage() {
     setAuthError(null);
     try {
       const { error } = await signInWithGoogle();
-      
+
       if (error) {
         console.error('Google auth error:', error);
-        const errorMessage = error && typeof error === 'object' && 'message' in error 
-          ? (error as { message: string }).message 
+        const errorMessage = error && typeof error === 'object' && 'message' in error
+          ? (error as { message: string }).message
           : 'Failed to sign in with Google.';
         setAuthError(errorMessage);
         setIsSubmitting(false);
@@ -260,8 +261,28 @@ export default function AuthPage() {
           flexDirection: "column",
           justifyContent: "center",
           gap: 2.1,
+          position: "relative",
         }}
       >
+        <Box sx={{ position: "absolute", top: 24, left: { xs: 16, sm: 24, lg: 32 }, zIndex: 10 }}>
+          <Button
+            variant="plain"
+            color="neutral"
+            startDecorator={<ArrowBackIcon />}
+            onClick={() => router.push("/")}
+            sx={{
+              color: "rgba(162, 167, 180, 0.8)",
+              fontSize: "0.95rem",
+              fontWeight: 500,
+              "&:hover": {
+                color: "#F2F5FA",
+                backgroundColor: "rgba(242, 245, 250, 0.05)",
+              },
+            }}
+          >
+            Back
+          </Button>
+        </Box>
         <Box sx={{ maxWidth: 420 }}>
           <Typography
             level="h1"

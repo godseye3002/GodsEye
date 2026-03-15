@@ -23,12 +23,23 @@ export async function fetchUsedQueriesFromAnalysis(productId: string) {
       .eq('product_id', productId)
       .not('optimization_prompt', 'is', null);
 
+    // Fetch ChatGPT analysis queries
+    const { data: chatgptData, error: chatgptError } = await (supabaseAdmin as any)
+      .from('product_analysis_chatgpt')
+      .select('optimization_prompt')
+      .eq('product_id', productId)
+      .not('optimization_prompt', 'is', null);
+
     if (googleError) {
       console.error('[AnalysisQueries] Error fetching Google queries:', googleError);
     }
 
     if (perplexityError) {
       console.error('[AnalysisQueries] Error fetching Perplexity queries:', perplexityError);
+    }
+
+    if (chatgptError) {
+      console.error('[AnalysisQueries] Error fetching ChatGPT queries:', chatgptError);
     }
 
     // Extract and clean query strings
@@ -40,12 +51,18 @@ export async function fetchUsedQueriesFromAnalysis(productId: string) {
       .map((row: any) => row.optimization_prompt?.trim())
       .filter((query: string | undefined) => query && query.length > 0);
 
+    const chatgptQueries = (chatgptData || [])
+      .map((row: any) => row.optimization_prompt?.trim())
+      .filter((query: string | undefined) => query && query.length > 0);
+
     return {
       google: googleQueries,
       perplexity: perplexityQueries,
+      chatgpt: chatgptQueries,
       errors: {
         google: googleError?.message,
-        perplexity: perplexityError?.message
+        perplexity: perplexityError?.message,
+        chatgpt: chatgptError?.message
       }
     };
 
@@ -54,9 +71,11 @@ export async function fetchUsedQueriesFromAnalysis(productId: string) {
     return {
       google: [],
       perplexity: [],
+      chatgpt: [],
       errors: {
         google: error instanceof Error ? error.message : 'Unknown error',
-        perplexity: error instanceof Error ? error.message : 'Unknown error'
+        perplexity: error instanceof Error ? error.message : 'Unknown error',
+        chatgpt: error instanceof Error ? error.message : 'Unknown error'
       }
     };
   }
@@ -70,7 +89,7 @@ export async function fetchUsedQueriesFromAnalysis(productId: string) {
 export async function fetchUsedQueriesFromAnalysisClient(productId: string) {
   try {
     const response = await fetch(`/api/analysis-queries?productId=${productId}`);
-    
+
     if (!response.ok) {
       const error = await response.json();
       console.error('[AnalysisQueries] API error:', error);
@@ -88,9 +107,11 @@ export async function fetchUsedQueriesFromAnalysisClient(productId: string) {
     return {
       google: data.google || [],
       perplexity: data.perplexity || [],
+      chatgpt: data.chatgpt || [],
       errors: {
         google: null,
-        perplexity: null
+        perplexity: null,
+        chatgpt: null
       }
     };
 
@@ -99,9 +120,11 @@ export async function fetchUsedQueriesFromAnalysisClient(productId: string) {
     return {
       google: [],
       perplexity: [],
+      chatgpt: [],
       errors: {
         google: error instanceof Error ? error.message : 'Network error',
-        perplexity: error instanceof Error ? error.message : 'Network error'
+        perplexity: error instanceof Error ? error.message : 'Network error',
+        chatgpt: error instanceof Error ? error.message : 'Network error'
       }
     };
   }
@@ -130,12 +153,19 @@ export async function fetchUsedQueriesForMultipleProducts(productIds: string[]) 
       .in('product_id', productIds)
       .not('optimization_prompt', 'is', null);
 
+    // Fetch ChatGPT analysis queries for all products
+    const { data: chatgptData, error: chatgptError } = await (supabaseAdmin as any)
+      .from('product_analysis_chatgpt')
+      .select('product_id, optimization_prompt')
+      .in('product_id', productIds)
+      .not('optimization_prompt', 'is', null);
+
     // Group queries by product_id
-    const result: Record<string, { google: string[]; perplexity: string[] }> = {};
+    const result: Record<string, { google: string[]; perplexity: string[]; chatgpt: string[] }> = {};
 
     // Initialize result object
     productIds.forEach(id => {
-      result[id] = { google: [], perplexity: [] };
+      result[id] = { google: [], perplexity: [], chatgpt: [] };
     });
 
     // Process Google queries
@@ -154,11 +184,20 @@ export async function fetchUsedQueriesForMultipleProducts(productIds: string[]) 
       }
     });
 
+    // Process ChatGPT queries
+    (chatgptData || []).forEach((row: any) => {
+      const query = row.optimization_prompt?.trim();
+      if (query && query.length > 0 && result[row.product_id]) {
+        result[row.product_id].chatgpt.push(query);
+      }
+    });
+
     return {
       data: result,
       errors: {
         google: googleError?.message,
-        perplexity: perplexityError?.message
+        perplexity: perplexityError?.message,
+        chatgpt: chatgptError?.message
       }
     };
 
@@ -168,7 +207,8 @@ export async function fetchUsedQueriesForMultipleProducts(productIds: string[]) 
       data: {},
       errors: {
         google: error instanceof Error ? error.message : 'Unknown error',
-        perplexity: error instanceof Error ? error.message : 'Unknown error'
+        perplexity: error instanceof Error ? error.message : 'Unknown error',
+        chatgpt: error instanceof Error ? error.message : 'Unknown error'
       }
     };
   }

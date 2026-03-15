@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         const prompt = `
 Role: You are an expert Search Strategist and AI Optimization Specialist.
 
-Objective: Generate 10 NEW search queries for the product "${product.product_name}".
+Objective: Generate 15 NEW search queries for the product "${product.product_name}".
 These queries must be distinct from any previously used queries and should leverage insights from the product's "Generative DNA".
 
 Product Context:
@@ -100,12 +100,27 @@ Instructions:
 5.  **Keep it General**: Do not use any specific brand names.
 6.  **Use Simple English**: Use plain words which are largely used.
 
+### PART 3: CHATGPT Queries (5 Queries)
+*Source requirements: Purchase intent, recommendation-seeking.*
+${process.env.CHATGPT_PIPELINE === 'true' ? `
+Instructions:
+1.  **Simulate Real ChatGPT Prompts**: The output must be natural, keyword-driven phrases or short questions.
+2.  **Focus on Purchase Intent**: The queries must reflect a user who is ready to buy, not just research the problem.
+3.  **Query Type**: Queries must be for general search or recommendation. Do not focus on a specific product type. Instead, focus on the user's underlying problem or the desired solution.
+4.  **Incorporate Search Modifiers**: Include common modifiers for quality (e.g., best, top), and desired features from the context.
+5.  **Keep it General**: Do not use any specific brand names.
+6.  **Use Simple English**: Use plain words which are largely used.
+` : `
+DEACTIVATED: Return an empty list for chatgpt_queries.
+`}
+
 ---
 
 **Output Format (Strict JSON):**
 {
   "google_queries": ["google query 1", "google query 2", "google query 3", "google query 4", "google query 5"],
-  "perplexity_queries": ["perplexity query 1", "perplexity query 2", "perplexity query 3", "perplexity query 4", "perplexity query 5"]
+  "perplexity_queries": ["perplexity query 1", "perplexity query 2", "perplexity query 3", "perplexity query 4", "perplexity query 5"],
+  "chatgpt_queries": ["chatgpt query 1", "chatgpt query 2", "chatgpt query 3", "chatgpt query 4", "chatgpt query 5"]
 }
 `;
 
@@ -124,8 +139,9 @@ Instructions:
 
         const googleQueries = generatedData.google_queries || [];
         const perplexityQueries = generatedData.perplexity_queries || [];
+        const chatgptQueries = generatedData.chatgpt_queries || [];
 
-        if (googleQueries.length === 0 && perplexityQueries.length === 0) {
+        if (googleQueries.length === 0 && perplexityQueries.length === 0 && chatgptQueries.length === 0) {
             return NextResponse.json({ error: 'No queries generated' }, { status: 500 });
         }
 
@@ -134,8 +150,9 @@ Instructions:
 
         const newGoogleQueries = googleQueries.filter((q: string) => !existingQueriesSet.has(q.toLowerCase().trim()));
         const newPerplexityQueries = perplexityQueries.filter((q: string) => !existingQueriesSet.has(q.toLowerCase().trim()));
+        const newChatgptQueries = chatgptQueries.filter((q: string) => !existingQueriesSet.has(q.toLowerCase().trim()));
 
-        if (newGoogleQueries.length === 0 && newPerplexityQueries.length === 0) {
+        if (newGoogleQueries.length === 0 && newPerplexityQueries.length === 0 && newChatgptQueries.length === 0) {
             return NextResponse.json({ error: 'AI could not generate distinct new queries. All generated queries already exist.' }, { status: 400 });
         }
 
@@ -158,6 +175,7 @@ Instructions:
                 priority: 1,
                 google_status: 'pending',
                 perplexity_status: 'not_applicable',
+                chatgpt_status: 'not_applicable',
                 suggested_engine: 'google',
             })),
             ...newPerplexityQueries.slice(0, 5).map((q: string) => ({
@@ -167,8 +185,19 @@ Instructions:
                 priority: 1,
                 google_status: 'not_applicable',
                 perplexity_status: 'pending',
+                chatgpt_status: 'not_applicable',
                 suggested_engine: 'perplexity',
             })),
+            ...(process.env.CHATGPT_PIPELINE === 'true' ? newChatgptQueries.slice(0, 5).map((q: string) => ({
+                user_id: userId,
+                product_id: productId,
+                query_text: q,
+                priority: 1,
+                google_status: 'not_applicable',
+                perplexity_status: 'not_applicable',
+                chatgpt_status: 'pending',
+                suggested_engine: 'chatgpt',
+            })) : []),
         ];
 
         const { data: savedQueries, error: saveError } = await (supabaseAdmin as any)

@@ -24,10 +24,12 @@ export interface QueryData {
   all: {
     perplexity: string[];
     google: string[];
+    chatgpt: string[];
   };
   used: {
     perplexity: string[];
     google: string[];
+    chatgpt: string[];
   };
 }
 
@@ -43,10 +45,13 @@ interface ProductStoreState {
   // New fields for all generated queries
   allPerplexityQueries: string[];
   allGoogleQueries: string[];
+  allChatgptQueries: string[];
   selectedPerplexityQueries: string[];
   selectedGoogleQueries: string[];
+  selectedChatgptQueries: string[];
   usedPerplexityQueries: string[];
   usedGoogleQueries: string[];
+  usedChatgptQueries: string[];
   queryData: QueryData | null;
   optimizationAnalysis: OptimizationAnalysis | null;
   googleOverviewAnalysis: OptimizationAnalysis | null;
@@ -62,16 +67,17 @@ interface ProductStoreState {
   processedSources: ProcessedSource[];
   sourceLinks: any[];
   currentProductId: string | null;
-  selectedPipeline: "perplexity" | "google_overview" | "all";
+  selectedPipeline: "perplexity" | "google_overview" | "chatgpt" | "all";
 
   isNewProductSession: boolean;
   selectedBatchId: string | null;
+  isGenerateBatchModalOpen: boolean;
 
   // UI State Persistence
   activeSection: string;
   showSOVCards: boolean;
   showDeepAnalysis: boolean;
-  sovCardEngine: 'perplexity' | 'google' | null;
+  sovCardEngine: 'perplexity' | 'google' | 'chatgpt' | null;
 
   setFormData: (updater: FormUpdater) => void;
   setOriginalScrapedData: (data: ProductFormData | null) => void;
@@ -84,10 +90,13 @@ interface ProductStoreState {
   // New setters for query arrays
   setAllPerplexityQueries: (queries: string[]) => void;
   setAllGoogleQueries: (queries: string[]) => void;
+  setAllChatgptQueries: (queries: string[]) => void;
   setSelectedPerplexityQueries: (queries: string[]) => void;
   setSelectedGoogleQueries: (queries: string[]) => void;
+  setSelectedChatgptQueries: (queries: string[]) => void;
   setUsedPerplexityQueries: (queries: string[]) => void;
   setUsedGoogleQueries: (queries: string[]) => void;
+  setUsedChatgptQueries: (queries: string[]) => void;
   setQueryData: (queryData: QueryData | null) => void;
   saveQueriesToSupabase: (userId: string) => Promise<void>;
   setOptimizationAnalysis: (analysis: OptimizationAnalysis | null) => void;
@@ -112,14 +121,15 @@ interface ProductStoreState {
   setProcessedSources: (sources: ProcessedSource[]) => void;
   setSourceLinks: (links: any[]) => void;
   setCurrentProductId: (id: string | null) => void;
-  setSelectedPipeline: (pipeline: "perplexity" | "google_overview" | "all") => void;
+  setSelectedPipeline: (pipeline: "perplexity" | "google_overview" | "chatgpt" | "all") => void;
   setIsNewProductSession: (value: boolean) => void;
   setSelectedBatchId: (id: string | null) => void;
   // UI State Setters
   setActiveSection: (section: string) => void;
   setShowSOVCards: (show: boolean) => void;
   setShowDeepAnalysis: (show: boolean) => void;
-  setSovCardEngine: (engine: 'perplexity' | 'google' | null) => void;
+  setSovCardEngine: (engine: 'perplexity' | 'google' | 'chatgpt' | null) => void;
+  setGenerateBatchModalOpen: (open: boolean) => void;
 }
 
 export const useProductStore = create<ProductStoreState>()(
@@ -136,10 +146,13 @@ export const useProductStore = create<ProductStoreState>()(
       // New fields for all generated queries
       allPerplexityQueries: [],
       allGoogleQueries: [],
+      allChatgptQueries: [],
       selectedPerplexityQueries: [],
       selectedGoogleQueries: [],
+      selectedChatgptQueries: [],
       usedPerplexityQueries: [],
       usedGoogleQueries: [],
+      usedChatgptQueries: [],
       queryData: null,
       optimizationAnalysis: null,
       googleOverviewAnalysis: null,
@@ -158,6 +171,7 @@ export const useProductStore = create<ProductStoreState>()(
       selectedPipeline: "all",
       isNewProductSession: false,
       selectedBatchId: null,
+      isGenerateBatchModalOpen: false,
       // Default UI State
       activeSection: "product",
       showSOVCards: false,
@@ -187,10 +201,13 @@ export const useProductStore = create<ProductStoreState>()(
       // New setters for query arrays
       setAllPerplexityQueries: (queries) => set({ allPerplexityQueries: queries }),
       setAllGoogleQueries: (queries) => set({ allGoogleQueries: queries }),
+      setAllChatgptQueries: (queries) => set({ allChatgptQueries: queries }),
       setSelectedPerplexityQueries: (queries) => set({ selectedPerplexityQueries: queries }),
       setSelectedGoogleQueries: (queries) => set({ selectedGoogleQueries: queries }),
+      setSelectedChatgptQueries: (queries) => set({ selectedChatgptQueries: queries }),
       setUsedPerplexityQueries: (queries) => set({ usedPerplexityQueries: queries }),
       setUsedGoogleQueries: (queries) => set({ usedGoogleQueries: queries }),
+      setUsedChatgptQueries: (queries) => set({ usedChatgptQueries: queries }),
       setQueryData: (queryData) => set({ queryData }),
       setOptimizationAnalysis: (analysis) => set({ optimizationAnalysis: analysis }),
       setGoogleOverviewAnalysis: (analysis) => set({ googleOverviewAnalysis: analysis }),
@@ -215,6 +232,25 @@ export const useProductStore = create<ProductStoreState>()(
             googleOverviewAnalysis: product.googleOverviewAnalysis ?? null,
             currentProductId: productId,
             isNewProductSession: false,
+            // Reset batch and query data belonging to the previously loaded product
+            selectedBatchId: null,
+            allPerplexityQueries: [],
+            allGoogleQueries: [],
+            allChatgptQueries: [],
+            selectedPerplexityQueries: [],
+            selectedGoogleQueries: [],
+            selectedChatgptQueries: [],
+            usedPerplexityQueries: [],
+            usedGoogleQueries: [],
+            usedChatgptQueries: [],
+            queryData: null,
+            sourceLinks: [],
+            processedSources: [],
+            // Reset UI View state
+            activeSection: "product",
+            showSOVCards: false,
+            showDeepAnalysis: false,
+            sovCardEngine: null,
           };
         }),
       deleteProduct: (productId) =>
@@ -244,10 +280,13 @@ export const useProductStore = create<ProductStoreState>()(
           // Reset query arrays
           allPerplexityQueries: [],
           allGoogleQueries: [],
+          allChatgptQueries: [],
           selectedPerplexityQueries: [],
           selectedGoogleQueries: [],
+          selectedChatgptQueries: [],
           usedPerplexityQueries: [],
           usedGoogleQueries: [],
+          usedChatgptQueries: [],
           queryData: null,
           sourceLinks: [],
           processedSources: [],
@@ -273,6 +312,7 @@ export const useProductStore = create<ProductStoreState>()(
             // New split analysis tables
             const googleAnalyses = Array.isArray(p.product_analysis_google) ? p.product_analysis_google : [];
             const perplexityAnalyses = Array.isArray(p.product_analysis_perplexity) ? p.product_analysis_perplexity : [];
+            const chatgptAnalyses = Array.isArray(p.product_analysis_chatgpt) ? p.product_analysis_chatgpt : [];
 
             // Compute latest Perplexity analysis (if any)
             const latestPerplexity = perplexityAnalyses.length > 0
@@ -282,6 +322,16 @@ export const useProductStore = create<ProductStoreState>()(
                 const currTime = curr.created_at ? new Date(curr.created_at).getTime() : 0;
                 return currTime > latestTime ? curr : latest;
               }, perplexityAnalyses[0])
+              : null;
+
+            // Compute latest ChatGPT analysis (if any)
+            const latestChatgpt = chatgptAnalyses.length > 0
+              ? chatgptAnalyses.reduce((latest: any, curr: any) => {
+                if (!latest) return curr;
+                const latestTime = latest.created_at ? new Date(latest.created_at).getTime() : 0;
+                const currTime = curr.created_at ? new Date(curr.created_at).getTime() : 0;
+                return currTime > latestTime ? curr : latest;
+              }, chatgptAnalyses[0])
               : null;
 
             // Compute latest Google analysis (if any)
@@ -297,6 +347,7 @@ export const useProductStore = create<ProductStoreState>()(
             // Maintain existing top-level fallbacks for backward compatibility
             const optimizationAnalysis = latestPerplexity?.optimization_analysis ?? p.optimization_analysis ?? null;
             const googleOverviewAnalysis = latestGoogle?.google_overview_analysis ?? p.google_overview_analysis ?? null;
+            const chatgptAnalysis = latestChatgpt?.optimization_analysis ?? null;
 
             // We no longer maintain a combined_analysis column in the new tables; keep any legacy value
             const combinedAnalysis = p.combined_analysis ?? null;
@@ -331,12 +382,28 @@ export const useProductStore = create<ProductStoreState>()(
                 processed_sources: [],
                 created_at: ga.created_at,
               })),
+              // ChatGPT entries
+              ...chatgptAnalyses.map((ca: any) => ({
+                id: ca.id,
+                optimization_query: null,
+                optimization_analysis: null,
+                google_search_query: null,
+                google_overview_analysis: null,
+                chatgpt_search_query: ca.optimization_prompt,
+                chatgpt_analysis: ca.optimization_analysis,
+                combined_analysis: null,
+                source_links: [],
+                processed_sources: [],
+                created_at: ca.created_at,
+              })),
             ];
 
             const googleUpToDate = Boolean(p.deep_analysis_google_up_to_date);
             const perplexityUpToDate = Boolean(p.deep_analysis_perplexity_up_to_date);
+            const chatgptUpToDate = Boolean(p.deep_analysis_chatgpt_up_to_date);
             const verifiedGoogleHash = p.deep_analysis_google_hash || null;
             const verifiedPerplexityHash = p.deep_analysis_perplexity_hash || null;
+            const verifiedChatgptHash = p.deep_analysis_chatgpt_hash || null;
 
             return {
               id: p.id,
@@ -356,14 +423,17 @@ export const useProductStore = create<ProductStoreState>()(
               },
               analysis: optimizationAnalysis,
               googleOverviewAnalysis,
+              chatgptAnalysis,
               combinedAnalysis,
               sourceLinks,
               processedSources,
               analyses,
               deep_analysis_google_hash: verifiedGoogleHash,
               deep_analysis_perplexity_hash: verifiedPerplexityHash,
+              deep_analysis_chatgpt_hash: verifiedChatgptHash,
               deep_analysis_google_up_to_date: googleUpToDate,
               deep_analysis_perplexity_up_to_date: perplexityUpToDate,
+              deep_analysis_chatgpt_up_to_date: chatgptUpToDate,
             };
           });
 
@@ -516,6 +586,7 @@ export const useProductStore = create<ProductStoreState>()(
                 },
                 analysis: null, // Analysis now comes from product_analysis_perplexity table
                 googleOverviewAnalysis: null, // Analysis now comes from product_analysis_google table
+                chatgptAnalysis: null, // Analysis now comes from product_analysis_chatgpt table
                 combinedAnalysis: null,
                 sourceLinks: [], // Source links now come from product_analysis_perplexity.citations
                 processedSources: [], // Processed sources no longer stored in products table
@@ -570,6 +641,7 @@ export const useProductStore = create<ProductStoreState>()(
       setShowSOVCards: (show) => set({ showSOVCards: show }),
       setShowDeepAnalysis: (show) => set({ showDeepAnalysis: show }),
       setSovCardEngine: (engine) => set({ sovCardEngine: engine }),
+      setGenerateBatchModalOpen: (open) => set({ isGenerateBatchModalOpen: open }),
 
       // Helper functions for query data management
       saveQueriesToSupabase: async (userId: string) => {
@@ -581,13 +653,9 @@ export const useProductStore = create<ProductStoreState>()(
           return;
         }
 
-        // Combine all queries from both categories
-        const allQueries = [
-          ...state.allPerplexityQueries,
-          ...state.allGoogleQueries
-        ];
+        const totalCount = state.allPerplexityQueries.length + state.allGoogleQueries.length + state.allChatgptQueries.length;
 
-        if (allQueries.length === 0) {
+        if (totalCount === 0) {
           if (process.env.NODE_ENV !== 'production') {
             console.log('[Store] No queries to save');
           }
@@ -598,8 +666,9 @@ export const useProductStore = create<ProductStoreState>()(
           console.log('[Store] Saving queries:', {
             userId,
             productId: state.currentProductId,
-            queryCount: allQueries.length,
-            sampleQueries: allQueries.slice(0, 2)
+            perplexityCount: state.allPerplexityQueries.length,
+            googleCount: state.allGoogleQueries.length,
+            chatgptCount: state.allChatgptQueries.length,
           });
         }
 
@@ -610,7 +679,9 @@ export const useProductStore = create<ProductStoreState>()(
             body: JSON.stringify({
               userId,
               productId: state.currentProductId,
-              queries: allQueries,
+              perplexityQueries: state.allPerplexityQueries,
+              googleQueries: state.allGoogleQueries,
+              chatgptQueries: state.allChatgptQueries,
             }),
           });
 
@@ -670,10 +741,13 @@ export const useProductStore = create<ProductStoreState>()(
         // Persist Query Arrays (CHANGE: Now persist these so tab state is valid on reload)
         allPerplexityQueries: state.allPerplexityQueries,
         allGoogleQueries: state.allGoogleQueries,
+        allChatgptQueries: state.allChatgptQueries,
         selectedPerplexityQueries: state.selectedPerplexityQueries,
         selectedGoogleQueries: state.selectedGoogleQueries,
+        selectedChatgptQueries: state.selectedChatgptQueries,
         usedPerplexityQueries: state.usedPerplexityQueries,
         usedGoogleQueries: state.usedGoogleQueries,
+        usedChatgptQueries: state.usedChatgptQueries,
         queryData: state.queryData,
       }),
     }

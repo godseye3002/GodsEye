@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export type AnalysisSource = 'google' | 'perplexity';
+export type AnalysisSource = 'google' | 'perplexity' | 'chatgpt';
 export type AnalysisStatus = 'processing' | 'completed';
 
 const STATUS_CACHE = new Map<string, AnalysisStatus>();
 const DATA_CACHE = new Map<string, any>();
 
-const TABLE_BY_SOURCE: Record<AnalysisSource, 'product_analysis_dna_google' | 'product_analysis_dna_perplexity'> = {
+const TABLE_BY_SOURCE: Record<AnalysisSource, 'product_analysis_dna_google' | 'product_analysis_dna_perplexity' | 'product_analysis_dna_chatgpt'> = {
   google: 'product_analysis_dna_google',
   perplexity: 'product_analysis_dna_perplexity',
+  chatgpt: 'product_analysis_dna_chatgpt',
 };
 
 interface UseAnalysisListenerResult<T = any> {

@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     const { productId } = await params;
-    
+
     if (!productId) {
       return NextResponse.json(
         { error: 'Product ID is required' },
@@ -49,7 +49,7 @@ export async function GET(
         .select('*')
         .eq('product_id', productId)
         .order('created_at', { ascending: false }),
-      
+
       supabase
         .from('product_analysis_perplexity')
         .select('*')

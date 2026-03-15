@@ -9,7 +9,7 @@ interface SOVSnapshot {
   category_relevance: number;
   total_queries_analyzed: number;
   narrative_summary: string;
-  engine: 'google' | 'perplexity';
+  engine: 'google' | 'perplexity' | 'chatgpt';
   analyzed_at: string;
 }
 
@@ -26,9 +26,9 @@ export async function GET(request: Request) {
       );
     }
 
-    if (!engine || !['google', 'perplexity'].includes(engine)) {
+    if (!engine || !['google', 'perplexity', 'chatgpt'].includes(engine)) {
       return NextResponse.json(
-        { error: 'Valid engine (google or perplexity) is required' },
+        { error: 'Valid engine (google, perplexity, or chatgpt) is required' },
         { status: 400 }
       );
     }

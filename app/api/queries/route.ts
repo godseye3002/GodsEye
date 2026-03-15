@@ -45,10 +45,10 @@ export async function GET(request: Request) {
         .eq('batch_id', batchId);
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[Queries] Batch links fetched:', { 
-          batchId, 
+        console.log('[Queries] Batch links fetched:', {
+          batchId,
           batchLinksCount: batchLinks?.length || 0,
-          batchLinks: batchLinks?.slice(0, 3) 
+          batchLinks: batchLinks?.slice(0, 3)
         });
       }
 
@@ -64,12 +64,12 @@ export async function GET(request: Request) {
 
       const queryIds = (batchLinks || []).map((row: any) => row.query_id).filter(Boolean);
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[Queries] Query IDs extracted:', { 
+        console.log('[Queries] Query IDs extracted:', {
           queryIdsCount: queryIds.length,
-          queryIds: queryIds.slice(0, 5) 
+          queryIds: queryIds.slice(0, 5)
         });
       }
-      
+
       if (queryIds.length === 0) {
         if (process.env.NODE_ENV !== 'production') {
           console.log('[Queries] No query IDs found, returning empty array');
@@ -83,8 +83,8 @@ export async function GET(request: Request) {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[Queries] Result:', { 
-        error: error?.message, 
+      console.log('[Queries] Result:', {
+        error: error?.message,
         dataCount: data?.length || 0,
         sampleData: data?.slice(0, 2),
         suggestedEngines: data?.map((q: any) => q.suggested_engine).slice(0, 10)
@@ -117,64 +117,63 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { userId, productId, queries } = body;
+    const { userId, productId } = body;
 
-    if (!userId || !productId || !queries || !Array.isArray(queries)) {
+    if (!userId || !productId) {
       return NextResponse.json(
-        { error: 'User ID, Product ID, and queries array are required' },
+        { error: 'User ID and Product ID are required' },
         { status: 400 }
       );
     }
 
     const supabaseAdmin = getSupabaseAdminClient();
 
-    // Group queries by similar length
-    const queryLengths = queries.map((query: string) => ({
-      text: query,
-      wordCount: query.trim().split(/\s+/).length
-    }));
+    // Accept structured data (new format) or flat array (legacy format)
+    let finalGoogleQueries: string[] = [];
+    let finalPerplexityQueries: string[] = [];
+    let finalChatgptQueries: string[] = [];
 
-    // Sort by word count to find natural grouping
-    queryLengths.sort((a, b) => b.wordCount - a.wordCount);
+    if (body.googleQueries || body.perplexityQueries || body.chatgptQueries) {
+      // New structured format
+      finalGoogleQueries = (body.googleQueries || []).slice(0, 5);
+      finalPerplexityQueries = (body.perplexityQueries || []).slice(0, 5);
+      finalChatgptQueries = (body.chatgptQueries || []).slice(0, 5);
+    } else if (body.queries && Array.isArray(body.queries)) {
+      // Legacy flat array format - split by word count heuristic
+      const queryLengths = body.queries.map((query: string) => ({
+        text: query,
+        wordCount: query.trim().split(/\s+/).length
+      }));
+      queryLengths.sort((a: any, b: any) => b.wordCount - a.wordCount);
 
-    // Find the natural split point for similar length grouping
-    let splitIndex = 0;
-    const maxWordCount = queryLengths[0]?.wordCount || 0;
-    
-    // Find the largest gap in word counts to determine grouping
-    let largestGap = 0;
-    for (let i = 0; i < queryLengths.length - 1; i++) {
-      const gap = queryLengths[i].wordCount - queryLengths[i + 1].wordCount;
-      if (gap > largestGap) {
-        largestGap = gap;
-        splitIndex = i + 1;
+      let splitIndex = 0;
+      let largestGap = 0;
+      for (let i = 0; i < queryLengths.length - 1; i++) {
+        const gap = queryLengths[i].wordCount - queryLengths[i + 1].wordCount;
+        if (gap > largestGap) {
+          largestGap = gap;
+          splitIndex = i + 1;
+        }
       }
+      if (largestGap < 2) {
+        splitIndex = Math.floor(queryLengths.length / 2);
+      }
+      finalGoogleQueries = queryLengths.slice(0, splitIndex).map((q: any) => q.text).slice(0, 5);
+      finalPerplexityQueries = queryLengths.slice(splitIndex).map((q: any) => q.text).slice(0, 5);
+    } else {
+      return NextResponse.json(
+        { error: 'Queries data is required (either structured or flat array)' },
+        { status: 400 }
+      );
     }
-
-    // If no significant gap found, use median as split point
-    if (largestGap < 2) {
-      splitIndex = Math.floor(queryLengths.length / 2);
-    }
-
-    // Group into long queries (similar length) and rest
-    const longQueries = queryLengths.slice(0, splitIndex).map(q => q.text);
-    const restQueries = queryLengths.slice(splitIndex).map(q => q.text);
-
-    // Ensure exactly 5 queries per category
-    const finalGoogleQueries = longQueries.slice(0, 5);
-    const finalPerplexityQueries = restQueries.slice(0, 5);
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[Queries] POST received:', { 
-        userId, 
-        productId, 
-        totalInputQueries: queries.length,
+      console.log('[Queries] POST received:', {
+        userId,
+        productId,
         googleQueries: finalGoogleQueries.length,
         perplexityQueries: finalPerplexityQueries.length,
-        sampleQueries: {
-          google: finalGoogleQueries.slice(0, 2),
-          perplexity: finalPerplexityQueries.slice(0, 2)
-        }
+        chatgptQueries: finalChatgptQueries.length,
       });
     }
 
@@ -187,6 +186,7 @@ export async function POST(request: Request) {
         priority: 1,
         google_status: 'pending',
         perplexity_status: 'not_applicable',
+        chatgpt_status: 'not_applicable',
         suggested_engine: 'google',
       })),
       ...finalPerplexityQueries.map((queryText) => ({
@@ -196,7 +196,18 @@ export async function POST(request: Request) {
         priority: 1,
         google_status: 'not_applicable',
         perplexity_status: 'pending',
+        chatgpt_status: 'not_applicable',
         suggested_engine: 'perplexity',
+      })),
+      ...finalChatgptQueries.map((queryText) => ({
+        user_id: userId,
+        product_id: productId,
+        query_text: queryText,
+        priority: 1,
+        google_status: 'not_applicable',
+        perplexity_status: 'not_applicable',
+        chatgpt_status: 'pending',
+        suggested_engine: 'chatgpt',
       })),
     ];
 

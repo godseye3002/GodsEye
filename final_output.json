@@ -1,50 +1,42 @@
 {
   "product": {
-    "product_name": "D up transdermal patches",
-    "description": "D Up transdermal patches are formulated with scientifically and clinically proven ingredients to deliver Vitamin D3, Vitamin K2, Calcium, and Magnesium. These key nutrients are designed to support overall health, improve immunity, bone strength, and energy levels, while also uplifting mood and reducing deficiencies.",
-    "general_product_type": "Health Supplement",
-    "specific_product_type": "Transdermal Patch",
+    "product_name": "PowerUp Money",
+    "description": "PowerUp Money is India's trusted Mutual Fund Advisory App. It empowers users to select, review, and rebalance their mutual funds with expert advice and 20 years of data, helping them maintain an optimal portfolio.",
+    "general_product_type": "Financial App",
+    "specific_product_type": "Mutual Fund Advisory App",
     "specifications": {
-      "delivered_nutrients": "Vitamin D3, Vitamin K2, Calcium, and Magnesium"
+      "data_provided": "20 years of data"
     },
     "features": [
       {
-        "name": "Scientifically and clinically proven ingredients",
-        "description": "The formulation utilizes ingredients that have undergone scientific and clinical validation."
+        "name": "Mutual Fund Selection",
+        "description": "Allows users to select mutual funds."
       },
       {
-        "name": "Transdermal delivery",
-        "description": "The product utilizes transdermal patches for nutrient delivery."
+        "name": "Mutual Fund Review",
+        "description": "Enables users to review their mutual funds."
       },
       {
-        "name": "Supports overall health",
-        "description": "The combination of nutrients aims to contribute to general well-being."
+        "name": "Mutual Fund Rebalancing",
+        "description": "Facilitates rebalancing of mutual fund portfolios."
       },
       {
-        "name": "Improves immunity",
-        "description": "The patches are designed to enhance the body's immune system."
+        "name": "Expert Advice",
+        "description": "Provides expert guidance for mutual fund management."
       },
       {
-        "name": "Improves bone strength",
-        "description": "Key nutrients are included to bolster bone health."
+        "name": "Data Integration",
+        "description": "Utilizes 20 years of data for insights and recommendations."
       },
       {
-        "name": "Improves energy levels",
-        "description": "The product aims to increase and sustain energy."
-      },
-      {
-        "name": "Uplifts mood",
-        "description": "Ingredients are intended to positively affect mood."
-      },
-      {
-        "name": "Reduces deficiencies",
-        "description": "The product helps to address and mitigate nutritional deficiencies."
+        "name": "Portfolio Management",
+        "description": "Helps users keep their portfolio in top form."
       }
     ],
-    "targeted_market": "Individuals seeking convenient and effective ways to supplement their diet with essential nutrients like Vitamin D3, K2, Calcium, and Magnesium, particularly those looking to improve bone health, immunity, energy, and mood, or address nutrient deficiencies.",
-    "problem_product_is_solving": "The product addresses issues related to nutrient deficiencies, poor immunity, weakened bone strength, low energy levels, and low mood. It offers a solution for individuals who may have difficulty absorbing nutrients orally or prefer a transdermal delivery method.",
-    "formulation_attribution": "D up by Patch up"
+    "targeted_market": "Individuals in India who are looking for expert guidance and data-driven insights to manage their mutual fund investments effectively. This includes both novice investors and those with existing portfolios seeking to optimize their performance.",
+    "problem_product_is_solving": "The app addresses the complexity and uncertainty associated with selecting, reviewing, and rebalancing mutual funds. It aims to solve the problem of investors lacking the necessary expertise, time, or data to make informed decisions, thereby helping them achieve and maintain an optimal investment portfolio.",
+    "formulation_attribution": "The product is described as 'India's trusted Mutual Fund Advisory App', implying it is developed and operated within India and trusted by its users. No specific manufacturer or formulation details are provided."
   },
-  "extraction_method": "product-json-endpoint",
+  "extraction_method": "selectors-fallback",
   "missing_fields": []
 }

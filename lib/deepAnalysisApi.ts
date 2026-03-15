@@ -1,4 +1,4 @@
-export type DeepAnalysisSource = 'google' | 'perplexity';
+export type DeepAnalysisSource = 'google' | 'perplexity' | 'chatgpt';
 
 export interface DeepAnalysisProcessResponse {
   [key: string]: unknown;
@@ -34,10 +34,10 @@ async function postJson<T>(url: string, data: unknown, retries = 2): Promise<T> 
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
-        
-        const payloadError = payload && typeof payload === 'object' && payload !== null ? 
+
+        const payloadError = payload && typeof payload === 'object' && payload !== null ?
           ((payload as Record<string, unknown>).error || (payload as Record<string, unknown>).message) : undefined;
-        const message = (typeof payloadError === 'string' ? payloadError : undefined) || 
+        const message = (typeof payloadError === 'string' ? payloadError : undefined) ||
           `Request failed (${res.status})`;
         throw new Error(message);
       }
@@ -47,7 +47,7 @@ async function postJson<T>(url: string, data: unknown, retries = 2): Promise<T> 
       if (attempt === retries) {
         throw error;
       }
-      
+
       // For network errors, also retry with delay
       const delay = Math.min(1000 * Math.pow(2, attempt), 3000);
       if (process.env.NODE_ENV !== 'production') {
@@ -56,7 +56,7 @@ async function postJson<T>(url: string, data: unknown, retries = 2): Promise<T> 
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   throw new Error('Max retries exceeded');
 }
 
@@ -81,4 +81,8 @@ export function startGoogleDeepAnalysis(productId: string) {
 
 export function startPerplexityDeepAnalysis(productId: string) {
   return startDeepAnalysis(productId, 'perplexity');
+}
+
+export function startChatgptDeepAnalysis(productId: string) {
+  return startDeepAnalysis(productId, 'chatgpt');
 }

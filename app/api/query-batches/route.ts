@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
     // 1. Fetch all used query texts from analysis tables
     // This is more reliable than the status flags in the queries table
-    const [googleRes, perplexityRes] = await Promise.all([
+    const [googleRes, perplexityRes, chatgptRes] = await Promise.all([
       (supabaseAdmin as any)
         .from('product_analysis_google')
         .select('search_query')
@@ -28,11 +28,17 @@ export async function GET(request: Request) {
         .from('product_analysis_perplexity')
         .select('optimization_prompt')
         .eq('product_id', productId)
+        .not('optimization_prompt', 'is', null),
+      (supabaseAdmin as any)
+        .from('product_analysis_chatgpt')
+        .select('optimization_prompt')
+        .eq('product_id', productId)
         .not('optimization_prompt', 'is', null)
     ]);
 
     const googleData = googleRes.data || [];
     const perplexityData = perplexityRes.data || [];
+    const chatgptData = chatgptRes.data || [];
 
     const usedQueriesSet = new Set<string>();
 
@@ -41,6 +47,10 @@ export async function GET(request: Request) {
     });
 
     perplexityData.forEach((row: any) => {
+      if (row.optimization_prompt) usedQueriesSet.add(row.optimization_prompt.trim());
+    });
+
+    chatgptData.forEach((row: any) => {
       if (row.optimization_prompt) usedQueriesSet.add(row.optimization_prompt.trim());
     });
 
@@ -146,7 +156,7 @@ export async function DELETE(request: Request) {
     if (queryTexts.length > 0 && productId) {
       // Fetch relevant analyses for this product that match our query texts
       // Note: Supabase .in() filter works well for arrays of strings
-      const [googleRes, perplexityRes] = await Promise.all([
+      const [googleRes, perplexityRes, chatgptRes] = await Promise.all([
         (supabaseAdmin as any)
           .from('product_analysis_google')
           .select('search_query', { count: 'exact', head: true })
@@ -156,12 +166,18 @@ export async function DELETE(request: Request) {
           .from('product_analysis_perplexity')
           .select('optimization_prompt', { count: 'exact', head: true })
           .eq('product_id', productId)
+          .in('optimization_prompt', queryTexts),
+        (supabaseAdmin as any)
+          .from('product_analysis_chatgpt')
+          .select('optimization_prompt', { count: 'exact', head: true })
+          .eq('product_id', productId)
           .in('optimization_prompt', queryTexts)
       ]);
 
       const googleCount = googleRes.count;
       const perplexityCount = perplexityRes.count;
-      const isUsed = (googleCount || 0) > 0 || (perplexityCount || 0) > 0;
+      const chatgptCount = chatgptRes.count;
+      const isUsed = (googleCount || 0) > 0 || (perplexityCount || 0) > 0 || (chatgptCount || 0) > 0;
 
       if (isUsed) {
         return NextResponse.json(
@@ -228,6 +244,44 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true, deletedQueries: orphanQueryIds.length });
   } catch (error: any) {
     console.error('[QueryBatches] DELETE error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const { batchId, daily_tracker } = await request.json();
+
+    if (!batchId) {
+      return NextResponse.json(
+        { error: 'Batch ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const supabaseAdmin = getSupabaseAdminClient();
+
+    const { data, error } = await (supabaseAdmin as any)
+      .from('query_batches')
+      .update({ daily_tracker: daily_tracker })
+      .eq('id', batchId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[QueryBatches] PATCH error:', error);
+      return NextResponse.json(
+        { error: 'Failed to update batch', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, batch: data });
+  } catch (error: any) {
+    console.error('[QueryBatches] PATCH internal error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

@@ -1,4 +1,4 @@
-export type SovEngine = 'google' | 'perplexity';
+export type SovEngine = 'google' | 'perplexity' | 'chatgpt';
 
 export interface SovAnalyzeRequest {
   productId: string;
@@ -8,21 +8,21 @@ export interface SovAnalyzeRequest {
 
 export type SovAnalyzeResult =
   | {
-      success: true;
-      data?: {
-        global_score?: number;
-        narrative?: string;
-        [key: string]: unknown;
-      };
-      message?: string;
+    success: true;
+    data?: {
+      global_score?: number;
+      narrative?: string;
       [key: string]: unknown;
-    }
-  | {
-      success?: false;
-      error: string;
-      status?: number;
-      details?: unknown;
     };
+    message?: string;
+    [key: string]: unknown;
+  }
+  | {
+    success?: false;
+    error: string;
+    status?: number;
+    details?: unknown;
+  };
 
 function toUserFriendlyError(err: unknown): string {
   if (err instanceof Error) return err.message;
@@ -32,7 +32,7 @@ function toUserFriendlyError(err: unknown): string {
 
 export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyzeRequest): Promise<SovAnalyzeResult> {
   const maxRetries = 2;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch('/api/sov/analyze', {
@@ -79,7 +79,7 @@ export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyz
       if (attempt === maxRetries) {
         return { success: false, error: toUserFriendlyError(err) };
       }
-      
+
       // Retry network errors too
       const delay = Math.min(1000 * Math.pow(2, attempt), 2000);
       if (process.env.NODE_ENV !== 'production') {
@@ -88,6 +88,6 @@ export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyz
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   return { success: false, error: 'Max retries exceeded. Please try again.' };
 }

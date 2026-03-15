@@ -61,10 +61,15 @@ export interface OptimizedProduct extends OptimizedProductSummary {
   analysis?: OptimizationAnalysis | null;
   // Google AI Overview analysis, stored separately
   googleOverviewAnalysis?: OptimizationAnalysis | null;
+  // ChatGPT analysis, stored separately
+  chatgptAnalysis?: OptimizationAnalysis | null;
+
   deep_analysis_google_hash?: string | null;
   deep_analysis_perplexity_hash?: string | null;
+  deep_analysis_chatgpt_hash?: string | null;
   deep_analysis_google_up_to_date?: boolean;
   deep_analysis_perplexity_up_to_date?: boolean;
+  deep_analysis_chatgpt_up_to_date?: boolean;
   // Optional combined view when both Perplexity and Google analyses exist
   combinedAnalysis?: any | null;
   sourceLinks?: SourceLink[];

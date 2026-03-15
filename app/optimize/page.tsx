@@ -32,17 +32,33 @@ import { keyframes } from "@mui/system";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 // API route handles query generation now
 import { ProtectedRoute } from "@/components/protected-route";
+import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-context";
+import { useDashboardStore } from "@/lib/store";
+import { SectionCards } from "@/components/section-cards";
+import { ChartAreaInteractive } from "@/components/chart-area-interactive";
+import { VishnuGraph } from "@/components/vishnu-graph";
+import { ShivaGraph } from "@/components/shiva-graph";
+import { DataTable } from "@/components/data-table";
+import { DashboardQueryBatchesCard } from "@/components/dashboard-query-batches-card";
+import { QueryGenerationModal } from "@/components/query-generation-modal";
+import { OptimizeProductDataCard } from "@/components/optimize-product-data-card";
+import { DashboardDocumentation } from "@/components/dashboard-documentation";
+import { MCPDocumentation } from "@/components/mcp-documentation";
+import { supabase } from "@/lib/supabase";
+import SOVPerformanceCard from "@/components/SOVPerformanceCard";
+import DeepAnalysisCard from "@/components/DeepAnalysisCard";
+import { HeaderSovRerunButton } from "@/components/header-sov-rerun-button";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { PackageIcon } from "@hugeicons/core-free-icons";
 import axios from 'axios';
 import { useRouter } from "next/navigation";
 import { useProductStore } from "./store";
 import type { QueryData } from "./store";
-import SOVPerformanceCard from "@/components/SOVPerformanceCard";
-import DeepAnalysisCard from "@/components/DeepAnalysisCard";
 import { warmupService } from "@/lib/warmupService";
 import { fetchUsedQueriesFromAnalysisClient } from "@/lib/analysis-queries";
 import { callAIScraper } from "@/lib/ai-scraper";
@@ -167,6 +183,23 @@ function OptimizePageContent() {
   const router = useRouter();
   const { user } = useAuth();
   const {
+    isLoading: dashboardIsLoading,
+    error: dashboardError,
+    topCards,
+    coverageGraph,
+    brandCoverageGraph,
+    vishnuGraph,
+    shivaGraph,
+    brandCoverageBrands,
+    brandRanking,
+    topPrompts,
+    citationRanking,
+    clientCitations,
+    fetchDashboardData,
+    setActiveEngine,
+  } = useDashboardStore();
+
+  const {
     formData,
     setFormData,
     originalScrapedData,
@@ -184,17 +217,23 @@ function OptimizePageContent() {
     // New query array states
     allPerplexityQueries,
     allGoogleQueries,
+    allChatgptQueries,
     selectedPerplexityQueries,
     selectedGoogleQueries,
+    selectedChatgptQueries,
     usedPerplexityQueries,
     usedGoogleQueries,
+    usedChatgptQueries,
     queryData,
     setAllPerplexityQueries,
     setAllGoogleQueries,
+    setAllChatgptQueries,
     setSelectedPerplexityQueries,
     setSelectedGoogleQueries,
+    setSelectedChatgptQueries,
     setUsedPerplexityQueries,
     setUsedGoogleQueries,
+    setUsedChatgptQueries,
     setQueryData,
     optimizationAnalysis,
     setOptimizationAnalysis,
@@ -236,15 +275,13 @@ function OptimizePageContent() {
     // Store UI State
     activeSection,
     setActiveSection,
-    showSOVCards,
-    setShowSOVCards,
-    showDeepAnalysis,
-    setShowDeepAnalysis,
-    sovCardEngine,
     setSovCardEngine,
     selectedBatchId,
     setSelectedBatchId,
+    setGenerateBatchModalOpen,
   } = useProductStore();
+
+  const currentProduct = products.find((p) => p.id === currentProductId) || null;
 
   const [isClient, setIsClient] = useState(false);
   const [isHeaderProductIdCopied, setIsHeaderProductIdCopied] = useState(false);
@@ -262,14 +299,16 @@ function OptimizePageContent() {
   const [isLoadingBatches, setIsLoadingBatches] = useState(false);
   const [isLoadingBatchQueries, setIsLoadingBatchQueries] = useState(false);
   const [currentSnapshotId, setCurrentSnapshotId] = useState<string | null>(null);
-  const [isGenerateBatchModalOpen, setGenerateBatchModalOpen] = useState(false);
+  // const [isGenerateBatchModalOpen, setGenerateBatchModalOpen] = useState(false); // Moved to store
   const [newBatchName, setNewBatchName] = useState("");
   const [isDeletingBatch, setIsDeletingBatch] = useState<string | null>(null);
   const [isNewBatchEnabled, setIsNewBatchEnabled] = useState(false);
+  const [isGeneratingChatgptQueries, setIsGeneratingChatgptQueries] = useState(false);
 
   // Loading states for individual scrapers
   const [isPerplexityScraping, setIsPerplexityScraping] = useState(false);
   const [isGoogleScraping, setIsGoogleScraping] = useState(false);
+  const [isChatgptScraping, setIsChatgptScraping] = useState(false);
   const [isLoadingQueries, setIsLoadingQueries] = useState(false);
   const [hasLoadedQueriesForProduct, setHasLoadedQueriesForProduct] = useState(false);
   const [loadingResultKey, setLoadingResultKey] = useState<string | null>(null);
@@ -295,6 +334,7 @@ function OptimizePageContent() {
 
   const maxPerplexityQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_PERPLEXITY_QUERIES, 1);
   const maxGoogleQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_GOOGLE_QUERIES, 1);
+  const maxChatgptQueries = 5; // Assuming 5 similar to others for now, could be dynamic later
 
   const formatSpecificationKeyForDisplay = useCallback((key: string) =>
     key
@@ -358,6 +398,20 @@ function OptimizePageContent() {
         });
       }
 
+      // Safety check: verify all returned queries belong to the current product
+      // This prevents stale batchIds (from localStorage persistence) from loading wrong data
+      if (rows.length > 0 && rows[0]?.product_id && rows[0].product_id !== currentProductId) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Frontend] Batch belongs to a different product! Ignoring stale batch.', {
+            batchProductId: rows[0].product_id,
+            currentProductId,
+            batchId,
+          });
+        }
+        setSelectedBatchId(null);
+        return null;
+      }
+
       const perplexity = rows
         .filter((q: any) => q?.suggested_engine === 'perplexity' || q?.suggested_engine === null)
         .map((q: any) => q?.query_text)
@@ -368,34 +422,47 @@ function OptimizePageContent() {
         .map((q: any) => q?.query_text)
         .filter((q: any) => typeof q === 'string' && q.trim().length > 0);
 
+      // ChatGPT queries are stored separately with suggested_engine = 'chatgpt'
+      const chatgpt = rows
+        .filter((q: any) => q?.suggested_engine === 'chatgpt')
+        .map((q: any) => q?.query_text)
+        .filter((q: any) => typeof q === 'string' && q.trim().length > 0);
+
       if (process.env.NODE_ENV !== 'production') {
         console.log('[Frontend] Filtered queries:', {
           batchId,
           perplexityCount: perplexity.length,
           googleCount: google.length,
+          chatgptCount: chatgpt.length,
           perplexitySample: perplexity.slice(0, 2),
-          googleSample: google.slice(0, 2)
+          googleSample: google.slice(0, 2),
+          chatgptSample: chatgpt.slice(0, 2)
         });
       }
 
       setAllPerplexityQueries(perplexity);
       setAllGoogleQueries(google);
+      setAllChatgptQueries(chatgpt);
       setSelectedPerplexityQueries([]);
       setSelectedGoogleQueries([]);
+      setSelectedChatgptQueries([]);
 
-      const { google: analysisGoogleQueries, perplexity: analysisPerplexityQueries } =
+      const { google: analysisGoogleQueries, perplexity: analysisPerplexityQueries, chatgpt: analysisChatgptQueries } =
         await fetchUsedQueriesFromAnalysisClient(currentProductId);
 
       setUsedPerplexityQueries(analysisPerplexityQueries);
       setUsedGoogleQueries(analysisGoogleQueries);
+      setUsedChatgptQueries(analysisChatgptQueries);
 
       setSelectedBatchId(batchId);
 
       return {
         perplexity,
         google,
+        chatgpt,
         usedPerplexity: analysisPerplexityQueries,
-        usedGoogle: analysisGoogleQueries
+        usedGoogle: analysisGoogleQueries,
+        usedChatgpt: analysisChatgptQueries
       };
     } catch (error) {
       if (process.env.NODE_ENV !== 'production') {
@@ -405,8 +472,63 @@ function OptimizePageContent() {
     } finally {
       setIsLoadingBatchQueries(false);
     }
-  }, [user?.id, currentProductId, setAllPerplexityQueries, setAllGoogleQueries, setSelectedPerplexityQueries, setSelectedGoogleQueries, setUsedPerplexityQueries, setUsedGoogleQueries]);
+  }, [user?.id, currentProductId, setAllPerplexityQueries, setAllGoogleQueries, setAllChatgptQueries, setSelectedPerplexityQueries, setSelectedGoogleQueries, setSelectedChatgptQueries, setUsedPerplexityQueries, setUsedGoogleQueries, setUsedChatgptQueries]);
 
+  const handleToggleDailyTracking = async (batchId: string, currentState: boolean) => {
+    // Optimistic update
+    setQueryBatches((prev) =>
+      prev.map((b) => (b.id === batchId ? { ...b, daily_tracker: !currentState } : b))
+    );
+
+    try {
+      const response = await fetch('/api/query-batches', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchId, daily_tracker: !currentState }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update tracking');
+      }
+    } catch (error) {
+      console.error('[Daily Tracking] Failed to toggle:', error);
+      // Revert on error
+      setQueryBatches((prev) =>
+        prev.map((b) => (b.id === batchId ? { ...b, daily_tracker: currentState } : b))
+      );
+    }
+  };
+
+
+  // Clear stale batch state when the product changes
+  // selectedBatchId is persisted in localStorage, so switching products without this
+  // would load queries from the PREVIOUS product's batch
+  useEffect(() => {
+    if (!currentProductId) return;
+
+    // If the product has changed from the last time we loaded, reset batch-related state
+    if (lastLoadedProductIdRef.current && lastLoadedProductIdRef.current !== currentProductId) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Product Changed] Clearing stale batch state', {
+          previousProduct: lastLoadedProductIdRef.current,
+          newProduct: currentProductId,
+        });
+      }
+      setSelectedBatchId(null);
+      setQueryBatches([]);
+      setAllPerplexityQueries([]);
+      setAllGoogleQueries([]);
+      setAllChatgptQueries([]);
+      setSelectedPerplexityQueries([]);
+      setSelectedGoogleQueries([]);
+      setSelectedChatgptQueries([]);
+      setUsedPerplexityQueries([]);
+      setUsedGoogleQueries([]);
+      setUsedChatgptQueries([]);
+    }
+
+    lastLoadedProductIdRef.current = currentProductId;
+  }, [currentProductId, setSelectedBatchId, setAllPerplexityQueries, setAllGoogleQueries, setAllChatgptQueries, setSelectedPerplexityQueries, setSelectedGoogleQueries, setSelectedChatgptQueries, setUsedPerplexityQueries, setUsedGoogleQueries, setUsedChatgptQueries]);
 
   useEffect(() => {
     if (activeSection !== 'query') return;
@@ -471,14 +593,107 @@ function OptimizePageContent() {
   useEffect(() => {
     if (activeSection === 'query' && selectedBatchId && user?.id && currentProductId && !isLoadingBatchQueries) {
       // Only load if we don't have queries in memory (reloaded page case)
-      if (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) {
+      if (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0 && allChatgptQueries.length === 0) {
         loadQueriesForBatch(selectedBatchId);
       }
     }
-  }, [activeSection, selectedBatchId, user?.id, currentProductId, isLoadingBatchQueries, allPerplexityQueries.length, allGoogleQueries.length, loadQueriesForBatch]);
+  }, [activeSection, selectedBatchId, user?.id, currentProductId, isLoadingBatchQueries, allPerplexityQueries.length, allGoogleQueries.length, allChatgptQueries.length, loadQueriesForBatch]);
 
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  const lastFetchRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!currentProductId) return;
+    if (activeSection !== 'perplexity' && activeSection !== 'google' && (activeSection === 'chatgpt' && process.env.NEXT_PUBLIC_CHATGPT_PIPELINE !== 'true')) return;
+
+    const fetchKey = `${currentProductId}-${activeSection}`;
+    if (lastFetchRef.current === fetchKey) return;
+    lastFetchRef.current = fetchKey;
+
+    const engine =
+      activeSection === 'perplexity'
+        ? 'Perplexity'
+        : activeSection === 'google'
+          ? 'Google AI Mode'
+          : (activeSection === 'chatgpt' && process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true') ? 'ChatGPT' : 'Perplexity';
+
+    setActiveEngine(engine);
+    fetchDashboardData(currentProductId, engine);
+  }, [activeSection, currentProductId, fetchDashboardData, setActiveEngine]);
+
+  useEffect(() => {
+    if (!currentProductId) return;
+    if (activeSection !== 'perplexity' && activeSection !== 'google' && (activeSection === 'chatgpt' && process.env.NEXT_PUBLIC_CHATGPT_PIPELINE !== 'true')) return;
+
+    const engineParam = activeSection;
+
+    const channel = supabase
+      .channel(`optimize-dashboard-realtime-${currentProductId}-${engineParam}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sov_product_snapshots',
+          filter: `product_id=eq.${currentProductId}`,
+        },
+        () => {
+          const engine =
+            activeSection === 'perplexity'
+              ? 'Perplexity'
+              : activeSection === 'google'
+                ? 'Google AI Mode'
+                : 'ChatGPT';
+          fetchDashboardData(currentProductId, engine);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'brand_visibility_tracking',
+          filter: `product_id=eq.${currentProductId}`,
+        },
+        () => {
+          const engine =
+            activeSection === 'perplexity'
+              ? 'Perplexity'
+              : activeSection === 'google'
+                ? 'Google AI Mode'
+                : 'ChatGPT';
+          fetchDashboardData(currentProductId, engine);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'citation_analytics',
+          filter: `product_id=eq.${currentProductId}`,
+        },
+        () => {
+          const engine =
+            activeSection === 'perplexity'
+              ? 'Perplexity'
+              : activeSection === 'google'
+                ? 'Google AI Mode'
+                : 'ChatGPT';
+          fetchDashboardData(currentProductId, engine);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeSection, currentProductId, fetchDashboardData]);
+
+  useEffect(() => {
     // Clear any stale server errors on component mount
     setServerError(null);
 
@@ -1604,7 +1819,7 @@ function OptimizePageContent() {
   // Helper function to generate a query for a specific pipeline
   const generateQueryForPipeline = async (
     data: ProductFormData,
-    pipeline: 'perplexity' | 'google_overview',
+    pipeline: 'perplexity' | 'google_overview' | 'chatgpt',
     analysisId?: string
   ): Promise<{ queries: string[]; topQuery: string } | null> => {
     const productContext: ProductContext = {
@@ -1665,20 +1880,22 @@ function OptimizePageContent() {
 
       console.log("Generating search queries with context:", productContext);
 
-      // Always generate queries for both pipelines
-      const [perplexityResult, googleResult] = await Promise.all([
+      // Always generate queries for all three pipelines
+      const [perplexityResult, googleResult, chatgptResult] = await Promise.all([
         generateQueryForPipeline(data, 'perplexity', analysisId),
         generateQueryForPipeline(data, 'google_overview', analysisId),
+        generateQueryForPipeline(data, 'chatgpt', analysisId),
       ]);
 
       // Store all queries in the new state fields
       if (perplexityResult) {
         setAllPerplexityQueries(perplexityResult.queries || [perplexityResult.topQuery]);
-        // Don't auto-select - let the user manually select queries
       }
       if (googleResult) {
         setAllGoogleQueries(googleResult.queries || [googleResult.topQuery]);
-        // Don't auto-select - let the user manually select queries
+      }
+      if (chatgptResult) {
+        setAllChatgptQueries(chatgptResult.queries || [chatgptResult.topQuery]);
       }
 
       if (perplexityResult && googleResult) {
@@ -1686,17 +1903,19 @@ function OptimizePageContent() {
         const primaryQuery = perplexityResult.topQuery;
         if (primaryQuery) {
           setGeneratedQuery(primaryQuery);
-          console.log("Generated queries for both pipelines - Perplexity:", perplexityResult.topQuery, "Google:", googleResult.topQuery);
+          console.log("Generated queries for all pipelines - Perplexity:", perplexityResult.topQuery, "Google:", googleResult.topQuery, "ChatGPT:", chatgptResult?.topQuery);
 
           // Store queries in memory only - they will be saved to Supabase when product is created during analysis
           const queryData: QueryData = {
             all: {
               perplexity: perplexityResult.queries || [perplexityResult.topQuery],
               google: googleResult.queries || [googleResult.topQuery],
+              chatgpt: chatgptResult?.queries || [],
             },
             used: {
               perplexity: [],
               google: [],
+              chatgpt: [],
             },
           };
           setQueryData(queryData);
@@ -1729,6 +1948,7 @@ function OptimizePageContent() {
     snapshotId: string | null,
     perplexityQueries: string[],
     googleQueries: string[],
+    chatgptQueries: string[] = [],
   ) => {
     const backendUrl = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://localhost:8000';
     const aiReadyData = prepareDataForAI(formData);
@@ -1736,10 +1956,11 @@ function OptimizePageContent() {
     setIsAnalyzing(true);
     if (perplexityQueries.length > 0) setIsPerplexityScraping(true);
     if (googleQueries.length > 0) setIsGoogleScraping(true);
+    if (chatgptQueries.length > 0) setIsChatgptScraping(true);
 
     try {
       // 1) POST /api/v1/optimize/start
-      console.log('[Python Backend] Starting optimization…', { backendUrl, perplexityQueries, googleQueries });
+      console.log('[Python Backend] Starting optimization…', { backendUrl, perplexityQueries, googleQueries, chatgptQueries });
       const startResp = await fetch(`${backendUrl}/api/v1/optimize/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1749,9 +1970,10 @@ function OptimizePageContent() {
           batch_id: selectedBatchId,
           perplexity_queries: perplexityQueries,
           google_queries: googleQueries,
+          chatgpt_queries: chatgptQueries,
           client_product_json: aiReadyData,
           debug: process.env.NODE_ENV !== 'production',
-          total_no_of_query: perplexityQueries.length + googleQueries.length,
+          total_no_of_query: perplexityQueries.length + googleQueries.length + chatgptQueries.length,
         }),
       });
 
@@ -1765,9 +1987,12 @@ function OptimizePageContent() {
       const totalQueries: number = startData.total_queries;
       console.log('[Python Backend] Optimization started — snapshot:', backendSnapshotId, 'total:', totalQueries);
 
+      // Update the React state so the UI progress tracking works
+      setCurrentSnapshotId(backendSnapshotId);
+
       // 2) Poll /api/v1/optimize/status/{snapshot_id} until completed or failed
       const POLL_INTERVAL_MS = 3000; // 3 seconds
-      const MAX_POLL_ATTEMPTS = 200; // ~10 minutes max
+      const MAX_POLL_ATTEMPTS = 400; // ~20 minutes max
       let attempts = 0;
 
       while (attempts < MAX_POLL_ATTEMPTS) {
@@ -1790,38 +2015,28 @@ function OptimizePageContent() {
         if (status === 'completed') {
           console.log('[Python Backend] ✅ Optimization completed successfully');
 
-          // Deduct credits for successful queries
-          try {
-            const creditResponse = await fetch('/api/analyze', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: user!.id,
-                creditsRequired: completed_queries || totalQ,
-              }),
-            });
-            const creditData = await creditResponse.json();
-            if (creditData.success) {
-              console.log('[Python Backend] Credits deducted successfully');
-              adjustUserCredits(-(completed_queries || totalQ));
-            } else {
-              console.error('[Python Backend] Credit deduction failed');
-            }
-          } catch (creditErr) {
-            console.error('[Python Backend] Credit deduction error:', creditErr);
-          }
+          // Credits are deducted up-front by the Python backend and
+          // analysis_history is logged server-side with full UUIDs.
+          // We just need to update the local React state so the UI
+          // reflects the new balance without a page refresh.
+          adjustUserCredits(-(completed_queries || totalQ));
 
           // Mark queries as used
           const usedPerplexity = [...new Set([...usedPerplexityQueries, ...perplexityQueries])];
           const usedGoogle = [...new Set([...usedGoogleQueries, ...googleQueries])];
+          const usedChatgpt = [...new Set([...usedChatgptQueries, ...chatgptQueries])];
           setUsedPerplexityQueries(usedPerplexity);
           setUsedGoogleQueries(usedGoogle);
+          setUsedChatgptQueries(usedChatgpt);
           setSelectedPerplexityQueries(selectedPerplexityQueries.filter(q => !usedPerplexity.includes(q)));
           setSelectedGoogleQueries(selectedGoogleQueries.filter(q => !usedGoogle.includes(q)));
+          setSelectedChatgptQueries(selectedChatgptQueries.filter(q => !usedChatgpt.includes(q)));
 
-          // Update snapshot status if provided
-          if (snapshotId) {
-            await updateSnapshotStatus(snapshotId, 'completed', completed_queries || totalQ);
+          // Frontend no longer manages analysis_snapshots when using the Python backend
+          // The backend marks it as completed in its own DB actions
+
+          if (user?.id) {
+            await loadProductsFromSupabase(user.id);
           }
 
           // Navigate to results
@@ -1854,6 +2069,7 @@ function OptimizePageContent() {
       setIsAnalyzing(false);
       setIsPerplexityScraping(false);
       setIsGoogleScraping(false);
+      setIsChatgptScraping(false);
     }
   };
 
@@ -1862,55 +2078,70 @@ function OptimizePageContent() {
     setQueryGenerationError(null);
     setServerError(null);
 
+    // -----------------------------------------------------------------------
+    // FEATURE FLAG SWITCH — Python Backend vs Legacy Frontend Logic
+    // -----------------------------------------------------------------------
+    const usePythonBackend = process.env.NEXT_PUBLIC_ENABLE_PYTHON_BACKEND === 'true';
+
     // Part 0: Create analysis snapshot before starting analysis
     let snapshotId: string | null = null;
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[Snapshot Debug] handleUseSelectedQueries - Checking conditions:', {
-        selectedBatchId,
-        currentProductId,
-        hasBatch: !!selectedBatchId,
-        hasProduct: !!currentProductId
-      });
-    }
 
-    if (selectedBatchId && currentProductId) {
-      try {
-        // Calculate total number of queries in the batch (not just selected)
-        const totalQueries = allPerplexityQueries.length + allGoogleQueries.length;
-
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[Snapshot Debug] handleUseSelectedQueries - Creating snapshot with:', {
-            productId: currentProductId,
-            batchId: selectedBatchId,
-            totalQueries,
-            selectedPerplexityQueries: selectedPerplexityQueries.length,
-            selectedGoogleQueries: selectedGoogleQueries.length,
-            allPerplexityQueries: allPerplexityQueries.length,
-            allGoogleQueries: allGoogleQueries.length
-          });
-        }
-        snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId, totalQueries);
-        setCurrentSnapshotId(snapshotId);
-        console.log('[Snapshot] Snapshot created:', snapshotId);
-      } catch (snapshotError: any) {
-        console.error('[Snapshot] Failed to create snapshot:', snapshotError);
-        setServerError(snapshotError.message || 'Failed to initialize analysis tracking. Please try again.');
-        return;
-      }
-    } else {
+    // -----------------------------------------------------------------------
+    // FRONTEND SNAPSHOT LOGIC — runs ONLY when Legacy Frontend is used
+    // (Python backend creates its own snapshots server-side)
+    // -----------------------------------------------------------------------
+    if (!usePythonBackend) {
       if (process.env.NODE_ENV !== 'production') {
-        console.log('[Snapshot Debug] handleUseSelectedQueries - Skipping snapshot creation - missing conditions:', {
+        console.log('[Snapshot Debug] handleUseSelectedQueries - Checking conditions:', {
           selectedBatchId,
           currentProductId,
-          reason: !selectedBatchId ? 'No batch selected' : !currentProductId ? 'No current product' : 'Unknown'
+          hasBatch: !!selectedBatchId,
+          hasProduct: !!currentProductId
         });
+      }
+
+      if (selectedBatchId && currentProductId) {
+        try {
+          // Calculate total number of queries in the batch (not just selected)
+          const totalQueries = allPerplexityQueries.length + allGoogleQueries.length + allChatgptQueries.length;
+
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[Snapshot Debug] handleUseSelectedQueries - Creating snapshot with:', {
+              productId: currentProductId,
+              batchId: selectedBatchId,
+              totalQueries,
+              selectedPerplexityQueries: selectedPerplexityQueries.length,
+              selectedGoogleQueries: selectedGoogleQueries.length,
+              selectedChatgptQueries: selectedChatgptQueries.length,
+              allPerplexityQueries: allPerplexityQueries.length,
+              allGoogleQueries: allGoogleQueries.length,
+              allChatgptQueries: allChatgptQueries.length
+            });
+          }
+          snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId, totalQueries);
+          setCurrentSnapshotId(snapshotId);
+          console.log('[Snapshot] Snapshot created:', snapshotId);
+        } catch (snapshotError: any) {
+          console.error('[Snapshot] Failed to create snapshot:', snapshotError);
+          setServerError(snapshotError.message || 'Failed to initialize analysis tracking. Please try again.');
+          return;
+        }
+      } else {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[Snapshot Debug] handleUseSelectedQueries - Skipping snapshot creation - missing conditions:', {
+            selectedBatchId,
+            currentProductId,
+            reason: !selectedBatchId ? 'No batch selected' : !currentProductId ? 'No current product' : 'Unknown'
+          });
+        }
       }
     }
 
     // Prevent used queries from being re-run via the primary Optimize button.
     const hasUsedSelected =
       selectedPerplexityQueries.some(q => usedPerplexityQueries.includes(q)) ||
-      selectedGoogleQueries.some(q => usedGoogleQueries.includes(q));
+      selectedGoogleQueries.some(q => usedGoogleQueries.includes(q)) ||
+      selectedChatgptQueries.some(q => usedChatgptQueries.includes(q));
 
     if (hasUsedSelected) {
       setQueryGenerationError('You selected Used queries. Use "Check Implementation" to re-optimize those queries.');
@@ -1926,7 +2157,7 @@ function OptimizePageContent() {
     }
 
     // Validate that selected queries are not empty
-    const allSelectedQueries = [...selectedPerplexityQueries, ...selectedGoogleQueries];
+    const allSelectedQueries = [...selectedPerplexityQueries, ...selectedGoogleQueries, ...selectedChatgptQueries];
     const hasValidQueries = allSelectedQueries.some(query => query && query.trim().length > 0);
 
     if (!hasValidQueries) {
@@ -1949,48 +2180,52 @@ function OptimizePageContent() {
     const googleQueriesToRun = selectedGoogleQueries
       .filter(q => q && q.trim())
       .slice(0, maxGoogleQueries);
-    const totalRequiredCredits = perplexityQueriesToRun.length + googleQueriesToRun.length;
+    const chatgptQueriesToRun = selectedChatgptQueries
+      .filter(q => q && q.trim())
+      .slice(0, maxChatgptQueries);
+    const totalRequiredCredits = perplexityQueriesToRun.length + googleQueriesToRun.length + chatgptQueriesToRun.length;
 
-    try {
-      const creditCheckResponse = await fetch('/api/analyze/check-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          creditsRequired: totalRequiredCredits,
-        }),
-      });
+    // -----------------------------------------------------------------------
+    // FRONTEND CREDIT CHECK — runs ONLY when Legacy Frontend is used
+    // (Python backend handles its own credit checking and deduction)
+    // -----------------------------------------------------------------------
+    if (!usePythonBackend) {
+      try {
+        const creditCheckResponse = await fetch('/api/analyze/check-credits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            creditsRequired: totalRequiredCredits,
+          }),
+        });
 
-      if (!creditCheckResponse.ok) {
-        throw new Error('Failed to check credits');
-      }
+        if (!creditCheckResponse.ok) {
+          throw new Error('Failed to check credits');
+        }
 
-      const creditCheckData = await creditCheckResponse.json();
+        const creditCheckData = await creditCheckResponse.json();
 
-      if (!creditCheckData.hasEnoughCredits) {
-        setServerError(
-          `Insufficient credits. Required: ${totalRequiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`
-        );
+        if (!creditCheckData.hasEnoughCredits) {
+          setServerError(
+            `Insufficient credits. Required: ${totalRequiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`
+          );
+          return;
+        }
+        if (typeof creditCheckData.currentCredits === 'number') {
+          setUserCredits(creditCheckData.currentCredits);
+        }
+        console.log(`[Credit Check] Passed — required: ${totalRequiredCredits}, available: ${creditCheckData.currentCredits}`);
+      } catch (creditError) {
+        console.error('Credit check error:', creditError);
+        setServerError('Failed to verify credits. Please try again.');
         return;
       }
-      if (typeof creditCheckData.currentCredits === 'number') {
-        setUserCredits(creditCheckData.currentCredits);
-      }
-      console.log(`[Credit Check] Passed — required: ${totalRequiredCredits}, available: ${creditCheckData.currentCredits}`);
-    } catch (creditError) {
-      console.error('Credit check error:', creditError);
-      setServerError('Failed to verify credits. Please try again.');
-      return;
     }
-
-    // -----------------------------------------------------------------------
-    // FEATURE FLAG SWITCH — Python Backend vs Legacy Frontend Logic
-    // -----------------------------------------------------------------------
-    const usePythonBackend = process.env.NEXT_PUBLIC_ENABLE_PYTHON_BACKEND === 'true';
 
     if (usePythonBackend) {
       console.log('[Feature Flag] Using Python backend for optimization');
-      await runPythonBackendOptimization(snapshotId, perplexityQueriesToRun, googleQueriesToRun);
+      await runPythonBackendOptimization(snapshotId, perplexityQueriesToRun, googleQueriesToRun, chatgptQueriesToRun);
       return;
     }
 
@@ -2008,13 +2243,13 @@ function OptimizePageContent() {
       setGeneratedQuery(JSON.stringify(selectedQueriesData));
 
       // Start analysis based on detected mode
-      if (mode === 'all') {
+      if (selectedPerplexityQueries.length > 0 && selectedGoogleQueries.length > 0) {
         // Both selected - run both analyses sequentially
         await startAnalysisWithBothQueries(snapshotId);
-      } else if (mode === 'perplexity') {
+      } else if (selectedPerplexityQueries.length > 0) {
         // Only Perplexity selected
         await startAnalysisWithSelectedQueries('perplexity', snapshotId);
-      } else if (mode === 'google_overview') {
+      } else if (selectedGoogleQueries.length > 0) {
         // Only Google selected
         await startAnalysisWithSelectedQueries('google_overview', snapshotId);
       }
@@ -2077,10 +2312,12 @@ function OptimizePageContent() {
           all: {
             perplexity: perplexityQueries,
             google: googleQueries,
+            chatgpt: [],
           },
           used: {
             perplexity: perplexityQueries, // Assume all were used
             google: googleQueries,
+            chatgpt: [],
           },
         };
       }
@@ -2091,10 +2328,12 @@ function OptimizePageContent() {
           all: {
             perplexity: [parsed],
             google: [],
+            chatgpt: [],
           },
           used: {
             perplexity: [parsed],
             google: [],
+            chatgpt: [],
           },
         };
       }
@@ -2108,32 +2347,25 @@ function OptimizePageContent() {
 
   // Auto-detect analysis mode based on selected queries
   const getAnalysisMode = () => {
-    const hasPerplexity = selectedPerplexityQueries.length > 0;
-    const hasGoogle = selectedGoogleQueries.length > 0;
+    const modes: string[] = [];
+    if (selectedPerplexityQueries.length > 0) modes.push('Perplexity');
+    if (selectedGoogleQueries.length > 0) modes.push('Google AI Overview');
+    if (selectedChatgptQueries.length > 0) modes.push('ChatGPT');
 
-    if (hasPerplexity && hasGoogle) {
-      return 'all';
-    } else if (hasPerplexity) {
-      return 'perplexity';
-    } else if (hasGoogle) {
-      return 'google_overview';
-    } else {
-      return null;
-    }
+    if (modes.length === 0) return null;
+    return modes;
   };
 
   const getAnalysisModeDisplay = () => {
-    const mode = getAnalysisMode();
-    switch (mode) {
-      case 'all':
-        return { text: 'All Analysis', color: '#2ED47A' };
-      case 'perplexity':
-        return { text: 'Perplexity Analysis', color: '#2ED47A' };
-      case 'google_overview':
-        return { text: 'Google AI Overview Analysis', color: '#2ED47A' };
-      default:
-        return { text: 'No Analysis Mode', color: '#F35B64' };
-    }
+    const modes = getAnalysisMode();
+    if (!modes) return { text: 'No Analysis Mode', color: '#F35B64' };
+
+    // Join multiple modes with ' + ', or just show the single one
+    const text = modes.length > 1
+      ? `${modes.join(' + ')} Analysis`
+      : `${modes[0]} Analysis`;
+
+    return { text, color: '#2ED47A' };
   };
 
   const handleReOptimizeSelectedQueries = async () => {
@@ -2153,12 +2385,16 @@ function OptimizePageContent() {
     const batchUsedGoogleQueries = usedGoogleQueries.filter(query =>
       allGoogleQueries.includes(query)
     );
+    const batchUsedChatgptQueries = usedChatgptQueries.filter(query =>
+      allChatgptQueries.includes(query)
+    );
 
     // Use all batch used queries
     const finalPerplexityQueries = batchUsedPerplexityQueries;
     const finalGoogleQueries = batchUsedGoogleQueries;
+    const finalChatgptQueries = batchUsedChatgptQueries;
 
-    const allUsedQueries = [...finalPerplexityQueries, ...finalGoogleQueries];
+    const allUsedQueries = [...finalPerplexityQueries, ...finalGoogleQueries, ...finalChatgptQueries];
     const hasValidUsedQueries = allUsedQueries.some(query => query && query.trim().length > 0);
 
     if (!hasValidUsedQueries) {
@@ -2166,32 +2402,52 @@ function OptimizePageContent() {
       return;
     }
 
-    // Check credits before starting re-optimization
-    const requiredCredits = allUsedQueries.length;
-    if (!userCredits || userCredits < requiredCredits) {
-      setQueryGenerationError(`Insufficient credits for re-optimization. Required: ${requiredCredits}, Available: ${userCredits || 0}`);
-      return;
-    }
+    // -----------------------------------------------------------------------
+    // FEATURE FLAG SWITCH — Python Backend vs Legacy Frontend Logic
+    // -----------------------------------------------------------------------
+    const usePythonBackend = process.env.NEXT_PUBLIC_ENABLE_PYTHON_BACKEND === 'true';
 
-    let snapshotId: string | null = null;
-    if (selectedBatchId && currentProductId) {
-      try {
-        const totalQueries = allPerplexityQueries.length + allGoogleQueries.length;
-        snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId, totalQueries);
-        setCurrentSnapshotId(snapshotId);
-      } catch (snapshotError: any) {
-        console.error('[Re-Optimization] Failed to create snapshot:', snapshotError);
-        setServerError(snapshotError.message || 'Failed to initialize re-optimization. Please try again.');
+    // Check credits before starting re-optimization (LEGACY FRONTEND ONLY)
+    const requiredCredits = allUsedQueries.length;
+    if (!usePythonBackend) {
+      if (!userCredits || userCredits < requiredCredits) {
+        setQueryGenerationError(`Insufficient credits for re-optimization. Required: ${requiredCredits}, Available: ${userCredits || 0}`);
         return;
       }
     }
 
+    let snapshotId: string | null = null;
+
+    // -----------------------------------------------------------------------
+    // FRONTEND SNAPSHOT LOGIC — runs ONLY when Legacy Frontend is used
+    // (Python backend creates its own snapshots server-side)
+    // -----------------------------------------------------------------------
+    if (!usePythonBackend) {
+      if (selectedBatchId && currentProductId) {
+        try {
+          // Add chatgpt array length so it is included accurately
+          const totalQueries = allPerplexityQueries.length + allGoogleQueries.length + allChatgptQueries.length;
+          snapshotId = await createAnalysisSnapshot(currentProductId, selectedBatchId, totalQueries);
+          setCurrentSnapshotId(snapshotId);
+        } catch (snapshotError: any) {
+          console.error('[Re-Optimization] Failed to create snapshot:', snapshotError);
+          setServerError(snapshotError.message || 'Failed to initialize re-optimization. Please try again.');
+          return;
+        }
+      }
+    }
+
     // Determine mode based on available used queries in the selected batch
-    let mode: 'all' | 'perplexity' | 'google_overview' | null = null;
+    let mode: 'all' | 'perplexity' | 'google_overview' | 'chatgpt' | null = null;
     const hasUsedPerplexity = finalPerplexityQueries.length > 0;
     const hasUsedGoogle = finalGoogleQueries.length > 0;
+    const hasUsedChatgpt = finalChatgptQueries.length > 0;
 
-    if (hasUsedPerplexity && hasUsedGoogle) {
+    if (hasUsedPerplexity && hasUsedGoogle && hasUsedChatgpt) {
+      mode = 'all';
+    } else if (hasUsedChatgpt) {
+      mode = 'chatgpt';
+    } else if (hasUsedPerplexity && hasUsedGoogle) {
       mode = 'all';
     } else if (hasUsedPerplexity) {
       mode = 'perplexity';
@@ -2208,15 +2464,10 @@ function OptimizePageContent() {
       return;
     }
 
-    // -----------------------------------------------------------------------
-    // FEATURE FLAG SWITCH — Python Backend vs Legacy Frontend Logic
-    // -----------------------------------------------------------------------
-    const usePythonBackend = process.env.NEXT_PUBLIC_ENABLE_PYTHON_BACKEND === 'true';
-
     if (usePythonBackend) {
       console.log('[Feature Flag] Using Python backend for re-optimization');
       try {
-        await runPythonBackendOptimization(snapshotId, finalPerplexityQueries, finalGoogleQueries);
+        await runPythonBackendOptimization(snapshotId, finalPerplexityQueries, finalGoogleQueries, finalChatgptQueries);
 
         // Refresh component state to show updated "Used" checks
         if (selectedBatchId) {
@@ -2231,11 +2482,11 @@ function OptimizePageContent() {
 
     try {
       // Pass final used queries directly to avoid async state issues
-      if (mode === 'all') {
+      if (finalPerplexityQueries.length > 0 && finalGoogleQueries.length > 0) {
         await startAnalysisWithBothQueries(snapshotId, finalPerplexityQueries, finalGoogleQueries);
-      } else if (mode === 'perplexity') {
+      } else if (finalPerplexityQueries.length > 0) {
         await startAnalysisWithSelectedQueries('perplexity', snapshotId);
-      } else if (mode === 'google_overview') {
+      } else if (finalGoogleQueries.length > 0) {
         await startAnalysisWithSelectedQueries('google_overview', snapshotId);
       }
     } catch (error) {
@@ -2247,11 +2498,12 @@ function OptimizePageContent() {
 
   // Handler functions for manual used query selection
   // Helper function to check if query is odd based on analysis count comparison across all queries
-  const hasQueryBeenReanalyzed = (query: string, pipeline: 'perplexity' | 'google_overview'): boolean => {
+  const hasQueryBeenReanalyzed = (query: string, pipeline: 'perplexity' | 'google_overview' | 'chatgpt'): boolean => {
     // Get analysis counts for all queries in the current batch (both pipelines)
     const allBatchQueries = [
       ...allPerplexityQueries.map(q => ({ query: q, pipeline: 'perplexity' as const })),
-      ...allGoogleQueries.map(q => ({ query: q, pipeline: 'google_overview' as const }))
+      ...allGoogleQueries.map(q => ({ query: q, pipeline: 'google_overview' as const })),
+      ...allChatgptQueries.map(q => ({ query: q, pipeline: 'chatgpt' as const }))
     ];
 
     // Calculate analysis counts for each query in the batch
@@ -2277,7 +2529,7 @@ function OptimizePageContent() {
     return currentQueryCount === maxCount;
   };
 
-  const handleQuerySelection = (query: string, pipeline: 'perplexity' | 'google_overview') => {
+  const handleQuerySelection = (query: string, pipeline: 'perplexity' | 'google_overview' | 'chatgpt') => {
     if (pipeline === 'perplexity') {
       if (selectedPerplexityQueries.includes(query)) {
         setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q) => q !== query));
@@ -2286,7 +2538,7 @@ function OptimizePageContent() {
 
       // Allow selection even at max limit - user is replacing one query with another
       setSelectedPerplexityQueries([...selectedPerplexityQueries, query]);
-    } else {
+    } else if (pipeline === 'google_overview') {
       if (selectedGoogleQueries.includes(query)) {
         setSelectedGoogleQueries(selectedGoogleQueries.filter((q) => q !== query));
         return;
@@ -2294,20 +2546,28 @@ function OptimizePageContent() {
 
       // Allow selection even at max limit - user is replacing one query with another
       setSelectedGoogleQueries([...selectedGoogleQueries, query]);
+    } else if (pipeline === 'chatgpt') {
+      if (selectedChatgptQueries.includes(query)) {
+        setSelectedChatgptQueries(selectedChatgptQueries.filter((q) => q !== query));
+        return;
+      }
+
+      setSelectedChatgptQueries([...selectedChatgptQueries, query]);
     }
   };
 
   // State for editing queries
-  const [editingQuery, setEditingQuery] = useState<{ pipeline: 'perplexity' | 'google_overview', index: number, value: string } | null>(null);
-  const [editedQueries, setEditedQueries] = useState<{ perplexity: string[], google: string[] }>({
+  const [editingQuery, setEditingQuery] = useState<{ pipeline: 'perplexity' | 'google_overview' | 'chatgpt', index: number, value: string } | null>(null);
+  const [editedQueries, setEditedQueries] = useState<{ perplexity: string[], google: string[], chatgpt: string[] }>({
     perplexity: [],
-    google: []
+    google: [],
+    chatgpt: []
   });
 
   const [editingQueryLoading, setEditingQueryLoading] = useState(false);
 
   // Start editing a query
-  const handleEditQuery = (query: string, index: number, pipeline: 'perplexity' | 'google_overview') => {
+  const handleEditQuery = (query: string, index: number, pipeline: 'perplexity' | 'google_overview' | 'chatgpt') => {
     setEditingQuery({ pipeline, index, value: query });
   };
 
@@ -2328,7 +2588,14 @@ function OptimizePageContent() {
     }
 
     // CRITICAL: Get old query value from CURRENT state arrays
-    const oldQueryValue = pipeline === 'perplexity' ? allPerplexityQueries[index] : allGoogleQueries[index];
+    let oldQueryValue = '';
+    if (pipeline === 'perplexity') {
+      oldQueryValue = allPerplexityQueries[index];
+    } else if (pipeline === 'google_overview') {
+      oldQueryValue = allGoogleQueries[index];
+    } else if (pipeline === 'chatgpt') {
+      oldQueryValue = allChatgptQueries[index];
+    }
     const cleanOldQueryValue = oldQueryValue ? oldQueryValue.trim() : "";
 
     // Add loading state for query editing
@@ -2339,10 +2606,14 @@ function OptimizePageContent() {
       const newEdited = [...editedQueries.perplexity];
       newEdited[index] = cleanNewValue;
       setEditedQueries({ ...editedQueries, perplexity: newEdited });
-    } else {
+    } else if (pipeline === 'google_overview') {
       const newEdited = [...editedQueries.google];
       newEdited[index] = cleanNewValue;
       setEditedQueries({ ...editedQueries, google: newEdited });
+    } else if (pipeline === 'chatgpt') {
+      const newEdited = [...editedQueries.chatgpt];
+      newEdited[index] = cleanNewValue;
+      setEditedQueries({ ...editedQueries, chatgpt: newEdited });
     }
 
     // Immediately update the database
@@ -2394,7 +2665,7 @@ function OptimizePageContent() {
           newSelection.push(cleanNewValue);
           setSelectedPerplexityQueries(newSelection);
         }
-      } else {
+      } else if (pipeline === 'google_overview') {
         const updatedAllGoogle = allGoogleQueries.map((q, i) =>
           i === index ? cleanNewValue : q
         );
@@ -2414,6 +2685,27 @@ function OptimizePageContent() {
           const newSelection = selectedGoogleQueries.filter(q => q !== oldQueryValue);
           newSelection.push(cleanNewValue);
           setSelectedGoogleQueries(newSelection);
+        }
+      } else if (pipeline === 'chatgpt') {
+        const updatedAllChatgpt = allChatgptQueries.map((q, i) =>
+          i === index ? cleanNewValue : q
+        );
+        setAllChatgptQueries(updatedAllChatgpt);
+
+        // Also update used queries if the old query was used
+        const updatedUsedChatgpt = usedChatgptQueries.map((q) => {
+          if (q.trim() === cleanOldQueryValue) {
+            return cleanNewValue;
+          }
+          return q;
+        });
+        setUsedChatgptQueries(updatedUsedChatgpt);
+
+        // Update selection state
+        if (selectedChatgptQueries.includes(oldQueryValue)) {
+          const newSelection = selectedChatgptQueries.filter(q => q !== oldQueryValue);
+          newSelection.push(cleanNewValue);
+          setSelectedChatgptQueries(newSelection);
         }
       }
 
@@ -2445,7 +2737,7 @@ function OptimizePageContent() {
   };
 
   // Get all analyses for a specific query (sorted by date, newest first)
-  const getAnalysesForQuery = (query: string, pipeline: 'perplexity' | 'google_overview') => {
+  const getAnalysesForQuery = (query: string, pipeline: 'perplexity' | 'google_overview' | 'chatgpt') => {
     if (!currentProductId) return [];
 
     const currentProduct = products.find(p => p.id === currentProductId);
@@ -2459,8 +2751,14 @@ function OptimizePageContent() {
             analysisQuery === query ||
             analysisQuery.toLowerCase() === query.toLowerCase()
           );
-        } else {
+        } else if (pipeline === 'google_overview') {
           const analysisQuery = analysis.google_search_query;
+          return analysisQuery && (
+            analysisQuery === query ||
+            analysisQuery.toLowerCase() === query.toLowerCase()
+          );
+        } else if (pipeline === 'chatgpt') {
+          const analysisQuery = analysis.chatgpt_search_query || analysis.chatgpt_prompt; // Assuming some field name, will adjust based on DB later or fallback
           return analysisQuery && (
             analysisQuery === query ||
             analysisQuery.toLowerCase() === query.toLowerCase()
@@ -2588,7 +2886,7 @@ function OptimizePageContent() {
   };
 
   // Handle viewing a specific analysis from history
-  const handleViewAnalysisById = async (analysisId: string, pipeline: 'perplexity' | 'google_overview') => {
+  const handleViewAnalysisById = async (analysisId: string, pipeline: 'perplexity' | 'google_overview' | 'chatgpt') => {
     handleResultMenuClose();
 
     if (!currentProductId) {
@@ -2604,13 +2902,15 @@ function OptimizePageContent() {
     // Navigate to the appropriate historical results page with analysis ID
     if (pipeline === 'perplexity') {
       router.push(`/results/perplexity/${analysisId}`);
-    } else {
+    } else if (pipeline === 'google_overview') {
       router.push(`/results/google/${analysisId}`);
+    } else if (pipeline === 'chatgpt') {
+      router.push(`/results/chatgpt/${analysisId}`);
     }
   };
 
   // View analysis result for a used query
-  const handleViewAnalysisResult = async (query: string, pipeline: 'perplexity' | 'google_overview') => {
+  const handleViewAnalysisResult = async (query: string, pipeline: 'perplexity' | 'google_overview' | 'chatgpt') => {
     console.log('handleViewAnalysisResult called', { query, pipeline, currentProductId });
     // Clear any stale error that could otherwise show up later when returning to /optimize
     setServerError(null);
@@ -2663,7 +2963,8 @@ function OptimizePageContent() {
       console.log('Looking for query:', JSON.stringify(query), 'in pipeline:', pipeline);
       console.log('Used queries for comparison:', {
         perplexity: usedPerplexityQueries,
-        google: usedGoogleQueries
+        google: usedGoogleQueries,
+        chatgpt: usedChatgptQueries
       });
 
       // Find the analysis record that matches this query and pipeline
@@ -2672,8 +2973,10 @@ function OptimizePageContent() {
           id: analysis.id,
           optimization_query: analysis.optimization_query,
           google_search_query: analysis.google_search_query,
+          chatgpt_search_query: analysis.chatgpt_search_query || analysis.chatgpt_prompt,
           has_optimization: !!analysis.optimization_analysis,
           has_google: !!analysis.google_overview_analysis,
+          has_chatgpt: !!analysis.chatgpt_analysis, // Need to ensure chatgpt_analysis maps right based on BE model later
         });
 
         if (pipeline === 'perplexity') {
@@ -2692,23 +2995,39 @@ function OptimizePageContent() {
             searchQueryType: typeof query
           });
           return exactMatch || caseInsensitiveMatch;
+        } else if (pipeline === 'google_overview') {
+          // Google pipeline matching
+          const analysisQuery = analysis.google_search_query;
+          const exactMatch = analysisQuery === query;
+          const caseInsensitiveMatch = analysisQuery &&
+            analysisQuery.toLowerCase() === query.toLowerCase();
+
+          console.log('Google match results:', {
+            exactMatch,
+            caseInsensitiveMatch,
+            analysisQuery,
+            searchQuery: query,
+            analysisQueryType: typeof analysisQuery,
+            searchQueryType: typeof query
+          });
+          return exactMatch || caseInsensitiveMatch;
+        } else if (pipeline === 'chatgpt') {
+          // ChatGPT pipeline matching
+          const analysisQuery = analysis.chatgpt_search_query || analysis.chatgpt_prompt; // Adjust field access
+          const exactMatch = analysisQuery === query;
+          const caseInsensitiveMatch = analysisQuery &&
+            analysisQuery.toLowerCase() === query.toLowerCase();
+
+          console.log('ChatGPT match results:', {
+            exactMatch,
+            caseInsensitiveMatch,
+            analysisQuery,
+            searchQuery: query,
+            analysisQueryType: typeof analysisQuery,
+            searchQueryType: typeof query
+          });
+          return exactMatch || caseInsensitiveMatch;
         }
-
-        // Google pipeline matching
-        const analysisQuery = analysis.google_search_query;
-        const exactMatch = analysisQuery === query;
-        const caseInsensitiveMatch = analysisQuery &&
-          analysisQuery.toLowerCase() === query.toLowerCase();
-
-        console.log('Google match results:', {
-          exactMatch,
-          caseInsensitiveMatch,
-          analysisQuery,
-          searchQuery: query,
-          analysisQueryType: typeof analysisQuery,
-          searchQueryType: typeof query
-        });
-        return exactMatch || caseInsensitiveMatch;
       });
 
       console.log('Matching analysis:', matchingAnalysis);
@@ -2720,14 +3039,17 @@ function OptimizePageContent() {
 
       console.log('Navigating to:', {
         perplexity: `/results/perplexity/${matchingAnalysis.id}`,
-        google: `/results/google/${matchingAnalysis.id}`
+        google: `/results/google/${matchingAnalysis.id}`,
+        chatgpt: `/results/chatgpt/${matchingAnalysis.id}`
       });
 
       // Navigate to the appropriate historical results page with analysis ID
       if (pipeline === 'perplexity') {
         router.push(`/results/perplexity/${matchingAnalysis.id}`);
-      } else {
+      } else if (pipeline === 'google_overview') {
         router.push(`/results/google/${matchingAnalysis.id}`);
+      } else if (pipeline === 'chatgpt') {
+        router.push(`/results/chatgpt/${matchingAnalysis.id}`);
       }
     } catch (error) {
       console.error('Error loading analysis result:', error);
@@ -2738,7 +3060,7 @@ function OptimizePageContent() {
   };
 
   const startAnalysisWithSelectedQueries = async (
-    pipeline: 'perplexity' | 'google_overview',
+    pipeline: 'perplexity' | 'google_overview' | 'chatgpt',
     snapshotId: string | null,
     queriesParam?: string[]
   ) => {
@@ -2749,15 +3071,19 @@ function OptimizePageContent() {
     }
 
     // 2) Get the selected query for this pipeline
-    const selectedQueries = queriesParam || (pipeline === 'perplexity' ? selectedPerplexityQueries : selectedGoogleQueries);
+    const selectedQueries = queriesParam || (
+      pipeline === 'perplexity' ? selectedPerplexityQueries :
+        pipeline === 'google_overview' ? selectedGoogleQueries :
+          selectedChatgptQueries
+    );
     const validQueries = selectedQueries.filter(q => q && q.trim().length > 0);
 
     if (validQueries.length === 0) {
-      setQueryGenerationError(`No valid ${pipeline === 'perplexity' ? 'Perplexity' : 'Google'} queries selected.`);
+      setQueryGenerationError(`No valid ${pipeline === 'perplexity' ? 'Perplexity' : pipeline === 'google_overview' ? 'Google' : 'ChatGPT'} queries selected.`);
       return;
     }
 
-    const maxForPipeline = pipeline === 'perplexity' ? maxPerplexityQueries : maxGoogleQueries;
+    const maxForPipeline = pipeline === 'perplexity' ? maxPerplexityQueries : pipeline === 'google_overview' ? maxGoogleQueries : maxChatgptQueries;
     const queriesToRun = validQueries.slice(0, maxForPipeline);
 
     const primaryQuery = queriesToRun[0];
@@ -3056,10 +3382,12 @@ function OptimizePageContent() {
           all: {
             perplexity: allPerplexityQueries,
             google: allGoogleQueries,
+            chatgpt: allChatgptQueries,
           },
           used: {
             perplexity: usedPerplexityQueries,
             google: usedGoogleQueries,
+            chatgpt: usedChatgptQueries,
           },
         };
         queryDataString = JSON.stringify(fallbackQueryData);
@@ -3196,23 +3524,30 @@ function OptimizePageContent() {
             const usedGoogle = pipeline === 'google_overview'
               ? [...new Set([...usedGoogleQueries, ...successfulQueriesRun])]
               : usedGoogleQueries;
+            const usedChatgpt = pipeline === 'chatgpt'
+              ? [...new Set([...usedChatgptQueries, ...successfulQueriesRun])]
+              : usedChatgptQueries;
 
             setUsedPerplexityQueries(usedPerplexity);
             setUsedGoogleQueries(usedGoogle);
+            setUsedChatgptQueries(usedChatgpt);
 
             // Remove used queries from selected queries
             setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q: string) => !usedPerplexity.includes(q)));
             setSelectedGoogleQueries(selectedGoogleQueries.filter((q: string) => !usedGoogle.includes(q)));
+            setSelectedChatgptQueries(selectedChatgptQueries.filter((q: string) => !usedChatgpt.includes(q)));
 
             // Update queryData for consistency
             const updatedQueryData: QueryData = {
               all: {
                 perplexity: allPerplexityQueries,
                 google: allGoogleQueries,
+                chatgpt: allChatgptQueries,
               },
               used: {
                 perplexity: usedPerplexity,
                 google: usedGoogle,
+                chatgpt: usedChatgpt,
               },
             };
             setQueryData(updatedQueryData);
@@ -3599,10 +3934,12 @@ function OptimizePageContent() {
           all: {
             perplexity: allPerplexityQueries,
             google: allGoogleQueries,
+            chatgpt: allChatgptQueries,
           },
           used: {
             perplexity: usedPerplexityQueries,
             google: usedGoogleQueries,
+            chatgpt: usedChatgptQueries,
           },
         };
         queryDataString = JSON.stringify(fallbackQueryData);
@@ -3770,22 +4107,25 @@ function OptimizePageContent() {
 
             if (currentQueryData) {
               // Fetch used queries from analysis tables
-              const { google: usedGoogleFromAnalysis, perplexity: usedPerplexityFromAnalysis } =
+              const { google: usedGoogleFromAnalysis, perplexity: usedPerplexityFromAnalysis, chatgpt: usedChatgptFromAnalysis } =
                 await fetchUsedQueriesFromAnalysisClient(savedProductId);
 
               // Update local state with used queries from analysis tables
               setUsedPerplexityQueries(usedPerplexityFromAnalysis);
               setUsedGoogleQueries(usedGoogleFromAnalysis);
+              setUsedChatgptQueries(usedChatgptFromAnalysis);
 
               // Update queryData for consistency
               const updatedQueryData: QueryData = {
                 all: {
                   perplexity: allPerplexityQueries,
                   google: allGoogleQueries,
+                  chatgpt: allChatgptQueries,
                 },
                 used: {
                   perplexity: usedPerplexityFromAnalysis,
                   google: usedGoogleFromAnalysis,
+                  chatgpt: usedChatgptFromAnalysis,
                 },
               };
               setQueryData(updatedQueryData);
@@ -3793,6 +4133,7 @@ function OptimizePageContent() {
               // Remove used queries from selected queries
               setSelectedPerplexityQueries(selectedPerplexityQueries.filter((q: string) => !updatedQueryData.used.perplexity.includes(q)));
               setSelectedGoogleQueries(selectedGoogleQueries.filter((q: string) => !updatedQueryData.used.google.includes(q)));
+              setSelectedChatgptQueries(selectedChatgptQueries.filter((q: string) => !updatedQueryData.used.chatgpt.includes(q)));
               finalQueryData = updatedQueryData;
             }
           }
@@ -4008,78 +4349,39 @@ function OptimizePageContent() {
   };
 
   const handleGenerateQueryOnly = async () => {
-    // Check authentication
-    if (!user) {
-      setServerError('Please sign in to generate queries');
-      router.push('/auth');
-      return;
-    }
-
-    // Prepare the current form data for query generation
-    const aiReadyData = prepareDataForAI(formData);
-
-    try {
-      const queryResult = await generateQueryFromData(aiReadyData);
-
-      if (!queryResult) {
-        // Query generation failed - error already set by generateQueryFromData
-        return;
-      }
-
-      // Successfully generated queries, now switch to Generated Query section
-      setActiveSection('query');
-      setSelectedBatchId(null);
-      await loadQueryBatches();
-      console.log('Queries generated successfully, switched to Generated Query section');
-
-    } catch (error) {
-      console.error('Query generation error:', error);
-      setServerError('Failed to generate queries. Please try again.');
-    }
+    setGenerateBatchModalOpen(true);
   };
 
-  const handleGenerateNewBatch = async () => {
-    if (!user || !currentProductId) return;
 
-    setGenerateBatchModalOpen(false);
-    setIsGeneratingQuery(true);
+  const handleGenerateChatgptQueriesForBatch = async () => {
+    if (!user || !currentProductId || !selectedBatchId) return;
+
+    setIsGeneratingChatgptQueries(true);
     setQueryGenerationError(null);
 
     try {
-      const response = await fetch('/api/generate-batch', {
+      const response = await fetch('/api/generate-batch-chatgpt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
           productId: currentProductId,
-          batchName: newBatchName.trim() || undefined
+          batchId: selectedBatchId,
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate batch');
+        throw new Error(errorData.error || 'Failed to generate ChatGPT queries');
       }
 
-      const { batch } = await response.json();
-
-      // Refresh batches list
-      await loadQueryBatches();
-
-      // Select the new batch and load its queries
-      if (batch?.id) {
-        // We must load queries immediately so the UI reflects the new batch's content
-        // otherwise it will show the previous batch's queries with the new batch ID
-        await loadQueriesForBatch(batch.id);
-        setSelectedBatchId(batch.id);
-      }
-
+      // Reload the batch queries to show the new ChatGPT queries
+      await loadQueriesForBatch(selectedBatchId);
     } catch (error: any) {
-      console.error('Error generating new batch:', error);
-      setQueryGenerationError(error.message || 'Failed to generate new batch');
+      console.error('Error generating ChatGPT queries:', error);
+      setQueryGenerationError(error.message || 'Failed to generate ChatGPT queries');
     } finally {
-      setIsGeneratingQuery(false);
-      setNewBatchName(""); // Reset input
+      setIsGeneratingChatgptQueries(false);
     }
   };
 
@@ -4104,6 +4406,13 @@ function OptimizePageContent() {
         setSelectedBatchId(null);
         setAllPerplexityQueries([]);
         setAllGoogleQueries([]);
+        setAllChatgptQueries([]);
+        setSelectedPerplexityQueries([]);
+        setSelectedGoogleQueries([]);
+        setSelectedChatgptQueries([]);
+        setUsedPerplexityQueries([]);
+        setUsedGoogleQueries([]);
+        setUsedChatgptQueries([]);
       }
     } catch (error: any) {
       console.error('Error deleting batch:', error);
@@ -4643,315 +4952,146 @@ function OptimizePageContent() {
         flexDirection: "column",
       }}
     >
-      {/* Navbar */}
-      <Sheet
-        variant="outlined"
-        sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1000,
-          backgroundColor: surfaceRaised,
-          border: `1px solid ${borderColor}`,
-          borderBottom: `1px solid ${borderColor}`,
-          py: 2,
-          px: 4,
-          boxShadow: "0 20px 44px rgba(2, 4, 7, 0.6)",
-          transition: "border-color 0.3s ease, box-shadow 0.3s ease",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          "&:hover": {
-            border: `1px solid ${borderColorHover}`,
-            borderBottom: `1px solid ${borderColorHover}`,
-            boxShadow: "0 24px 60px rgba(2, 4, 7, 0.65)",
-          }
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box component="img" src="/GodsEye.png" alt="GodsEye logo" sx={{ width: 22, height: 22 }} />
-          <Typography level="h4" sx={{ color: textPrimary, fontWeight: 600 }}>
-            GodsEye
-          </Typography>
-          {currentProductId && (() => {
-            const currentProduct = products.find(p => p.id === currentProductId);
-            return currentProduct?.name ? (
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: 'rgba(13, 15, 20, 0.6)',
-                border: `1px solid ${borderColor}`,
-                borderRadius: '8px',
-                ml: 2,
-                overflow: 'hidden'
-              }}>
-                <Box sx={{ px: 2, py: 0.5, backgroundColor: 'rgba(46, 212, 122, 0.08)', borderRight: `1px solid ${borderColor}` }}>
-                  <Typography level="body-sm" sx={{ color: textSecondary, fontWeight: 500 }}>
-                    {currentProduct.name}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 0.5, gap: 1 }}>
-                  <Typography level="body-xs" sx={{ color: 'rgba(162, 167, 180, 0.6)', fontFamily: 'monospace' }}>
-                    {currentProduct.id}
-                  </Typography>
-                  <Button
-                    variant="plain"
-                    color="neutral"
-                    size="sm"
-                    onClick={() => {
-                      if (currentProduct.id) {
-                        void navigator.clipboard.writeText(currentProduct.id);
-                        setIsHeaderProductIdCopied(true);
-                        setTimeout(() => setIsHeaderProductIdCopied(false), 2000);
-                      }
-                    }}
-                    sx={{
-                      minHeight: 20,
-                      p: 0.5,
-                      lineHeight: 0,
-                      color: isHeaderProductIdCopied ? 'success.500' : 'rgba(162, 167, 180, 0.5)',
-                      '&:hover': {
-                        color: isHeaderProductIdCopied ? 'success.600' : textPrimary,
-                        backgroundColor: 'transparent'
-                      }
-                    }}
-                  >
-                    {isHeaderProductIdCopied ? (
-                      <CheckCircleOutlineIcon sx={{ fontSize: 14 }} />
-                    ) : (
-                      <ContentCopyIcon sx={{ fontSize: 14 }} />
-                    )}
-                  </Button>
-                </Box>
-              </Box>
-            ) : null;
-          })()}
-        </Box>
-        <Button
-          type="button"
-          variant="outlined"
-          color="neutral"
-          size="sm"
-          onClick={handleBackToDashboard}
-          disabled={isNavigatingBack}
-          startDecorator={isNavigatingBack ? <CircularProgress size="sm" thickness={5} sx={{ color: "#2ED47A" }} /> : null}
-          sx={{
-            opacity: isNavigatingBack ? 0.7 : 1,
-            cursor: isNavigatingBack ? "not-allowed" : "pointer"
-          }}
-        >
-          {isNavigatingBack ? "Loading..." : "Back to Dashboard"}
-        </Button>
-      </Sheet>
 
       {/* Main Content */}
       <Box
         sx={{
           flex: 1,
           width: "100%",
-          mt: { xs: 10, md: 12 },
-          px: { xs: 2, md: 5 },
-          pb: 6,
+          mt: 0,
+          px: 0,
+          pb: 0,
           display: "flex",
-          flexDirection: { xs: "column", md: "row" },
+          flexDirection: "column",
           gap: { xs: 3, md: 4 },
         }}
       >
-        <Card
-          variant="outlined"
-          sx={{
-            width: { xs: "100%", md: 260 },
-            backgroundColor: surfaceRaised,
-            border: `1px solid ${borderColor}`,
-            boxShadow: "0 18px 40px rgba(2, 4, 7, 0.5)",
-            position: "sticky",
-            top: 96,
-            height: "fit-content",
-          }}
-        >
-          <Typography level="title-md" sx={{ mb: 2, color: textPrimary }}>
-            Views
-          </Typography>
-          <Stack spacing={1.5}>
-            <Button
-              type="button"
-              variant={activeSection === "product" ? "solid" : "outlined"}
-              color="neutral"
-              onClick={() => {
-                setActiveSection("product");
-                setShowSOVCards(false);
-                setShowDeepAnalysis(false);
-              }}
-              sx={{
-                backgroundColor: activeSection === "product" ? accentColor : "transparent",
-                color: activeSection === "product" ? "#0D0F14" : textPrimary,
-                borderColor: activeSection === "product" ? "rgba(46, 212, 122, 0.45)" : borderColor,
-                fontWeight: 600,
-                transition: "all 0.2s ease",
-                borderRadius: "999px",
-                "&:hover": {
-                  backgroundColor: activeSection === "product" ? "#26B869" : accentSoft,
-                  color: activeSection === "product" ? "#0D0F14" : textPrimary,
-                  borderColor: "rgba(46, 212, 122, 0.45)",
-                  boxShadow: "0 6px 20px rgba(46, 212, 122, 0.18)",
-                },
-              }}
-            >
-              Product Data
-            </Button>
-            <Button
-              type="button"
-              variant={activeSection === "query" ? "solid" : "outlined"}
-              color="neutral"
-              onClick={() => {
-                setActiveSection("query");
-                setSelectedBatchId(null);
-                setShowSOVCards(false);
-                setShowDeepAnalysis(false);
-              }}
-              sx={{
-                backgroundColor: activeSection === "query" ? accentColor : "transparent",
-                color: activeSection === "query" ? "#0D0F14" : textPrimary,
-                borderColor: activeSection === "query" ? "rgba(46, 212, 122, 0.45)" : borderColor,
-                fontWeight: 600,
-                transition: "all 0.2s ease",
-                borderRadius: "999px",
-                "&:hover": {
-                  backgroundColor: activeSection === "query" ? "#26B869" : accentSoft,
-                  color: activeSection === "query" ? "#0D0F14" : textPrimary,
-                  borderColor: "rgba(46, 212, 122, 0.45)",
-                  boxShadow: "0 6px 20px rgba(46, 212, 122, 0.18)",
-                },
-              }}
-            >
-              Generated Query
-            </Button>
-            <Button
-              type="button"
-              variant={activeSection === "perplexity" ? "solid" : "outlined"}
-              color="neutral"
-              onClick={() => {
-                setActiveSection("perplexity");
-                setSovCardEngine('perplexity');
-                setShowSOVCards(true);
-                setShowDeepAnalysis(false);
-              }}
-              sx={{
-                backgroundColor: activeSection === "perplexity" ? accentColor : "transparent",
-                color: activeSection === "perplexity" ? "#0D0F14" : textPrimary,
-                borderColor: activeSection === "perplexity" ? "rgba(46, 212, 122, 0.45)" : borderColor,
-                fontWeight: 600,
-                minWidth: '220px',
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-                px: 3,
-                transition: "all 0.2s ease",
-                borderRadius: "999px",
-                "&:hover": {
-                  backgroundColor: activeSection === "perplexity" ? "#26B869" : accentSoft,
-                  color: activeSection === "perplexity" ? "#0D0F14" : textPrimary,
-                  borderColor: "rgba(46, 212, 122, 0.45)",
-                  boxShadow: "0 6px 20px rgba(46, 212, 122, 0.18)",
-                },
-              }}
-            >
-              Perplexity Search Analysis
-            </Button>
-            <Button
-              type="button"
-              variant={activeSection === "google" ? "solid" : "outlined"}
-              color="neutral"
-              onClick={() => {
-                setActiveSection("google");
-                setSovCardEngine('google');
-                setShowSOVCards(true);
-                setShowDeepAnalysis(false);
-              }}
-              sx={{
-                backgroundColor: activeSection === "google" ? accentColor : "transparent",
-                color: activeSection === "google" ? "#0D0F14" : textPrimary,
-                borderColor: activeSection === "google" ? "rgba(46, 212, 122, 0.45)" : borderColor,
-                fontWeight: 600,
-                minWidth: '220px',
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-                px: 3,
-                borderRadius: '999px',
-                "&:hover": {
-                  backgroundColor: activeSection === "google" ? "#26B869" : accentSoft,
-                  color: activeSection === "google" ? "#0D0F14" : textPrimary,
-                  borderColor: "rgba(46, 212, 122, 0.45)",
-                  boxShadow: "0 6px 20px rgba(46, 212, 122, 0.18)",
-                },
-              }}
-            >
-              Google Overview Analysis
-            </Button>
-            <Tooltip title="Coming Soon" placement="top" arrow>
-              <span>
-                <Button
-                  type="button"
+        {(activeSection === 'perplexity' || activeSection === 'google' || activeSection === 'chatgpt') && (
+          <div className="flex w-full flex-col gap-6">
+            {dashboardIsLoading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6, width: '100%' }}>
+                <CircularProgress thickness={5} sx={{ color: accentColor }} />
+              </Box>
+            )}
+
+            {!dashboardIsLoading && dashboardError && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
+                <Card
                   variant="outlined"
-                  color="neutral"
-                  disabled
                   sx={{
-                    backgroundColor: "transparent",
-                    color: textSecondary,
-                    borderColor: borderColor,
-                    fontWeight: 600,
-                    minWidth: '220px',
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                    px: 3,
-                    borderRadius: '999px',
+                    width: '100%',
+                    p: 4,
+                    backgroundColor: surfaceBase,
+                    border: `1px solid ${borderColor}`,
                   }}
                 >
-                  Chatgpt Analysis
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip title="Coming Soon" placement="top" arrow>
-              <span>
-                <Button
-                  type="button"
-                  variant="outlined"
-                  color="neutral"
-                  disabled
-                  sx={{
-                    backgroundColor: "transparent",
-                    color: textSecondary,
-                    borderColor: borderColor,
-                    fontWeight: 600,
-                    minWidth: '220px',
-                    textAlign: 'center',
-                    whiteSpace: 'nowrap',
-                    px: 3,
-                    borderRadius: '999px',
-                  }}
-                >
-                  Gemini Analysis
-                </Button>
-              </span>
-            </Tooltip>
-          </Stack>
-        </Card>
+                  <Typography level="title-md" sx={{ color: textPrimary, mb: 1 }}>
+                    Unable to load metrics
+                  </Typography>
+                  <Typography level="body-sm" sx={{ color: textSecondary }}>
+                    {dashboardError}
+                  </Typography>
+                </Card>
+
+                {/* Show specialized SOV Performance Card when metrics fail */}
+                {(activeSection === 'google' || activeSection === 'perplexity' || (activeSection === 'chatgpt' && process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true')) && (
+                  <SOVPerformanceCard
+                    productId={currentProductId || ''}
+                    engine={activeSection as 'google' | 'perplexity' | 'chatgpt'}
+                    product={currentProduct}
+                  />
+                )}
+              </Box>
+            )}
+
+            {!dashboardIsLoading && !dashboardError && currentProductId && (
+              <>
+                <SectionCards data={topCards} />
+                <VishnuGraph data={vishnuGraph} isLoading={dashboardIsLoading} />
+                <ShivaGraph data={shivaGraph} isLoading={dashboardIsLoading} />
+                <ChartAreaInteractive data={brandCoverageGraph as any} brands={brandCoverageBrands} />
+                <DataTable
+                  brandRanking={brandRanking}
+                  topPrompts={topPrompts}
+                  citationRanking={citationRanking}
+                  clientCitations={clientCitations}
+                />
+
+
+              </>
+            )}
+            
+            {/* Deep Analysis Strategy Card */}
+            {!dashboardIsLoading && currentProductId && (
+              <Box sx={{ mt: 2 }}>
+                <DeepAnalysisCard
+                  engine={activeSection as 'google' | 'perplexity' | 'chatgpt'}
+                  productId={currentProductId || ''}
+                  analysisHash={
+                    (activeSection === 'google' ? currentProduct?.deep_analysis_google_hash :
+                    activeSection === 'perplexity' ? currentProduct?.deep_analysis_perplexity_hash :
+                    currentProduct?.deep_analysis_chatgpt_hash) ?? null
+                  }
+                  isAnalysisUpToDate={
+                    activeSection === 'google' ? !!currentProduct?.deep_analysis_google_up_to_date :
+                    activeSection === 'perplexity' ? !!currentProduct?.deep_analysis_perplexity_up_to_date :
+                    !!currentProduct?.deep_analysis_chatgpt_up_to_date
+                  }
+                />
+              </Box>
+            )}
+          </div>
+        )}
+
+        {/* Documentation Section */}
+        {activeSection === 'documentation' && (
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <DashboardDocumentation />
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+              <Typography level="body-sm" sx={{ color: 'rgba(242, 245, 250, 0.45)', fontStyle: 'italic' }}>
+                End of Documentation • GodsEye Optimization Guide
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
+        {/* MCP Documentation Section */}
+        {activeSection === 'mcp_documentation' && (
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <MCPDocumentation />
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+              <Typography level="body-sm" sx={{ color: 'rgba(242, 245, 250, 0.45)', fontStyle: 'italic' }}>
+                End of MCP Documentation • GodsEye Integration Guide
+              </Typography>
+            </Box>
+          </Box>
+        )}
 
         {/* Product Data Section */}
         {activeSection === "product" && (
           <Card
             variant="outlined"
             sx={{
-              flex: 1,
-              p: 4,
+              width: "100%",
+              p: { xs: 3, md: 5 },
               mb: 4,
-              backgroundColor: surfaceBase,
-              border: `1px solid ${borderColor}`,
-              boxShadow: "0 24px 60px rgba(2, 4, 7, 0.55)",
+              background: "linear-gradient(135deg, rgba(13, 15, 20, 0.8), rgba(10, 12, 16, 0.9))",
+              backdropFilter: "blur(20px)",
+              border: `1px solid rgba(46, 212, 122, 0.2)`,
+              boxShadow: "0 24px 80px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.05)",
+              borderRadius: "24px",
+              position: "relative",
+              overflow: "hidden",
             }}
           >
-            <Box sx={{ mb: 3, display: "flex", alignItems: "center", justifyContent: "center", gap: 1.25 }}>
-              <Typography level="h2" sx={{ color: textPrimary }}>
+            <Box sx={{ mb: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 1.5 }}>
+              <Typography level="h1" sx={{
+                color: textPrimary,
+                fontSize: { xs: "1.75rem", md: "2.25rem" },
+                fontWeight: 800,
+                letterSpacing: "-0.02em",
+                textAlign: "center"
+              }}>
                 Optimize Your Product for AI Search Engines
               </Typography>
               {hasFormBlockingMissing && (
@@ -4975,8 +5115,16 @@ function OptimizePageContent() {
                 </Button>
               )}
             </Box>
-            <Typography level="body-md" sx={{ mb: 4, textAlign: "center", color: textSecondary }}>
-              Help your product get discovered by AI search engines like Perplexity, Google AI Overview, and ChatGPT
+            <Typography level="body-lg" sx={{
+              mb: 5,
+              textAlign: "center",
+              color: textSecondary,
+              maxWidth: "700px",
+              mx: "auto",
+              lineHeight: 1.6,
+              fontWeight: 500
+            }}>
+              Enhance visibility across Perplexity, Google AI Overviews, and ChatGPT with precision-engineered product data.
             </Typography>
 
             {isClient && (
@@ -4989,17 +5137,23 @@ function OptimizePageContent() {
                   <FormLabel sx={{ fontWeight: 600, mb: 2, display: "block", color: "#ffffff" }}>
                     Input Method
                   </FormLabel>
-                  <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+                  <Stack direction="row" spacing={2} sx={{ mb: 4 }}>
                     <Button
                       variant={inputMode === 'url' ? 'solid' : 'outlined'}
                       onClick={() => setInputMode('url')}
                       sx={{
                         flex: 1,
+                        py: 1.5,
+                        borderRadius: "14px",
                         backgroundColor: inputMode === 'url' ? '#2ED47A' : 'transparent',
-                        borderColor: 'rgba(46, 212, 122, 0.3)',
+                        borderColor: inputMode === 'url' ? '#2ED47A' : 'rgba(46, 212, 122, 0.2)',
                         color: inputMode === 'url' ? '#0D0F14' : '#2ED47A',
+                        fontWeight: 700,
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                         '&:hover': {
-                          backgroundColor: inputMode === 'url' ? '#26B869' : 'rgba(46, 212, 122, 0.1)',
+                          backgroundColor: inputMode === 'url' ? '#26B869' : 'rgba(46, 212, 122, 0.08)',
+                          borderColor: '#2ED47A',
+                          transform: "translateY(-1px)",
                         }
                       }}
                     >
@@ -5010,11 +5164,17 @@ function OptimizePageContent() {
                       onClick={() => setInputMode('text')}
                       sx={{
                         flex: 1,
+                        py: 1.5,
+                        borderRadius: "14px",
                         backgroundColor: inputMode === 'text' ? '#2ED47A' : 'transparent',
-                        borderColor: 'rgba(46, 212, 122, 0.3)',
+                        borderColor: inputMode === 'text' ? '#2ED47A' : 'rgba(46, 212, 122, 0.2)',
                         color: inputMode === 'text' ? '#0D0F14' : '#2ED47A',
+                        fontWeight: 700,
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                         '&:hover': {
-                          backgroundColor: inputMode === 'text' ? '#26B869' : 'rgba(46, 212, 122, 0.1)',
+                          backgroundColor: inputMode === 'text' ? '#26B869' : 'rgba(46, 212, 122, 0.08)',
+                          borderColor: '#2ED47A',
+                          transform: "translateY(-1px)",
                         }
                       }}
                     >
@@ -5041,13 +5201,16 @@ function OptimizePageContent() {
                         size="md"
                         sx={{
                           flex: 1,
-                          background: "linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(79, 70, 229, 0.01))",
+                          background: "rgba(17, 19, 24, 0.8)",
                           backdropFilter: "blur(8px)",
-                          border: "1px solid rgba(216, 180, 254, 0.08)",
+                          border: "1px solid rgba(46, 212, 122, 0.1)",
+                          borderRadius: "12px",
                           minHeight: 44,
+                          transition: "all 0.2s ease",
                           "&:focus-within": {
-                            border: "1px solid rgba(216, 180, 254, 0.15)",
-                            background: "linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(79, 70, 229, 0.02))",
+                            border: "1px solid rgba(46, 212, 122, 0.3)",
+                            backgroundColor: "rgba(17, 19, 24, 0.95)",
+                            boxShadow: "0 0 15px rgba(46, 212, 122, 0.08)",
                           },
                           "& input": {
                             color: "#ffffff",
@@ -5055,7 +5218,7 @@ function OptimizePageContent() {
                             paddingY: 1,
                           },
                           "&::placeholder": {
-                            color: "rgba(255, 255, 255, 0.6)",
+                            color: "rgba(255, 255, 255, 0.4)",
                           }
                         }}
                       />
@@ -5067,12 +5230,14 @@ function OptimizePageContent() {
                         sx={{
                           minWidth: { xs: "100%", md: 140 },
                           minHeight: 44,
-                          background: "linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(79, 70, 229, 0.01))",
-                          border: "1px solid rgba(216, 180, 254, 0.08)",
+                          background: "rgba(17, 19, 24, 0.8)",
+                          border: "1px solid rgba(46, 212, 122, 0.1)",
                           borderRadius: "12px",
                           color: textPrimary,
+                          transition: "all 0.2s ease",
                           '&:hover': {
-                            borderColor: 'rgba(216, 180, 254, 0.15)'
+                            borderColor: 'rgba(46, 212, 122, 0.3)',
+                            backgroundColor: 'rgba(17, 19, 24, 0.9)',
                           },
                         }}
                       >
@@ -5086,30 +5251,34 @@ function OptimizePageContent() {
                         disabled={isScraping || ((inputMode as 'url' | 'text') === 'url' && !formData.url.trim()) || ((inputMode as 'url' | 'text') === 'text' && !productText.trim())}
                         size="md"
                         sx={{
-                          minHeight: 44,
-                          px: 2.5,
-                          fontSize: "0.95rem",
-                          borderRadius: "999px",
-                          fontWeight: 600,
-                          backgroundColor: accentColor,
+                          minHeight: 48,
+                          px: 4,
+                          fontSize: "1rem",
+                          borderRadius: "14px",
+                          fontWeight: 700,
+                          backgroundColor: "#2ED47A",
                           color: "#0D0F14",
-                          border: "1px solid rgba(46, 212, 122, 0.32)",
-                          boxShadow: "0 8px 24px rgba(46, 212, 122, 0.25)",
-                          transition: "all 0.2s ease",
+                          border: "1px solid rgba(46, 212, 122, 0.4)",
+                          boxShadow: "0 8px 32px rgba(46, 212, 122, 0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                           "&:hover": {
                             backgroundColor: "#26B869",
-                            borderColor: "rgba(46, 212, 122, 0.45)",
-                            boxShadow: "0 10px 28px rgba(46, 212, 122, 0.28)",
+                            borderColor: "rgba(46, 212, 122, 0.6)",
+                            boxShadow: "0 12px 40px rgba(46, 212, 122, 0.3)",
+                            transform: "translateY(-1px)",
                           },
                           "&:disabled": {
-                            backgroundColor: "rgba(46, 212, 122, 0.28)",
-                            borderColor: "rgba(46, 212, 122, 0.18)",
-                            color: "rgba(13, 15, 20, 0.7)",
+                            backgroundColor: "rgba(46, 212, 122, 0.15)",
+                            borderColor: "rgba(46, 212, 122, 0.1)",
+                            color: "rgba(242, 245, 250, 0.3)",
                             boxShadow: "none",
                             cursor: "not-allowed",
                           },
                         }}
                       >
+                        {isScraping ? (
+                          <CircularProgress size="sm" thickness={2} sx={{ color: "#0D0F14", mr: 1 }} />
+                        ) : null}
                         {isScraping ? 'Processing...' : (inputMode === 'url' ? 'Fetch Info' : 'Process Text')}
                       </Button>
                     </Stack>
@@ -5141,22 +5310,24 @@ function OptimizePageContent() {
                       minRows={8}
                       maxRows={15}
                       sx={{
-                        background: "linear-gradient(135deg, rgba(139, 92, 246, 0.02), rgba(79, 70, 229, 0.01))",
+                        background: "rgba(17, 19, 24, 0.8)",
                         backdropFilter: "blur(8px)",
-                        border: "1px solid rgba(216, 180, 254, 0.08)",
+                        border: "1px solid rgba(46, 212, 122, 0.1)",
                         borderRadius: "12px",
                         color: "#ffffff",
                         fontSize: "0.95rem",
+                        transition: "all 0.2s ease",
                         "&:focus-within": {
-                          border: "1px solid rgba(216, 180, 254, 0.15)",
-                          background: "linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(79, 70, 229, 0.02))",
+                          border: "1px solid rgba(46, 212, 122, 0.3)",
+                          backgroundColor: "rgba(17, 19, 24, 0.95)",
+                          boxShadow: "0 0 15px rgba(46, 212, 122, 0.08)",
                         },
                         "& textarea": {
                           color: "#ffffff",
                           paddingY: 1,
                         },
                         "&::placeholder": {
-                          color: "rgba(255, 255, 255, 0.6)",
+                          color: "rgba(255, 255, 255, 0.4)",
                         },
                       }}
                     />
@@ -5278,34 +5449,41 @@ function OptimizePageContent() {
 
                 {/* Data Cards - Only shown after data is fetched */}
                 {formData.product_name && (
-                  <>
-                    <Divider sx={{ my: 4 }} />
-
-                    <Typography level="h3" sx={{ mb: 3, textAlign: "center" }}>
-                      Product Information
-                    </Typography>
+                  <>                    <Typography level="h3" sx={{
+                    mb: 4,
+                    textAlign: "center",
+                    color: textPrimary,
+                    fontWeight: 800,
+                    letterSpacing: "0.02em",
+                    textTransform: "uppercase",
+                    fontSize: "0.875rem",
+                    opacity: 0.6
+                  }}>
+                    Product Intelligence
+                  </Typography>
 
                     <Box sx={{
                       display: "grid",
                       gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "1fr 1fr 1fr" },
                       gap: 3,
-                      mb: 4
+                      mb: 6
                     }}>
                       {/* Product Name Card */}
                       <Card
                         sx={{
-                          p: 3,
+                          p: 4,
                           cursor: "pointer",
-                          transition: "all 0.2s",
-                          background: "linear-gradient(135deg, rgba(167, 139, 250, 0.03), rgba(139, 92, 246, 0.02))",
-                          backdropFilter: "blur(8px)",
-                          border: "1px solid rgba(216, 180, 254, 0.06)",
-                          boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          background: "linear-gradient(135deg, rgba(46, 212, 122, 0.06), rgba(46, 212, 122, 0.02))",
+                          backdropFilter: "blur(4px)",
+                          border: "1px solid rgba(46, 212, 122, 0.12)",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+                          borderRadius: "16px",
                           "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
-                            border: "1px solid rgba(216, 180, 254, 0.1)",
-                            background: "linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(139, 92, 246, 0.03))",
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+                            border: "1px solid rgba(46, 212, 122, 0.35)",
+                            background: "linear-gradient(135deg, rgba(46, 212, 122, 0.1), rgba(46, 212, 122, 0.04))",
                           }
                         }}
                         onClick={() => openEditModal("productName")}
@@ -5321,26 +5499,27 @@ function OptimizePageContent() {
                       {/* Product Description Card */}
                       <Card
                         sx={{
-                          p: 3,
+                          p: 4,
                           cursor: "pointer",
-                          transition: "all 0.2s",
-                          background: "linear-gradient(135deg, rgba(167, 139, 250, 0.03), rgba(139, 92, 246, 0.02))",
-                          backdropFilter: "blur(8px)",
-                          border: "1px solid rgba(216, 180, 254, 0.06)",
-                          boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          background: "linear-gradient(135deg, rgba(46, 212, 122, 0.06), rgba(46, 212, 122, 0.02))",
+                          backdropFilter: "blur(4px)",
+                          border: "1px solid rgba(46, 212, 122, 0.12)",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+                          borderRadius: "16px",
                           "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
-                            border: "1px solid rgba(216, 180, 254, 0.1)",
-                            background: "linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(139, 92, 246, 0.03))",
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+                            border: "1px solid rgba(46, 212, 122, 0.35)",
+                            background: "linear-gradient(135deg, rgba(46, 212, 122, 0.1), rgba(46, 212, 122, 0.04))",
                           }
                         }}
                         onClick={() => openEditModal("description")}
                       >
-                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff" }}>
+                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff", fontWeight: 700 }}>
                           Description
                         </Typography>
-                        <Typography level="body-sm" sx={{ color: "rgba(255, 255, 255, 0.8)" }}>
+                        <Typography level="body-sm" sx={{ color: "rgba(255, 255, 255, 0.8)", lineHeight: 1.6 }}>
                           {formData.description
                             ? `${formData.description.substring(0, 100)}${formData.description.length > 100 ? "..." : ""}`
                             : "Not specified"}
@@ -5350,19 +5529,20 @@ function OptimizePageContent() {
                       {/* Specifications Card */}
                       <Card
                         sx={{
-                          p: 3,
+                          p: 4,
                           cursor: "pointer",
-                          transition: "all 0.2s",
-                          background: "linear-gradient(135deg, rgba(167, 139, 250, 0.03), rgba(139, 92, 246, 0.02))",
-                          backdropFilter: "blur(8px)",
-                          border: hasSpecificationMissing ? "1px solid rgba(243, 91, 100, 0.55)" : "1px solid rgba(216, 180, 254, 0.06)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          background: "linear-gradient(135deg, rgba(46, 212, 122, 0.06), rgba(46, 212, 122, 0.02))",
+                          backdropFilter: "blur(4px)",
+                          border: hasSpecificationMissing ? "1px solid rgba(243, 91, 100, 0.55)" : "1px solid rgba(46, 212, 122, 0.12)",
                           position: "relative",
-                          boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+                          borderRadius: "16px",
                           "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
-                            border: hasSpecificationMissing ? "1px solid rgba(243, 91, 100, 0.65)" : "1px solid rgba(216, 180, 254, 0.1)",
-                            background: "linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(139, 92, 246, 0.03))",
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+                            border: hasSpecificationMissing ? "1px solid rgba(243, 91, 100, 0.65)" : "1px solid rgba(46, 212, 122, 0.35)",
+                            background: "linear-gradient(135deg, rgba(46, 212, 122, 0.1), rgba(46, 212, 122, 0.04))",
                           }
                         }}
                         onClick={() => openEditModal("specifications")}
@@ -5375,8 +5555,8 @@ function OptimizePageContent() {
                               color="danger"
                               sx={{
                                 position: "absolute",
-                                top: 12,
-                                right: 12,
+                                top: 16,
+                                right: 16,
                                 borderRadius: "50%",
                               }}
                               onClick={(event: MouseEvent<HTMLButtonElement>) => {
@@ -5388,20 +5568,20 @@ function OptimizePageContent() {
                             </IconButton>
                           </Tooltip>
                         )}
-                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff" }}>
+                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff", fontWeight: 700 }}>
                           Specifications
                         </Typography>
                         {Object.entries(formData.specifications)
                           .filter(([key, value]) => key !== 'formulation_attributes' && value && value.toString().trim() !== '')
                           .slice(0, 4)
                           .map(([key, value]) => (
-                            <Typography key={key} level="body-sm" sx={{ color: "rgba(255, 255, 255, 0.8)" }}>
-                              {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: {value?.toString() || "Not specified"}
+                            <Typography key={key} level="body-sm" sx={{ color: "rgba(255, 255, 255, 0.8)", mb: 0.5 }}>
+                              <span style={{ fontWeight: 600, color: "rgba(46, 212, 122, 0.9)" }}>{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span> {value?.toString() || "Not specified"}
                             </Typography>
                           ))
                         }
                         {hasSpecificationMissing && (
-                          <Typography level="body-xs" sx={{ color: "#F35B64", mt: 1.5 }}>
+                          <Typography level="body-xs" sx={{ color: "#F35B64", mt: 1.5, fontWeight: 600 }}>
                             Missing: {specificationMissingLabels.join(', ')}
                           </Typography>
                         )}
@@ -5410,18 +5590,20 @@ function OptimizePageContent() {
                       {/* Features Card */}
                       <Card
                         sx={{
-                          p: 3,
+                          p: 4,
                           cursor: "pointer",
-                          transition: "all 0.2s",
-                          background: "linear-gradient(135deg, rgba(167, 139, 250, 0.03), rgba(139, 92, 246, 0.02))",
-                          backdropFilter: "blur(8px)",
-                          border: hasFeaturesMissing ? "1px solid rgba(243, 91, 100, 0.55)" : "1px solid rgba(216, 180, 254, 0.06)",
-                          boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          background: "linear-gradient(135deg, rgba(46, 212, 122, 0.06), rgba(46, 212, 122, 0.02))",
+                          backdropFilter: "blur(4px)",
+                          border: hasFeaturesMissing ? "1px solid rgba(243, 91, 100, 0.55)" : "1px solid rgba(46, 212, 122, 0.12)",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+                          borderRadius: "16px",
+                          position: "relative",
                           "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
-                            border: hasFeaturesMissing ? "1px solid rgba(243, 91, 100, 0.65)" : "1px solid rgba(216, 180, 254, 0.1)",
-                            background: "linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(139, 92, 246, 0.03))",
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+                            border: hasFeaturesMissing ? "1px solid rgba(243, 91, 100, 0.65)" : "1px solid rgba(46, 212, 122, 0.35)",
+                            background: "linear-gradient(135deg, rgba(46, 212, 122, 0.1), rgba(46, 212, 122, 0.04))",
                           }
                         }}
                         onClick={() => openEditModal("features")}
@@ -5432,7 +5614,7 @@ function OptimizePageContent() {
                               size="sm"
                               variant="soft"
                               color="danger"
-                              sx={{ position: "absolute", top: 12, right: 12, borderRadius: "50%" }}
+                              sx={{ position: "absolute", top: 16, right: 16, borderRadius: "50%" }}
                               onClick={(event: MouseEvent<HTMLButtonElement>) => {
                                 event.stopPropagation();
                                 openEditModal("features");
@@ -5442,20 +5624,39 @@ function OptimizePageContent() {
                             </IconButton>
                           </Tooltip>
                         )}
-                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff" }}>
+                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff", fontWeight: 700 }}>
                           Features
                         </Typography>
-                        <Typography level="body-sm" sx={{ color: "rgba(255, 255, 255, 0.8)" }}>
-                          {formData.features.filter(f => f.name.trim()).length} features
+                        <Typography level="body-sm" sx={{ color: "rgba(255, 255, 255, 0.8)", mb: 2 }}>
+                          {formData.features.filter(f => f.name.trim()).length} features identified
                         </Typography>
-                        <Box sx={{ mt: 1 }}>
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
                           {formData.features.filter(f => f.name.trim()).slice(0, 2).map((feature, index) => (
-                            <Chip key={index} size="sm" sx={{ mr: 1, mb: 1 }}>
+                            <Chip
+                              key={index}
+                              size="sm"
+                              variant="soft"
+                              sx={{
+                                backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                color: "#2ED47A",
+                                border: "1px solid rgba(46, 212, 122, 0.2)",
+                                fontWeight: 600
+                              }}
+                            >
                               {feature.name}
                             </Chip>
                           ))}
                           {formData.features.filter(f => f.name.trim()).length > 2 && (
-                            <Chip size="sm" variant="soft">+{formData.features.filter(f => f.name.trim()).length - 2} more</Chip>
+                            <Chip
+                              size="sm"
+                              variant="outlined"
+                              sx={{
+                                color: "rgba(255, 255, 255, 0.6)",
+                                borderColor: "rgba(255, 255, 255, 0.1)"
+                              }}
+                            >
+                              +{formData.features.filter(f => f.name.trim()).length - 2} more
+                            </Chip>
                           )}
                         </Box>
                       </Card>
@@ -5465,21 +5666,22 @@ function OptimizePageContent() {
                         sx={{
                           p: 3,
                           cursor: "pointer",
-                          transition: "all 0.2s",
-                          background: "linear-gradient(135deg, rgba(167, 139, 250, 0.03), rgba(139, 92, 246, 0.02))",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          background: "linear-gradient(135deg, rgba(46, 212, 122, 0.06), rgba(46, 212, 122, 0.02))",
                           backdropFilter: "blur(8px)",
-                          border: "1px solid rgba(216, 180, 254, 0.06)",
-                          boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
+                          border: "1px solid rgba(46, 212, 122, 0.12)",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+                          borderRadius: "16px",
                           "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
-                            border: "1px solid rgba(216, 180, 254, 0.1)",
-                            background: "linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(139, 92, 246, 0.03))",
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+                            border: "1px solid rgba(46, 212, 122, 0.35)",
+                            background: "linear-gradient(135deg, rgba(46, 212, 122, 0.1), rgba(46, 212, 122, 0.04))",
                           }
                         }}
                         onClick={() => openEditModal("targetMarket")}
                       >
-                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff" }}>
+                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff", fontWeight: 700 }}>
                           Target Market
                         </Typography>
                         <Typography level="body-sm" sx={{ color: "rgba(255, 255, 255, 0.8)" }}>
@@ -5504,21 +5706,22 @@ function OptimizePageContent() {
                         sx={{
                           p: 3,
                           cursor: "pointer",
-                          transition: "all 0.2s",
-                          background: "linear-gradient(135deg, rgba(167, 139, 250, 0.03), rgba(139, 92, 246, 0.02))",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          background: "linear-gradient(135deg, rgba(46, 212, 122, 0.06), rgba(46, 212, 122, 0.02))",
                           backdropFilter: "blur(8px)",
-                          border: "1px solid rgba(216, 180, 254, 0.06)",
-                          boxShadow: "0 1px 4px rgba(0, 0, 0, 0.2)",
+                          border: "1px solid rgba(46, 212, 122, 0.12)",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+                          borderRadius: "16px",
                           "&:hover": {
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.35)",
-                            border: "1px solid rgba(216, 180, 254, 0.1)",
-                            background: "linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(139, 92, 246, 0.03))",
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+                            border: "1px solid rgba(46, 212, 122, 0.35)",
+                            background: "linear-gradient(135deg, rgba(46, 212, 122, 0.1), rgba(46, 212, 122, 0.04))",
                           }
                         }}
                         onClick={() => openEditModal("problemSolved")}
                       >
-                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff" }}>
+                        <Typography level="title-md" sx={{ mb: 1, color: "#ffffff", fontWeight: 700 }}>
                           Problem Solved
                         </Typography>
                         <Typography level="body-sm" sx={{ color: "rgba(255, 255, 255, 0.8)" }}>
@@ -5542,7 +5745,18 @@ function OptimizePageContent() {
                           type="button"
                           onClick={loadDummyData}
                           variant="outlined"
-                          sx={{ flex: 1, width: { xs: "100%", sm: "auto" } }}
+                          sx={{
+                            flex: 1,
+                            width: { xs: "100%", sm: "auto" },
+                            borderRadius: "14px",
+                            borderColor: "rgba(243, 91, 100, 0.4)",
+                            color: "#F35B64",
+                            fontWeight: 600,
+                            "&:hover": {
+                              backgroundColor: "rgba(243, 91, 100, 0.1)",
+                              borderColor: "rgba(243, 91, 100, 0.6)",
+                            }
+                          }}
                         >
                           {originalScrapedData ? 'Reset to Original' : 'Reset Data'}
                         </Button>
@@ -5563,24 +5777,25 @@ function OptimizePageContent() {
                               flex: 1,
                               width: { xs: "100%", sm: "auto" },
                               minHeight: 46,
-                              borderRadius: "999px",
-                              fontWeight: 600,
-                              fontSize: "0.98rem",
-                              backgroundColor: accentColor,
+                              borderRadius: "14px",
+                              fontWeight: 700,
+                              fontSize: "1rem",
+                              backgroundColor: "#2ED47A",
                               color: "#0D0F14",
-                              border: "1px solid rgba(46, 212, 122, 0.32)",
-                              boxShadow: "0 10px 28px rgba(46, 212, 122, 0.28)",
-                              transition: "all 0.2s ease",
-                              px: 3,
+                              border: "1px solid rgba(46, 212, 122, 0.4)",
+                              boxShadow: "0 8px 32px rgba(46, 212, 122, 0.2)",
+                              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                              px: 4,
                               "&:hover": {
                                 backgroundColor: "#26B869",
-                                borderColor: "rgba(46, 212, 122, 0.45)",
-                                boxShadow: "0 12px 32px rgba(46, 212, 122, 0.32)",
+                                borderColor: "rgba(46, 212, 122, 0.6)",
+                                boxShadow: "0 12px 40px rgba(46, 212, 122, 0.3)",
+                                transform: "translateY(-1px)",
                               },
                               "&:disabled": {
-                                backgroundColor: "rgba(46, 212, 122, 0.28)",
-                                borderColor: "rgba(46, 212, 122, 0.18)",
-                                color: "rgba(13, 15, 20, 0.7)",
+                                backgroundColor: "rgba(46, 212, 122, 0.15)",
+                                borderColor: "rgba(46, 212, 122, 0.1)",
+                                color: "rgba(242, 245, 250, 0.3)",
                                 boxShadow: "none",
                                 cursor: "not-allowed",
                               },
@@ -5603,13 +5818,14 @@ function OptimizePageContent() {
                 sx={{
                   mt: 4,
                   p: 3,
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(7, 11, 20, 0.88))',
-                  border: '1px solid rgba(46, 212, 122, 0.22)',
-                  boxShadow: '0 28px 60px rgba(2, 6, 12, 0.55)',
+                  borderRadius: '16px',
+                  background: 'linear-gradient(135deg, rgba(13, 15, 20, 0.9), rgba(10, 12, 16, 0.95))',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(46, 212, 122, 0.25)',
+                  boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)',
                 }}
               >
-                <Typography sx={{ mb: 1.5, color: '#F2F5FA', fontSize: '1.35rem', fontWeight: 700 }}>
+                <Typography sx={{ mb: 1.5, color: '#FFFFFF', fontSize: '1.25rem', fontWeight: 800 }}>
                   GodsEye is analyzing your product
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -6643,99 +6859,7 @@ function OptimizePageContent() {
           </ModalDialog>
         </Modal>
 
-        {/* Generate Batch Modal */}
-        <Modal
-          open={isGenerateBatchModalOpen}
-          onClose={() => setGenerateBatchModalOpen(false)}
-          slotProps={{ backdrop: { sx: modalBackdropSx } }}
-        >
-          <ModalDialog
-            variant="outlined"
-            sx={{
-              ...modalDialogBaseSx,
-              maxWidth: 500,
-              border: "1px solid rgba(46, 212, 122, 0.2)",
-              boxShadow: "0 40px 120px rgba(46, 212, 122, 0.1)",
-            }}
-          >
-            <ModalClose onClick={() => setGenerateBatchModalOpen(false)} />
-            <Typography
-              level="h3"
-              sx={{
-                mb: 2,
-                color: "rgba(242, 245, 250, 0.9)",
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-              }}
-            >
-              Generate New Query Batch
-            </Typography>
-
-            <Typography
-              sx={{
-                color: textSecondary,
-                mb: 3,
-                lineHeight: 1.7,
-              }}
-            >
-              Create a new batch of optimized search queries based on the product's Generative DNA.
-              New queries will be unique and distinct from previous batches.
-            </Typography>
-
-            <FormControl sx={{ mb: 3 }}>
-              <FormLabel sx={{ color: textPrimary, mb: 1 }}>Batch Name (Optional)</FormLabel>
-              <Input
-                placeholder="e.g., Competitor Analysis v2"
-                value={newBatchName}
-                onChange={(e) => setNewBatchName(e.target.value)}
-                sx={{
-                  backgroundColor: "rgba(17, 19, 24, 0.6)",
-                  borderColor: "rgba(242, 245, 250, 0.2)",
-                  color: textPrimary,
-                  "&:hover": { borderColor: "rgba(242, 245, 250, 0.3)" },
-                  "&.Mui-focused": { borderColor: "#2ED47A" }
-                }}
-              />
-            </FormControl>
-
-            <Stack direction="row" spacing={2} sx={{ justifyContent: "flex-end" }}>
-              <Button
-                type="button"
-                variant="outlined"
-                onClick={() => setGenerateBatchModalOpen(false)}
-                sx={{
-                  borderColor: "rgba(242, 245, 250, 0.25)",
-                  color: "rgba(242, 245, 250, 0.8)",
-                  "&:hover": {
-                    borderColor: "rgba(242, 245, 250, 0.35)",
-                    backgroundColor: "rgba(242, 245, 250, 0.06)",
-                  },
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleGenerateNewBatch}
-                loading={isGeneratingQuery}
-                sx={{
-                  backgroundColor: "rgba(46, 212, 122, 0.15)",
-                  color: "#2ED47A",
-                  fontWeight: 600,
-                  px: 3,
-                  border: "1px solid rgba(46, 212, 122, 0.25)",
-                  "&:hover": {
-                    backgroundColor: "rgba(46, 212, 122, 0.2)",
-                    borderColor: "rgba(46, 212, 122, 0.35)",
-                  },
-                }}
-              >
-                Generate Batch
-              </Button>
-            </Stack>
-          </ModalDialog>
-        </Modal>
+        <QueryGenerationModal loadQueryBatches={loadQueryBatches} />
 
         <Modal
           open={checkImplementationIncompleteModalOpen}
@@ -6812,6 +6936,13 @@ function OptimizePageContent() {
                       Google: {q}
                     </Typography>
                   ))}
+                {usedChatgptQueries
+                  .filter(q => allChatgptQueries.includes(q) && !hasQueryBeenReanalyzed(q, 'chatgpt'))
+                  .map((q, idx) => (
+                    <Typography key={`ci-cg-${idx}`} sx={{ color: textPrimary, fontSize: "0.9rem" }}>
+                      ChatGPT: {q}
+                    </Typography>
+                  ))}
               </Stack>
             </Box>
 
@@ -6861,11 +6992,24 @@ function OptimizePageContent() {
             variant="outlined"
             sx={{
               flex: 1,
-              p: 4,
+              p: { xs: 3, md: 5 },
               mb: 4,
-              backgroundColor: surfaceBase,
-              border: `1px solid ${borderColor}`,
-              boxShadow: "0 24px 60px rgba(2, 4, 7, 0.55)",
+              backgroundColor: "rgba(13, 15, 20, 0.7)",
+              backdropFilter: "blur(20px)",
+              border: "1px solid rgba(46, 212, 122, 0.15)",
+              boxShadow: "0 24px 80px rgba(0, 0, 0, 0.6)",
+              borderRadius: "24px",
+              position: "relative",
+              overflow: "hidden",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "2px",
+                background: "linear-gradient(90deg, transparent, rgba(46, 212, 122, 0.4), transparent)",
+              }
             }}
           >
             {!selectedBatchId ? (
@@ -6873,34 +7017,44 @@ function OptimizePageContent() {
                 <Card
                   variant="outlined"
                   sx={{
-                    p: 2.5,
-                    mb: 3,
-                    backgroundColor: "rgba(17, 19, 24, 0.55)",
-                    border: `1px dashed rgba(46, 212, 122, 0.35)`
+                    p: 4,
+                    mb: 4,
+                    background: "linear-gradient(135deg, rgba(46, 212, 122, 0.05), rgba(46, 212, 122, 0.01))",
+                    backdropFilter: "blur(10px)",
+                    border: "1px dashed rgba(46, 212, 122, 0.3)",
+                    borderRadius: "16px",
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-                    <Typography level="title-md" sx={{ color: textPrimary }}>
-                      Batches
+                    <Typography level="h3" sx={{ color: textPrimary, fontWeight: 800, letterSpacing: "-0.01em" }}>
+                      Query Batches
                     </Typography>
                     <Tooltip title={isNewBatchEnabled ? "Generate a new batch of queries" : "Previous batch analysis must be complete (DNA generated) before creating a new one"} placement="top" arrow>
                       <span>
                         <Button
-                          size="sm"
+                          size="md"
                           onClick={() => setGenerateBatchModalOpen(true)}
                           loading={isGeneratingQuery}
                           disabled={!isNewBatchEnabled}
                           sx={{
-                            backgroundColor: "transparent",
-                            border: "1px solid rgba(242, 245, 250, 0.25)",
-                            color: "rgba(242, 245, 250, 0.5)",
-                            fontWeight: 600,
+                            backgroundColor: "rgba(46, 212, 122, 0.1)",
+                            border: "1px solid rgba(46, 212, 122, 0.4)",
+                            color: "#2ED47A",
+                            fontWeight: 700,
+                            borderRadius: "12px",
+                            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                             cursor: isNewBatchEnabled ? "pointer" : "not-allowed",
-                            "&:hover": {
-                              backgroundColor: "transparent",
-                              borderColor: "rgba(242, 245, 250, 0.35)",
-                              color: "rgba(242, 245, 250, 0.75)",
+                            "&:hover:not(:disabled)": {
+                              backgroundColor: "rgba(46, 212, 122, 0.2)",
+                              borderColor: "rgba(46, 212, 122, 0.6)",
+                              transform: "translateY(-1px)",
+                              boxShadow: "0 4px 12px rgba(46, 212, 122, 0.2)",
                             },
+                            "&:disabled": {
+                              backgroundColor: "rgba(242, 245, 250, 0.05)",
+                              borderColor: "rgba(242, 245, 250, 0.1)",
+                              color: "rgba(242, 245, 250, 0.3)",
+                            }
                           }}
                         >
                           Generate New Batch
@@ -6908,8 +7062,8 @@ function OptimizePageContent() {
                       </span>
                     </Tooltip>
                   </Box>
-                  <Typography level="body-xs" sx={{ mt: 1, color: "rgba(242, 245, 250, 0.65)" }}>
-                    this will generate new set of query
+                  <Typography level="body-sm" sx={{ mt: 1, color: "rgba(242, 245, 250, 0.6)" }}>
+                    This will generate a new set of targeted AI search queries based on your product data.
                   </Typography>
                 </Card>
 
@@ -6928,10 +7082,20 @@ function OptimizePageContent() {
                         key={batch.id}
                         variant="outlined"
                         sx={{
-                          p: 2.5,
-                          backgroundColor: "rgba(17, 19, 24, 0.6)",
-                          border: "1px solid rgba(46, 212, 122, 0.22)",
-                          transition: 'all 0.2s ease',
+                          p: 3,
+                          cursor: "pointer",
+                          background: "linear-gradient(135deg, rgba(46, 212, 122, 0.03), rgba(46, 212, 122, 0.01))",
+                          backdropFilter: "blur(4px)",
+                          border: "1px solid rgba(46, 212, 122, 0.12)",
+                          borderRadius: "16px",
+                          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          "&:hover": {
+                            transform: "translateY(-4px)",
+                            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+                            border: "1px solid rgba(46, 212, 122, 0.35)",
+                            background: "linear-gradient(135deg, rgba(46, 212, 122, 0.08), rgba(46, 212, 122, 0.03))",
+                          },
                         }}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
@@ -6988,6 +7152,21 @@ function OptimizePageContent() {
                                 </IconButton>
                               </span>
                             </Tooltip>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 1, mr: 1 }}>
+                              <Tooltip title="Enable Daily Tracking" placement="top" variant="soft" arrow>
+                                <Switch
+                                  size="sm"
+                                  checked={batch.daily_tracker || false}
+                                  onChange={() => handleToggleDailyTracking(batch.id, batch.daily_tracker || false)}
+                                  sx={{
+                                    "--Switch-trackBackground": "rgba(255, 255, 255, 0.1)",
+                                    "&.Mui-checked": {
+                                      "--Switch-trackBackground": "#2ED47A",
+                                    },
+                                  }}
+                                />
+                              </Tooltip>
+                            </Box>
                             <Button
                               size="sm"
                               variant="outlined"
@@ -6996,11 +7175,14 @@ function OptimizePageContent() {
                               sx={{
                                 borderColor: "rgba(46, 212, 122, 0.3)",
                                 color: "#2ED47A",
-                                fontWeight: 600,
+                                fontWeight: 700,
                                 minWidth: 80,
+                                borderRadius: "10px",
+                                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                                 "&:hover": {
                                   backgroundColor: "rgba(46, 212, 122, 0.1)",
-                                  borderColor: "rgba(46, 212, 122, 0.5)",
+                                  borderColor: "#2ED47A",
+                                  transform: "translateY(-1px)",
                                 },
                               }}
                             >
@@ -7044,7 +7226,28 @@ function OptimizePageContent() {
                         {queryBatches.find((b: any) => b.id === selectedBatchId)?.name || 'Batch'}
                       </Typography>
                     </Box>
-                    <Stack direction="row" spacing={1.5}>
+                    <Stack direction="row" spacing={3} alignItems="center">
+                      {(() => {
+                        const batch = queryBatches.find((b: any) => b.id === selectedBatchId);
+                        return (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mr: 1, opacity: 0.9 }}>
+                            <Typography level="body-xs" sx={{ color: "rgba(162, 167, 180, 0.9)", fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                              Daily Tracking
+                            </Typography>
+                            <Switch
+                              size="sm"
+                              checked={batch?.daily_tracker || false}
+                              onChange={() => handleToggleDailyTracking(selectedBatchId!, batch?.daily_tracker || false)}
+                              sx={{
+                                "--Switch-trackBackground": "rgba(255, 255, 255, 0.1)",
+                                "&.Mui-checked": {
+                                  "--Switch-trackBackground": "#2ED47A",
+                                },
+                              }}
+                            />
+                          </Box>
+                        );
+                      })()}
                       <Button
                         size="sm"
                         variant="outlined"
@@ -7052,15 +7255,24 @@ function OptimizePageContent() {
                           setSelectedBatchId(null);
                           setAllPerplexityQueries([]);
                           setAllGoogleQueries([]);
+                          setAllChatgptQueries([]);
                           setSelectedPerplexityQueries([]);
                           setSelectedGoogleQueries([]);
+                          setSelectedChatgptQueries([]);
+                          setUsedPerplexityQueries([]);
+                          setUsedGoogleQueries([]);
+                          setUsedChatgptQueries([]);
                         }}
                         sx={{
                           borderColor: "rgba(242, 245, 250, 0.25)",
                           color: textPrimary,
+                          borderRadius: "10px",
+                          fontWeight: 600,
+                          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                           "&:hover": {
                             backgroundColor: "rgba(242, 245, 250, 0.08)",
-                            borderColor: "rgba(242, 245, 250, 0.35)",
+                            borderColor: "rgba(242, 245, 250, 0.45)",
+                            transform: "translateY(-1px)",
                           },
                         }}
                       >
@@ -7075,14 +7287,11 @@ function OptimizePageContent() {
                             disabled
                             sx={{
                               backgroundColor: "transparent",
-                              border: "1px solid rgba(242, 245, 250, 0.25)",
-                              color: "rgba(242, 245, 250, 0.5)",
+                              border: "1px solid rgba(242, 245, 250, 0.15)",
+                              color: "rgba(242, 245, 250, 0.3)",
                               fontWeight: 600,
+                              borderRadius: "10px",
                               cursor: "not-allowed",
-                              "&:hover": {
-                                backgroundColor: "transparent",
-                                borderColor: "rgba(242, 245, 250, 0.25)",
-                              },
                             }}
                           >
                             Generate New Batch
@@ -7098,13 +7307,70 @@ function OptimizePageContent() {
             {/* Perplexity Queries Section */}
             {selectedBatchId && allPerplexityQueries.length > 0 && (
               <Box sx={{ mb: 4 }}>
-                <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography level="title-md" sx={{ color: textPrimary }}>
-                    🔍 Perplexity Search Queries
-                  </Typography>
-                  <Chip size="sm" variant="soft" sx={{ backgroundColor: "rgba(46, 212, 122, 0.12)", color: "#2ED47A" }}>
-                    {selectedPerplexityQueries.length}/{maxPerplexityQueries} selected
-                  </Chip>
+                <Box sx={{ mb: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography level="title-md" sx={{ color: textPrimary }}>
+                      🔍 Perplexity Search Queries
+                    </Typography>
+                    <Chip size="sm" variant="soft" sx={{ backgroundColor: "rgba(46, 212, 122, 0.12)", color: "#2ED47A" }}>
+                      {selectedPerplexityQueries.length}/{maxPerplexityQueries} selected
+                    </Chip>
+                  </Box>
+
+                  {/* Select Unused Queries Checkbox */}
+                  {(() => {
+                    const unusedPerplexity = allPerplexityQueries.filter(q => !usedPerplexityQueries.includes(q));
+                    const unusedGoogle = allGoogleQueries.filter(q => !usedGoogleQueries.includes(q));
+                    const unusedChatgpt = allChatgptQueries.filter(q => !usedChatgptQueries.includes(q));
+                    const hasUnused = unusedPerplexity.length > 0 || unusedGoogle.length > 0 || unusedChatgpt.length > 0;
+
+                    if (!hasUnused) return null;
+
+                    const allUnusedSelected =
+                      unusedPerplexity.every(q => selectedPerplexityQueries.includes(q)) &&
+                      unusedGoogle.every(q => selectedGoogleQueries.includes(q)) &&
+                      unusedChatgpt.every(q => selectedChatgptQueries.includes(q));
+
+                    return (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto" }}>
+                        <Checkbox
+                          size="sm"
+                          variant="outlined"
+                          checked={allUnusedSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPerplexityQueries([...new Set([...selectedPerplexityQueries, ...unusedPerplexity])]);
+                              setSelectedGoogleQueries([...new Set([...selectedGoogleQueries, ...unusedGoogle])]);
+                              setSelectedChatgptQueries([...new Set([...selectedChatgptQueries, ...unusedChatgpt])]);
+                            } else {
+                              setSelectedPerplexityQueries(selectedPerplexityQueries.filter(q => !unusedPerplexity.includes(q)));
+                              setSelectedGoogleQueries(selectedGoogleQueries.filter(q => !unusedGoogle.includes(q)));
+                              setSelectedChatgptQueries(selectedChatgptQueries.filter(q => !unusedChatgpt.includes(q)));
+                            }
+                          }}
+                          label={
+                            <Typography sx={{ color: "#2ED47A", fontWeight: 600, fontSize: "0.875rem" }}>
+                              Select Unused
+                            </Typography>
+                          }
+                          sx={{
+                            "& .MuiCheckbox-checkbox": {
+                              borderColor: "rgba(46, 212, 122, 0.5) !important",
+                              borderWidth: "2px",
+                              backgroundColor: "transparent",
+                            },
+                            "&.Mui-checked .MuiCheckbox-checkbox": {
+                              backgroundColor: "#2ED47A",
+                              borderColor: "#2ED47A !important",
+                            },
+                            "& .MuiCheckbox-root": {
+                              color: "#2ED47A",
+                            },
+                          }}
+                        />
+                      </Box>
+                    );
+                  })()}
                 </Box>
                 <Stack spacing={2}>
                   {allPerplexityQueries.map((query, index) => {
@@ -7113,12 +7379,25 @@ function OptimizePageContent() {
                         key={`perplexity-${index}`}
                         variant="outlined"
                         sx={{
-                          p: 2,
-                          backgroundColor: "rgba(17, 19, 24, 0.6)",
+                          p: 2.5,
+                          background: selectedPerplexityQueries.includes(query)
+                            ? "linear-gradient(135deg, rgba(46, 212, 122, 0.08), rgba(46, 212, 122, 0.03))"
+                            : "linear-gradient(135deg, rgba(17, 19, 24, 0.8), rgba(13, 15, 20, 0.9))",
+                          backdropFilter: "blur(8px)",
                           border: selectedPerplexityQueries.includes(query)
-                            ? "2px solid rgba(46, 212, 122, 0.5)"
-                            : "1px solid rgba(46, 212, 122, 0.2)",
-                          transition: "all 0.2s ease",
+                            ? "1px solid rgba(46, 212, 122, 0.6)"
+                            : "1px solid rgba(46, 212, 122, 0.15)",
+                          borderRadius: "14px",
+                          boxShadow: selectedPerplexityQueries.includes(query)
+                            ? "0 4px 16px rgba(46, 212, 122, 0.15)"
+                            : "0 2px 8px rgba(0, 0, 0, 0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          "&:hover": {
+                            backgroundColor: "rgba(17, 19, 24, 0.9)",
+                            borderColor: "rgba(46, 212, 122, 0.4)",
+                            transform: "translateY(-2px)",
+                            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.3)",
+                          }
                         }}
                       >
                         <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
@@ -7351,12 +7630,21 @@ function OptimizePageContent() {
 
             {/* Google Queries Section */}
             {selectedBatchId && allGoogleQueries.length > 0 && (
-              <Box sx={{ mb: 4 }}>
-                <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography level="title-md" sx={{ color: textPrimary }}>
+              <Box sx={{ mb: 6 }}>
+                <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Typography level="h3" sx={{ color: textPrimary, fontSize: "1.25rem", fontWeight: 700 }}>
                     🌐 Google AI Overview Queries
                   </Typography>
-                  <Chip size="sm" variant="soft" sx={{ backgroundColor: "rgba(46, 212, 122, 0.12)", color: "#2ED47A" }}>
+                  <Chip
+                    size="sm"
+                    variant="soft"
+                    sx={{
+                      backgroundColor: "rgba(46, 212, 122, 0.1)",
+                      color: "#2ED47A",
+                      border: "1px solid rgba(46, 212, 122, 0.2)",
+                      fontWeight: 600
+                    }}
+                  >
                     {selectedGoogleQueries.length}/{maxGoogleQueries} selected
                   </Chip>
                 </Box>
@@ -7367,12 +7655,25 @@ function OptimizePageContent() {
                         key={`google-${index}`}
                         variant="outlined"
                         sx={{
-                          p: 2,
-                          backgroundColor: "rgba(17, 19, 24, 0.6)",
+                          p: 2.5,
+                          background: selectedGoogleQueries.includes(query)
+                            ? "linear-gradient(135deg, rgba(46, 212, 122, 0.08), rgba(46, 212, 122, 0.03))"
+                            : "linear-gradient(135deg, rgba(17, 19, 24, 0.8), rgba(13, 15, 20, 0.9))",
+                          backdropFilter: "blur(8px)",
                           border: selectedGoogleQueries.includes(query)
-                            ? "2px solid rgba(46, 212, 122, 0.5)"
-                            : "1px solid rgba(46, 212, 122, 0.2)",
-                          transition: "all 0.2s ease",
+                            ? "1px solid rgba(46, 212, 122, 0.6)"
+                            : "1px solid rgba(46, 212, 122, 0.15)",
+                          borderRadius: "14px",
+                          boxShadow: selectedGoogleQueries.includes(query)
+                            ? "0 4px 16px rgba(46, 212, 122, 0.15)"
+                            : "0 2px 8px rgba(0, 0, 0, 0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          "&:hover": {
+                            backgroundColor: "rgba(17, 19, 24, 0.9)",
+                            borderColor: "rgba(46, 212, 122, 0.4)",
+                            transform: "translateY(-2px)",
+                            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.3)",
+                          }
                         }}
                       >
                         <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
@@ -7461,6 +7762,7 @@ function OptimizePageContent() {
                                 <Typography level="body-xs" sx={{
                                   color: editingQuery.value.trim().split(/\s+/).length >= 6 ? "#2ED47A" : "#F35B64",
                                   px: 1,
+                                  fontWeight: 600,
                                   fontStyle: 'italic'
                                 }}>
                                   Word count: {editingQuery.value.trim().split(/\s+/).length} / 6 (minimum for AI Overview)
@@ -7626,6 +7928,348 @@ function OptimizePageContent() {
               </Box>
             )}
 
+            {/* ChatGPT Queries Section */}
+            {process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true' && selectedBatchId && allChatgptQueries.length === 0 && (
+              <Box sx={{ mb: 6 }}>
+                <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Typography level="h3" sx={{ color: textPrimary, fontSize: "1.25rem", fontWeight: 700 }}>
+                    💬 ChatGPT Queries
+                  </Typography>
+                </Box>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    p: 4,
+                    background: "linear-gradient(135deg, rgba(255, 193, 7, 0.05), rgba(255, 193, 7, 0.02))",
+                    border: "1px solid rgba(255, 193, 7, 0.2)",
+                    borderRadius: "16px",
+                    backdropFilter: "blur(4px)",
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                    <Box
+                      component="span"
+                      sx={{ fontSize: "1.4rem", lineHeight: 1, mt: 0.3 }}
+                    >
+                      ℹ️
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        level="title-sm"
+                        sx={{ color: "rgba(255, 193, 7, 0.85)", mb: 1, fontWeight: 600 }}
+                      >
+                        No ChatGPT queries in this batch
+                      </Typography>
+                      <Typography
+                        level="body-sm"
+                        sx={{ color: textSecondary, mb: 2, lineHeight: 1.6 }}
+                      >
+                        This batch was created before the ChatGPT pipeline was available.
+                        You can generate ChatGPT-specific queries for this batch now — they will be added alongside the existing Perplexity and Google queries.
+                      </Typography>
+                      <Button
+                        size="md"
+                        variant="outlined"
+                        loading={isGeneratingChatgptQueries}
+                        disabled={isGeneratingChatgptQueries || !currentProductId}
+                        onClick={handleGenerateChatgptQueriesForBatch}
+                        sx={{
+                          borderColor: "rgba(255, 193, 7, 0.3)",
+                          color: "rgba(255, 193, 7, 0.9)",
+                          fontWeight: 700,
+                          borderRadius: "12px",
+                          px: 3,
+                          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                          "&:hover": {
+                            backgroundColor: "rgba(255, 193, 7, 0.1)",
+                            borderColor: "rgba(255, 193, 7, 0.5)",
+                            transform: "translateY(-1px)",
+                            boxShadow: "0 4px 12px rgba(255, 193, 7, 0.1)",
+                          },
+                        }}
+                      >
+                        {isGeneratingChatgptQueries ? 'Generating...' : '✨ Generate ChatGPT Queries'}
+                      </Button>
+                    </Box>
+                  </Box>
+                </Card>
+              </Box>
+            )}
+            {process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true' && selectedBatchId && allChatgptQueries.length > 0 && (
+              <Box sx={{ mb: 6 }}>
+                <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Typography level="h3" sx={{ color: textPrimary, fontSize: "1.25rem", fontWeight: 700 }}>
+                    💬 ChatGPT Queries
+                  </Typography>
+                  <Chip
+                    size="sm"
+                    variant="soft"
+                    sx={{
+                      backgroundColor: "rgba(46, 212, 122, 0.1)",
+                      color: "#2ED47A",
+                      border: "1px solid rgba(46, 212, 122, 0.2)",
+                      fontWeight: 600
+                    }}
+                  >
+                    {selectedChatgptQueries.length}/{maxChatgptQueries} selected
+                  </Chip>
+                </Box>
+                <Stack spacing={2}>
+                  {allChatgptQueries.map((query, index) => {
+                    return (
+                      <Card
+                        key={`chatgpt-${index}`}
+                        variant="outlined"
+                        sx={{
+                          p: 2.5,
+                          background: selectedChatgptQueries.includes(query)
+                            ? "linear-gradient(135deg, rgba(46, 212, 122, 0.08), rgba(46, 212, 122, 0.03))"
+                            : "linear-gradient(135deg, rgba(17, 19, 24, 0.8), rgba(13, 15, 20, 0.9))",
+                          backdropFilter: "blur(8px)",
+                          border: selectedChatgptQueries.includes(query)
+                            ? "1px solid rgba(46, 212, 122, 0.6)"
+                            : "1px solid rgba(46, 212, 122, 0.15)",
+                          borderRadius: "14px",
+                          boxShadow: selectedChatgptQueries.includes(query)
+                            ? "0 4px 16px rgba(46, 212, 122, 0.15)"
+                            : "0 2px 8px rgba(0, 0, 0, 0.2)",
+                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                          "&:hover": {
+                            backgroundColor: "rgba(17, 19, 24, 0.9)",
+                            borderColor: "rgba(46, 212, 122, 0.4)",
+                            transform: "translateY(-2px)",
+                            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.3)",
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                          <Checkbox
+                            checked={selectedChatgptQueries.includes(query) || usedChatgptQueries.includes(query)}
+                            disabled={usedChatgptQueries.includes(query)}
+                            onChange={() => handleQuerySelection(query, 'chatgpt')}
+                            sx={{
+                              "& .MuiCheckbox-root": {
+                                color: usedChatgptQueries.includes(query) ? "#6c757d" : "#2ED47A",
+                              },
+                              "& .MuiCheckbox-disabled": {
+                                color: "#6c757d",
+                              },
+                            }}
+                          />
+                          <Box sx={{ flex: 1 }}>
+                            {editingQuery?.pipeline === 'chatgpt' && editingQuery?.index === index ? (
+                              <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                                <Input
+                                  value={editingQuery.value}
+                                  onChange={(e) => setEditingQuery({ ...editingQuery, value: e.target.value })}
+                                  onKeyDown={handleEditKeyDown}
+                                  sx={{
+                                    flex: 1,
+                                    '&::before': {
+                                      display: 'none',
+                                    },
+                                    '&::after': {
+                                      display: 'none',
+                                    },
+                                    '&.Mui-focused': {
+                                      backgroundColor: 'rgba(46, 212, 122, 0.05)',
+                                    },
+                                  }}
+                                  autoFocus
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={handleSaveEditedQuery}
+                                  loading={editingQueryLoading}
+                                  disabled={editingQueryLoading}
+                                  sx={{
+                                    minWidth: 60,
+                                    backgroundColor: "#2ED47A",
+                                    color: "#0D0F14",
+                                    fontWeight: 600,
+                                    "&:hover": {
+                                      backgroundColor: "#26B869",
+                                    },
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outlined"
+                                  onClick={handleCancelEdit}
+                                  sx={{
+                                    minWidth: 60,
+                                    borderColor: "rgba(243, 91, 100, 0.4)",
+                                    color: "#F35B64",
+                                    "&:hover": {
+                                      backgroundColor: "rgba(243, 91, 100, 0.1)",
+                                    },
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </Box>
+                            ) : (
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Typography level="body-md" sx={{ color: textSecondary, flex: 1 }}>
+                                  "{query}"
+                                </Typography>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                  {usedChatgptQueries.includes(query) && (
+                                    <Chip
+                                      size="sm"
+                                      variant="soft"
+                                      sx={{
+                                        backgroundColor: "rgba(108, 117, 125, 0.12)",
+                                        color: "#6c757d",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      Used
+                                    </Chip>
+                                  )}
+                                  {usedChatgptQueries.includes(query) ? (() => {
+                                    const analyses = getAnalysesForQuery(query, 'chatgpt');
+                                    const analysisCount = analyses.length;
+                                    const trend = getTrendIndicator(analyses);
+
+                                    return (
+                                      <Box sx={{ position: 'relative' }}>
+                                        <Tooltip title="View ChatGPT analysis result" placement="top">
+                                          <Button
+                                            size="sm"
+                                            variant="outlined"
+                                            loading={loadingResultKey === `chatgpt-${query}`}
+                                            disabled={loadingResultKey === `chatgpt-${query}`}
+                                            onClick={() => handleViewAnalysisResult(query, 'chatgpt')}
+                                            onContextMenu={handleResultMenuOpen}
+                                            sx={{
+                                              minWidth: analysisCount > 1 ? 110 : 90,
+                                              borderColor: "rgba(46, 212, 122, 0.3)",
+                                              color: "#2ED47A",
+                                              fontWeight: 600,
+                                              fontSize: "0.75rem",
+                                              position: 'relative',
+                                              boxShadow: analysisCount > 1 ? '0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.1)' : 'none',
+                                              "&:hover": {
+                                                backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                                borderColor: "rgba(46, 212, 122, 0.5)",
+                                              },
+                                            }}
+                                          >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                              <Typography sx={{ fontSize: '0.75rem' }}>
+                                                📄 Result
+                                              </Typography>
+                                              {analysisCount > 1 && (
+                                                <Chip
+                                                  size="sm"
+                                                  variant="solid"
+                                                  sx={{
+                                                    ml: 0.5,
+                                                    backgroundColor: "rgba(46, 212, 122, 0.2)",
+                                                    color: "#2ED47A",
+                                                    fontSize: "0.7rem",
+                                                    fontWeight: 600,
+                                                    minWidth: 20,
+                                                    height: 20,
+                                                    borderRadius: '10px',
+                                                  }}
+                                                >
+                                                  {analysisCount}
+                                                </Chip>
+                                              )}
+                                              {trend && (
+                                                <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#2ED47A' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
+                                                  {trend.icon}
+                                                </Typography>
+                                              )}
+                                            </Box>
+                                          </Button>
+                                        </Tooltip>
+                                        {analysisCount > 1 && (
+                                          <Menu
+                                            anchorEl={resultMenuAnchor}
+                                            open={Boolean(resultMenuAnchor)}
+                                            onClose={handleResultMenuClose}
+                                            sx={{
+                                              '& .MuiList-root': {
+                                                py: 0.5,
+                                              },
+                                            }}
+                                          >
+                                            <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                              <Typography level="title-sm" sx={{ color: '#2ED47A', fontWeight: 600 }}>
+                                                Analysis History
+                                              </Typography>
+                                            </Box>
+                                            {analyses.map((analysis: any, index: number) => (
+                                              <MenuItem
+                                                key={analysis.id}
+                                                onClick={() => handleViewAnalysisById(analysis.id, 'chatgpt')}
+                                                sx={{
+                                                  py: 0.75,
+                                                  px: 1.5,
+                                                  display: 'flex',
+                                                  justifyContent: 'space-between',
+                                                  alignItems: 'center',
+                                                  '&:hover': {
+                                                    backgroundColor: 'rgba(46, 212, 122, 0.1)',
+                                                  },
+                                                }}
+                                              >
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                  <Typography level="body-sm" sx={{ fontSize: '0.8rem' }}>
+                                                    {index === 0 ? 'Latest' : index === 1 ? 'v2' : `v${index + 1}`}
+                                                  </Typography>
+                                                  {index === 0 && trend && (
+                                                    <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#2ED47A' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
+                                                      {trend.icon}
+                                                    </Typography>
+                                                  )}
+                                                </Box>
+                                                <Typography level="body-sm" sx={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                                  {formatRelativeTime(analysis.created_at)}
+                                                </Typography>
+                                              </MenuItem>
+                                            ))}
+                                          </Menu>
+                                        )}
+                                      </Box>
+                                    );
+                                  })() : (
+                                    <Tooltip title="Edit query" placement="top">
+                                      <IconButton
+                                        size="sm"
+                                        variant="outlined"
+                                        onClick={() => handleEditQuery(query, index, 'chatgpt')}
+                                        sx={{
+                                          borderColor: "rgba(46, 212, 122, 0.3)",
+                                          color: "#2ED47A",
+                                          "&:hover": {
+                                            backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                            borderColor: "rgba(46, 212, 122, 0.5)",
+                                          },
+                                        }}
+                                      >
+                                        <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                      </Card>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            )}
+
             {/* Query Generation Error State */}
             {queryGenerationError && (
               <Box sx={{ mb: 4 }}>
@@ -7633,14 +8277,17 @@ function OptimizePageContent() {
                   variant="outlined"
                   sx={{
                     p: 3,
-                    backgroundColor: "rgba(243, 91, 100, 0.1)",
+                    background: "linear-gradient(135deg, rgba(243, 91, 100, 0.05), rgba(243, 91, 100, 0.02))",
                     border: "1px solid rgba(243, 91, 100, 0.3)",
+                    borderRadius: "16px",
+                    backdropFilter: "blur(4px)",
                   }}
                 >
-                  <Typography level="body-md" sx={{ color: "#F35B64", mb: 2 }}>
-                    ⚠️ Query Generation Error
+                  <Typography level="body-md" sx={{ color: "#F35B64", mb: 2, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box component="span" sx={{ fontSize: '1.2rem' }}>⚠️</Box>
+                    Query Generation Error
                   </Typography>
-                  <Typography level="body-sm" sx={{ color: textSecondary }}>
+                  <Typography level="body-sm" sx={{ color: "rgba(242, 245, 250, 0.7)", mb: 3 }}>
                     {queryGenerationError}
                   </Typography>
                   <Button
@@ -7648,11 +8295,14 @@ function OptimizePageContent() {
                     size="sm"
                     onClick={() => setQueryGenerationError(null)}
                     sx={{
-                      mt: 2,
-                      borderColor: "rgba(243, 91, 100, 0.4)",
+                      borderColor: "rgba(243, 91, 100, 0.3)",
                       color: "#F35B64",
+                      fontWeight: 600,
+                      borderRadius: "10px",
+                      transition: "all 0.2s ease",
                       "&:hover": {
                         backgroundColor: "rgba(243, 91, 100, 0.1)",
+                        borderColor: "rgba(243, 91, 100, 0.5)",
                       },
                     }}
                   >
@@ -7669,14 +8319,17 @@ function OptimizePageContent() {
                   variant="outlined"
                   sx={{
                     p: 3,
-                    backgroundColor: "rgba(243, 91, 100, 0.1)",
+                    background: "linear-gradient(135deg, rgba(243, 91, 100, 0.05), rgba(243, 91, 100, 0.02))",
                     border: "1px solid rgba(243, 91, 100, 0.3)",
+                    borderRadius: "16px",
+                    backdropFilter: "blur(4px)",
                   }}
                 >
-                  <Typography level="body-md" sx={{ color: "#F35B64", mb: 2 }}>
-                    ⚠️ Error
+                  <Typography level="body-md" sx={{ color: "#F35B64", mb: 2, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box component="span" sx={{ fontSize: '1.2rem' }}>⚠️</Box>
+                    Error
                   </Typography>
-                  <Typography level="body-sm" sx={{ color: textSecondary, mb: 2 }}>
+                  <Typography level="body-sm" sx={{ color: "rgba(242, 245, 250, 0.7)", mb: 3 }}>
                     {serverError}
                   </Typography>
                   <Button
@@ -7684,10 +8337,14 @@ function OptimizePageContent() {
                     size="sm"
                     onClick={() => setServerError(null)}
                     sx={{
-                      borderColor: "rgba(243, 91, 100, 0.4)",
+                      borderColor: "rgba(243, 91, 100, 0.3)",
                       color: "#F35B64",
+                      fontWeight: 600,
+                      borderRadius: "10px",
+                      transition: "all 0.2s ease",
                       "&:hover": {
                         backgroundColor: "rgba(243, 91, 100, 0.1)",
+                        borderColor: "rgba(243, 91, 100, 0.5)",
                       },
                     }}
                   >
@@ -7750,85 +8407,111 @@ function OptimizePageContent() {
             )}
 
             {/* No queries in selected batch */}
-            {selectedBatchId && !isLoadingBatchQueries && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0) && (
-              <Box sx={{ textAlign: "center", py: 8 }}>
-                <Typography level="h3" sx={{ mb: 2, color: textPrimary }}>
+            {selectedBatchId && !isLoadingBatchQueries && (allPerplexityQueries.length === 0 && allGoogleQueries.length === 0 && allChatgptQueries.length === 0) && (
+              <Box sx={{ textAlign: "center", py: 10 }}>
+                <Box
+                  sx={{
+                    fontSize: "4rem",
+                    mb: 3,
+                    opacity: 0.5,
+                    filter: "grayscale(100%) brightness(1.2)"
+                  }}
+                >
+                  🔍
+                </Box>
+                <Typography level="h2" sx={{ mb: 2, color: textPrimary, fontWeight: 800 }}>
                   No Queries in This Batch
                 </Typography>
-                <Typography level="body-md" sx={{ mb: 4, color: textSecondary }}>
-                  This batch doesn't contain any queries. Generate a new batch to get started.
+                <Typography level="body-md" sx={{ mb: 5, color: "rgba(242, 245, 250, 0.6)", maxWidth: 500, mx: "auto", lineHeight: 1.6 }}>
+                  This batch doesn't contain any queries yet. You can generate a new targeted set of queries to start your product analysis.
                 </Typography>
-                <Tooltip title="Coming Soon" placement="top" arrow>
-                  <span>
-                    <Button
-                      onClick={handleGenerateQueryOnly}
-                      loading={isGeneratingQuery}
-                      disabled
-                      sx={{
-                        minWidth: 200,
-                        borderRadius: "999px",
-                        backgroundColor: "transparent",
-                        border: "1px solid rgba(242, 245, 250, 0.25)",
-                        color: "rgba(242, 245, 250, 0.5)",
-                        fontWeight: 600,
-                        cursor: "not-allowed",
-                        px: 3,
-                        "&:hover": {
-                          backgroundColor: "transparent",
-                          borderColor: "rgba(242, 245, 250, 0.25)",
-                        },
-                      }}
-                    >
-                      Generate New Batch
-                    </Button>
-                  </span>
-                </Tooltip>
+                <Button
+                  size="lg"
+                  onClick={handleGenerateQueryOnly}
+                  loading={isGeneratingQuery}
+                  sx={{
+                    minWidth: 240,
+                    backgroundColor: "rgba(46, 212, 122, 0.15)",
+                    color: "#2ED47A",
+                    fontWeight: 700,
+                    borderRadius: "14px",
+                    border: "1px solid rgba(46, 212, 122, 0.25)",
+                    px: 4,
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      backgroundColor: "rgba(46, 212, 122, 0.2)",
+                      borderColor: "rgba(46, 212, 122, 0.35)",
+                    },
+                  }}
+                >
+                  Generate New Batch
+                </Button>
               </Box>
             )}
 
             {/* Optimize for AI Search Button - Single unified button */}
-            {selectedBatchId && (allPerplexityQueries.length > 0 || allGoogleQueries.length > 0) && (
+            {selectedBatchId && (allPerplexityQueries.length > 0 || allGoogleQueries.length > 0 || allChatgptQueries.length > 0) && (
               <Box sx={{ mt: 6, textAlign: "center" }}>
                 {/* Loading Indicators */}
-                {(isPerplexityScraping || isGoogleScraping) && (
-                  <Box sx={{ mb: 4 }}>
+                {(isPerplexityScraping || isGoogleScraping || isChatgptScraping) && (
+                  <Box sx={{ mb: 6 }}>
                     <Card
                       variant="outlined"
                       sx={{
-                        p: 3,
-                        backgroundColor: "rgba(46, 212, 122, 0.05)",
-                        border: "1px solid rgba(46, 212, 122, 0.2)",
+                        p: 4,
+                        background: "linear-gradient(135deg, rgba(46, 212, 122, 0.08), rgba(13, 15, 20, 0.9))",
+                        backdropFilter: "blur(12px)",
+                        border: "1px solid rgba(46, 212, 122, 0.3)",
+                        borderRadius: "20px",
+                        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
                       }}
                     >
-                      <Typography level="body-md" sx={{ color: "#2ED47A", mb: 2, fontWeight: 600 }}>
-                        🔄 Analysis in Progress
+                      <Typography level="title-md" sx={{ color: "#2ED47A", mb: 3, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        Processing Analysis
                       </Typography>
-                      <Stack spacing={2}>
+                      <Stack spacing={2.5}>
                         {isPerplexityScraping && (
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
                             <Box sx={{
-                              width: 8,
-                              height: 8,
+                              width: 10,
+                              height: 10,
                               borderRadius: "50%",
                               backgroundColor: "#2ED47A",
+                              boxShadow: "0 0 10px rgba(46, 212, 122, 0.6)",
                               animation: "pulse 1.5s infinite"
                             }} />
-                            <Typography level="body-sm" sx={{ color: textSecondary }}>
-                              Running Perplexity analysis...
+                            <Typography level="body-md" sx={{ color: "rgba(242, 245, 250, 0.8)", fontWeight: 500 }}>
+                              Running <Box component="span" sx={{ color: "#2ED47A", fontWeight: 700 }}>Perplexity</Box> AI analysis...
                             </Typography>
                           </Box>
                         )}
                         {isGoogleScraping && (
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
                             <Box sx={{
-                              width: 8,
-                              height: 8,
+                              width: 10,
+                              height: 10,
                               borderRadius: "50%",
                               backgroundColor: "#2ED47A",
+                              boxShadow: "0 0 10px rgba(46, 212, 122, 0.6)",
                               animation: "pulse 1.5s infinite"
                             }} />
-                            <Typography level="body-sm" sx={{ color: textSecondary }}>
-                              Running Google AI Overview analysis...
+                            <Typography level="body-md" sx={{ color: "rgba(242, 245, 250, 0.8)", fontWeight: 500 }}>
+                              Running <Box component="span" sx={{ color: "#2ED47A", fontWeight: 700 }}>Google AI Overview</Box> analysis...
+                            </Typography>
+                          </Box>
+                        )}
+                        {isChatgptScraping && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
+                            <Box sx={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              backgroundColor: "#2ED47A",
+                              boxShadow: "0 0 10px rgba(46, 212, 122, 0.6)",
+                              animation: "pulse 1.5s infinite"
+                            }} />
+                            <Typography level="body-md" sx={{ color: "rgba(242, 245, 250, 0.8)", fontWeight: 500 }}>
+                              Running <Box component="span" sx={{ color: "#2ED47A", fontWeight: 700 }}>ChatGPT</Box> analysis...
                             </Typography>
                           </Box>
                         )}
@@ -7840,18 +8523,21 @@ function OptimizePageContent() {
                 <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 3, maxWidth: "100%" }}>
                   {/* Mode Chip - Left aligned */}
                   <Chip
-                    size="md"
+                    size="lg"
                     variant="soft"
                     sx={{
                       backgroundColor: getAnalysisModeDisplay().color === '#2ED47A'
-                        ? "rgba(46, 212, 122, 0.12)"
-                        : "rgba(243, 91, 100, 0.12)",
+                        ? "rgba(46, 212, 122, 0.1)"
+                        : "rgba(243, 91, 100, 0.1)",
                       color: getAnalysisModeDisplay().color,
-                      fontWeight: 600,
+                      border: `1px solid ${getAnalysisModeDisplay().color === '#2ED47A' ? 'rgba(46, 212, 122, 0.3)' : 'rgba(243, 91, 100, 0.3)'}`,
+                      fontWeight: 700,
                       px: 3,
                       py: 1,
                       height: "auto",
-                      minHeight: 40,
+                      minHeight: 44,
+                      borderRadius: "12px",
+                      backdropFilter: "blur(4px)",
                     }}
                   >
                     {getAnalysisModeDisplay().text}
@@ -7860,110 +8546,123 @@ function OptimizePageContent() {
                   {/* Buttons - Right aligned */}
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                     {/* Check Implementation Button */}
-                    {(usedPerplexityQueries.filter(q => allPerplexityQueries.includes(q)).length > 0 || usedGoogleQueries.filter(q => allGoogleQueries.includes(q)).length > 0) && (
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        onClick={() => {
-                          const batchUsedPerplexity = usedPerplexityQueries.filter(q => allPerplexityQueries.includes(q));
-                          const batchUsedGoogle = usedGoogleQueries.filter(q => allGoogleQueries.includes(q));
+                    {(
+                      (allPerplexityQueries.length > 0 || allGoogleQueries.length > 0 || allChatgptQueries.length > 0) &&
+                      allPerplexityQueries.every(q => usedPerplexityQueries.includes(q)) &&
+                      allGoogleQueries.every(q => usedGoogleQueries.includes(q)) &&
+                      allChatgptQueries.every(q => usedChatgptQueries.includes(q))
+                    ) && (
+                        <Button
+                          type="button"
+                          variant="outlined"
+                          onClick={() => {
+                            const batchUsedPerplexity = usedPerplexityQueries.filter(q => allPerplexityQueries.includes(q));
+                            const batchUsedGoogle = usedGoogleQueries.filter(q => allGoogleQueries.includes(q));
+                            const batchUsedChatgpt = usedChatgptQueries.filter(q => allChatgptQueries.includes(q));
 
-                          const hasOddPerplexity = batchUsedPerplexity.some(q => hasQueryBeenReanalyzed(q, 'perplexity'));
-                          const hasOddGoogle = batchUsedGoogle.some(q => hasQueryBeenReanalyzed(q, 'google_overview'));
+                            const hasOddPerplexity = batchUsedPerplexity.some(q => hasQueryBeenReanalyzed(q, 'perplexity'));
+                            const hasOddGoogle = batchUsedGoogle.some(q => hasQueryBeenReanalyzed(q, 'google_overview'));
+                            const hasOddChatgpt = batchUsedChatgpt.some(q => hasQueryBeenReanalyzed(q, 'chatgpt'));
 
-                          const count = (hasOddPerplexity || hasOddGoogle)
-                            ? batchUsedPerplexity.filter(q => !hasQueryBeenReanalyzed(q, 'perplexity')).length +
-                            batchUsedGoogle.filter(q => !hasQueryBeenReanalyzed(q, 'google_overview')).length
-                            : batchUsedPerplexity.length + batchUsedGoogle.length;
+                            const count = (hasOddPerplexity || hasOddGoogle || hasOddChatgpt)
+                              ? batchUsedPerplexity.filter(q => !hasQueryBeenReanalyzed(q, 'perplexity')).length +
+                              batchUsedGoogle.filter(q => !hasQueryBeenReanalyzed(q, 'google_overview')).length +
+                              batchUsedChatgpt.filter(q => !hasQueryBeenReanalyzed(q, 'chatgpt')).length
+                              : batchUsedPerplexity.length + batchUsedGoogle.length + batchUsedChatgpt.length;
 
-                          if (count === 0) {
-                            setCheckImplementationModalOpen(true);
-                          } else {
-                            setCheckImplementationIncompleteModalOpen(true);
-                          }
-                        }}
-                        sx={{
-                          borderColor: "rgba(255, 193, 7, 0.25)",
-                          color: "rgba(255, 193, 7, 0.85)",
-                          fontWeight: 600,
-                          px: 3,
-                          py: 1.5,
-                          "&:hover": {
-                            backgroundColor: "rgba(255, 193, 7, 0.06)",
-                            borderColor: "rgba(255, 193, 7, 0.35)",
-                          },
-                        }}
-                      >
-                        {(() => {
-                          const batchUsedPerplexity = usedPerplexityQueries.filter(q => allPerplexityQueries.includes(q));
-                          const batchUsedGoogle = usedGoogleQueries.filter(q => allGoogleQueries.includes(q));
-
-                          const hasOddPerplexity = batchUsedPerplexity.some(q => hasQueryBeenReanalyzed(q, 'perplexity'));
-                          const hasOddGoogle = batchUsedGoogle.some(q => hasQueryBeenReanalyzed(q, 'google_overview'));
-
-                          const count = (hasOddPerplexity || hasOddGoogle)
-                            ? batchUsedPerplexity.filter(q => !hasQueryBeenReanalyzed(q, 'perplexity')).length +
-                            batchUsedGoogle.filter(q => !hasQueryBeenReanalyzed(q, 'google_overview')).length
-                            : batchUsedPerplexity.length + batchUsedGoogle.length;
-
-                          return count === 0 ? 'Check Implementation' : `Check Implementation (${count})`;
-                        })()}
-                      </Button>
-                    )}
+                            if (count === 0) {
+                              setCheckImplementationModalOpen(true);
+                            } else {
+                              setCheckImplementationIncompleteModalOpen(true);
+                            }
+                          }}
+                          sx={{
+                            borderColor: "rgba(255, 193, 7, 0.25)",
+                            color: "rgba(255, 193, 7, 0.9)",
+                            fontWeight: 700,
+                            borderRadius: "12px",
+                            px: 3,
+                            py: 1.5,
+                            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                            "&:hover": {
+                              backgroundColor: "rgba(255, 193, 7, 0.08)",
+                              borderColor: "rgba(255, 193, 7, 0.45)",
+                              transform: "translateY(-1px)",
+                            },
+                          }}
+                        >
+                          Check Implementation
+                        </Button>
+                      )}
 
                     {/* Optimize for AI Search Button */}
-                    <Button
-                      type="button"
-                      disabled={isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)}
-                      onClick={async () => {
-                        if (!user) {
-                          setServerError('Please sign in to analyze products');
-                          router.push('/auth');
-                          return;
-                        }
+                    {(() => {
+                      const requiredCredits = selectedPerplexityQueries.length + selectedGoogleQueries.length + selectedChatgptQueries.length;
+                      const hasInsufficientCredits = userCredits !== null && userCredits < requiredCredits;
 
-                        // Check if any queries are selected
-                        if (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0) {
-                          setQueryGenerationError('Please select at least one query to proceed with analysis.');
-                          return;
-                        }
+                      return (
+                        <>
+                          {hasInsufficientCredits && requiredCredits > 0 && (
+                            <Typography level="body-sm" sx={{ color: "#F35B64", fontWeight: 600, display: "flex", alignItems: "center", gap: 0.5 }}>
+                              ⚠️ Insufficient Credits ({userCredits}/{requiredCredits})
+                            </Typography>
+                          )}
+                          <Button
+                            type="button"
+                            disabled={hasInsufficientCredits || isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping || isChatgptScraping || requiredCredits === 0}
+                            onClick={async () => {
+                              if (!user) {
+                                setServerError('Please sign in to analyze products');
+                                router.push('/auth');
+                                return;
+                              }
 
-                        // Use selected queries for analysis
-                        await handleUseSelectedQueries();
-                      }}
-                      sx={{
-                        minWidth: 280,
-                        borderRadius: "999px",
-                        backgroundColor: (isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping) || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)
-                          ? "rgba(46, 212, 122, 0.3)"
-                          : accentColor,
-                        color: (isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping) || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)
-                          ? "rgba(13, 15, 20, 0.6)"
-                          : "#0D0F14",
-                        fontWeight: 600,
-                        px: 4,
-                        py: 1.8,
-                        border: "1px solid rgba(46, 212, 122, 0.36)",
-                        boxShadow: (isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping) || (selectedPerplexityQueries.length === 0 && selectedGoogleQueries.length === 0)
-                          ? "none"
-                          : "0 10px 26px rgba(46, 212, 122, 0.25)",
-                        transition: "all 0.25s ease",
-                        "&:hover:not(:disabled)": {
-                          backgroundColor: "#26B869",
-                          borderColor: "rgba(46, 212, 122, 0.48)",
-                          boxShadow: "0 12px 32px rgba(46, 212, 122, 0.3)",
-                        },
-                        "&:disabled": {
-                          cursor: "not-allowed",
-                        },
-                      }}
-                    >
-                      {isGeneratingQuery ? 'Generating Query...' :
-                        isAnalyzing ? 'Analyzing Optimization...' :
-                          isPerplexityScraping ? 'Running Perplexity Analysis...' :
-                            isGoogleScraping ? 'Running Google Analysis...' :
-                              `Optimize for AI Search (${selectedPerplexityQueries.length + selectedGoogleQueries.length})`}
-                    </Button>
+                              // Check if any queries are selected
+                              if (requiredCredits === 0) {
+                                setQueryGenerationError('Please select at least one query to proceed with analysis.');
+                                return;
+                              }
+
+                              // Use selected queries for analysis
+                              await handleUseSelectedQueries();
+                            }}
+                            sx={{
+                              minWidth: 320,
+                              borderRadius: "16px",
+                              backgroundColor: (isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping || isChatgptScraping || requiredCredits === 0 || hasInsufficientCredits)
+                                ? "rgba(46, 212, 122, 0.2)"
+                                : "#2ED47A",
+                              color: "#0D0F14",
+                              fontWeight: 800,
+                              fontSize: "1.1rem",
+                              letterSpacing: "0.02em",
+                              py: 2.5,
+                              boxShadow: (requiredCredits === 0 || hasInsufficientCredits) ? "none" : "0 8px 32px rgba(46, 212, 122, 0.3)",
+                              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                              "&:hover:not(:disabled)": {
+                                backgroundColor: "#26B869",
+                                transform: "translateY(-2px) scale(1.02)",
+                                boxShadow: "0 12px 48px rgba(46, 212, 122, 0.5)",
+                              },
+                              "&:disabled": {
+                                backgroundColor: "rgba(242, 245, 250, 0.05)",
+                                color: "rgba(242, 245, 250, 0.2)",
+                                borderColor: "rgba(242, 245, 250, 0.1)",
+                              }
+                            }}
+                          >
+                            {isAnalyzing ? (
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                                <CircularProgress sx={{ "--CircularProgress-size": "20px", "--CircularProgress-thickness": "3px", color: "inherit" }} />
+                                Analyzing...
+                              </Box>
+                            ) : (
+                              isPerplexityScraping || isGoogleScraping || isChatgptScraping ? "Processing Analytics..." : `Optimize for AI Search (${requiredCredits})`
+                            )}
+                          </Button>
+                        </>
+                      );
+                    })()}
                   </Box>
                 </Box>
               </Box>
@@ -7971,49 +8670,65 @@ function OptimizePageContent() {
           </Card>
         )}
 
-        {/* SOV Performance Cards */}
-        {showSOVCards && currentProductId && sovCardEngine && (
-          <Box sx={{ mt: 0 }}>
-            <SOVPerformanceCard
-              productId={currentProductId}
-              engine={sovCardEngine}
-              onDeepAnalysisClick={() => setShowDeepAnalysis(!showDeepAnalysis)}
-              isDeepAnalysisActive={showDeepAnalysis}
-              product={products.find((p) => p.id === currentProductId)}
-            />
-
-            {/* Deep Analysis Card */}
-            {showDeepAnalysis && (
-              <DeepAnalysisCard
-                engine={sovCardEngine}
-                productId={currentProductId}
-                analysisHash={
-                  products.find((p) => p.id === currentProductId)?.[
-                  sovCardEngine === 'google'
-                    ? 'deep_analysis_google_hash'
-                    : 'deep_analysis_perplexity_hash'
-                  ] ?? null
-                }
-                isAnalysisUpToDate={
-                  products.find((p) => p.id === currentProductId)?.[
-                  sovCardEngine === 'google'
-                    ? 'deep_analysis_google_up_to_date'
-                    : 'deep_analysis_perplexity_up_to_date'
-                  ] ?? false
-                }
-              />
-            )}
-          </Box>
-        )}
       </Box>
     </Box>
   );
 }
 
 export default function OptimizePage() {
+  const activeSection = useProductStore((state) => state.activeSection);
+
+  const headerTitle = (() => {
+    if (activeSection === "product") return "Product Information";
+    if (activeSection === "query") return "Queries";
+    if (activeSection === "perplexity") return "Perplexity Dashboard";
+    if (activeSection === "google") return "Google AI Mode Dashboard";
+    if (activeSection === "chatgpt") return "ChatGPT Dashboard";
+    if (activeSection === "competitors_data") return "Competitors Data";
+    if (activeSection === "documentation") return "Dashboard Help Guide";
+    if (activeSection === "mcp_documentation") return "MCP Documentation";
+    return "Optimize";
+  })();
+
+  const currentProductId = useProductStore((state) => state.currentProductId);
+
+  const headerActions = (() => {
+    const router = useRouter();
+
+    return (
+      <div className="flex items-center gap-2">
+        <Tooltip title="Back to Products" variant="soft" size="sm">
+          <IconButton
+            variant="plain"
+            size="sm"
+            onClick={() => router.push("/products")}
+            sx={{
+              color: "rgba(162, 167, 180, 0.6)",
+              "&:hover": {
+                color: "#2ED47A",
+                backgroundColor: "rgba(46, 212, 122, 0.1)",
+              },
+            }}
+          >
+            <HugeiconsIcon icon={PackageIcon} size={18} />
+          </IconButton>
+        </Tooltip>
+
+        {(activeSection === "perplexity" || activeSection === "google" || (activeSection === "chatgpt" && process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true')) && currentProductId && (
+          <HeaderSovRerunButton
+            productId={currentProductId}
+            engine={activeSection as any}
+          />
+        )}
+      </div>
+    );
+  })();
+
   return (
     <ProtectedRoute>
-      <OptimizePageContent />
+      <AppShell headerTitle={headerTitle} sidebarMode="optimize" headerActions={headerActions}>
+        <OptimizePageContent />
+      </AppShell>
     </ProtectedRoute>
   );
 }

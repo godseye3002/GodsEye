@@ -6,6 +6,7 @@ import { Box, Typography, Button, Avatar } from "@mui/joy";
 import { useAuth } from "@/lib/auth-context";
 import { testimonials } from "@/app/data/testimonials";
 import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
+import { TestimonialCarousel } from "@/components/TestimonialCarousel";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -689,7 +690,7 @@ export default function LandingPage() {
           maxWidth: 1280,
           mx: "auto",
           px: { xs: 2, md: 4 },
-          py: { xs: 10, md: 16 },
+          py: { xs: 6, md: 8 },
           position: "relative",
           "&::before": {
             content: '""',
@@ -733,88 +734,8 @@ export default function LandingPage() {
           </Typography>
         </Box>
 
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", lg: testimonials.length > 1 ? "repeat(2, 1fr)" : "1fr" },
-            gap: 4,
-            maxWidth: 1000,
-            mx: "auto",
-          }}
-        >
-          {testimonials.map((testimonial) => (
-            <Box
-              key={testimonial.id}
-              sx={{
-                p: { xs: 4, md: 6 },
-                borderRadius: "32px",
-                backgroundColor: "rgba(17, 19, 24, 0.6)",
-                border: "1px solid rgba(46, 212, 122, 0.15)",
-                backdropFilter: "blur(10px)",
-                position: "relative",
-                transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-                "&:hover": {
-                  backgroundColor: "rgba(22, 26, 33, 0.8)",
-                  borderColor: "rgba(46, 212, 122, 0.3)",
-                  transform: "translateY(-6px)",
-                  boxShadow: "0 22px 60px rgba(0, 0, 0, 0.5), 0 0 20px rgba(46, 212, 122, 0.05)",
-                }
-              }}
-            >
-              <FormatQuoteIcon
-                sx={{
-                  fontSize: 48,
-                  color: "rgba(46, 212, 122, 0.2)",
-                  position: "absolute",
-                  top: 32,
-                  right: 32,
-                }}
-              />
-
-              <Typography
-                sx={{
-                  color: "#F2F5FA",
-                  fontSize: { xs: "1.1rem", md: "1.25rem" },
-                  lineHeight: 1.7,
-                  mb: 6,
-                  fontStyle: "italic",
-                  fontWeight: 400,
-                  position: "relative",
-                  zIndex: 1,
-                  letterSpacing: "0.01em",
-                }}
-              >
-                "{testimonial.content}"
-              </Typography>
-
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2.5 }}>
-                <Avatar
-                  src={testimonial.image}
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    border: "2px solid rgba(46, 212, 122, 0.4)",
-                    boxShadow: "0 0 15px rgba(46, 212, 122, 0.2)",
-                  }}
-                />
-                <Box>
-                  <Typography
-                    level="title-lg"
-                    sx={{ color: "#F2F5FA", fontWeight: 700, mb: 0.5, fontSize: "1.2rem" }}
-                  >
-                    {testimonial.name}
-                  </Typography>
-                  <Typography
-                    level="body-md"
-                    sx={{ color: "#A2A7B4", fontWeight: 500 }}
-                  >
-                    {testimonial.title} @ <Box component="span" sx={{ color: "#2ED47A" }}>{testimonial.company}</Box>
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-          ))}
-        </Box>
+        {/* Fading Carousel Component */}
+        <TestimonialCarousel testimonials={testimonials} variant="landing" />
       </Box>
 
 

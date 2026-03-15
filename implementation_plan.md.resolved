@@ -1,0 +1,108 @@
+# Dashboard Real-Time Data Integration
+
+## Goal
+
+The `/Dashboard` page currently displays hardcoded dummy data across its three
+display components ([SectionCards](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/section-cards.tsx#15-88), [ChartAreaInteractive](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/chart-area-interactive.tsx#676-856), [DataTable](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/data-table.tsx#40-222)).
+
+The `/optimize` page already fetches and persists all the real data to
+`useProductStore` (Zustand + `localStorage`):
+- SOV snapshots and query-level insights via `/api/sov`
+- `optimizationAnalysis` (Perplexity), `googleOverviewAnalysis` (Google AI Mode)
+- Lists of all products, queries used per engine
+
+The plan is to **share this already-persisted data** with the Dashboard by
+reading from `useProductStore` (and triggering a fresh `/api/sov` fetch if the
+data isn't loaded yet). No logic is duplicated.
+
+---
+
+## Data Mapping
+
+| Dashboard Widget | Source in Store / API |
+|---|---|
+| **Brand Coverage** card | `SOVSnapshot.global_sov_score` for client brand |
+| **Mentions** card | `SOVSnapshot.total_queries_analyzed` (number of queries where brand appeared) |
+| **Visibility Rate** card | `SOVSnapshot.citation_score` |
+| **Brand Coverage chart** | One data point per `analyzed_at` date in historical snapshots per engine with brand name |
+| **Brand Ranking table** | Computed from competitors found in `optimizationAnalysis.competitive_landscape_analysis` |
+| **Top Prompts table** | `sov_query_insights`: prompt, visibility, dominance rate, text snippet |
+| **Citations Rank table** | `processedSources` / `sourceLinks` from the product store |
+| **Your Brands Citations table** | Filtered `sourceLinks` where brand is referenced |
+
+---
+
+## Proposed Changes
+
+### New Shared Hook
+
+#### [NEW] `hooks/use-dashboard-data.ts`
+
+A single React hook that:
+1. Reads `currentProductId`, `optimizationAnalysis`, `googleOverviewAnalysis`, `processedSources`, `sourceLinks` from `useProductStore`.
+2. If `currentProductId` exists, calls `/api/sov?productId=...&engine=<activeEngine>` to fetch `latestSnapshot`, `previousSnapshot`, and `insights`.
+3. Returns a typed `DashboardData` object consumed by all three Dashboard components.
+4. Returns `isLoading: true` and `hasNoData: true` states for empty-state handling.
+
+---
+
+### Component Updates
+
+#### [MODIFY] [components/section-cards.tsx](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/section-cards.tsx)
+
+- Accept a `data: DashboardData | null` prop.
+- Show live values for Brand Coverage, Mentions, Visibility Rate from `latestSnapshot`.
+- Show delta badge by comparing `latestSnapshot` vs `previousSnapshot`.
+- Show a skeleton/empty-state card when `hasNoData` is true.
+
+#### [MODIFY] [components/chart-area-interactive.tsx](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/chart-area-interactive.tsx)
+
+- Accept a `chartData: ChartPoint[]` prop instead of using hardcoded `chartData`.
+- `ChartPoint` = `{ date, client, compA, compB, compC }` (same shape, already used).
+- When `hasNoData`, render a placeholder empty chart with a "No data yet" overlay.
+
+#### [MODIFY] [components/data-table.tsx](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/data-table.tsx)
+
+- Accept a `data: DashboardData | null` prop.
+- Derive `brandRanking`, `topPrompts`, `citationsRank`, `brandCitations` from the live `DashboardData` object.
+- Fall back to an empty-state row ("No data – run an analysis in Optimize first") when `hasNoData`.
+
+#### [MODIFY] [app/Dashboard/page.tsx](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/app/Dashboard/page.tsx)
+
+- Call `useDashboardData(activeEngine)` hook.
+- Pass the returned data down to [SectionCards](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/section-cards.tsx#15-88), [ChartAreaInteractive](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/chart-area-interactive.tsx#676-856), [DataTable](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/components/data-table.tsx#40-222).
+- Remove the import of the static [data.json](file:///c:/Users/santo/OneDrive/Desktop/sunny/GodsEye%20-%20FrontEnd%20with%20Backend%20py/GodsEye%20-%20FrontEnd/godseye/app/Dashboard/data.json).
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> The `/api/sov` endpoint requires a **`productId`** and an **`engine`** parameter.
+> The Dashboard will show data for the **currently selected product** in
+> `currentProductId` on `useProductStore`. If the user hasn't loaded/analyzed
+> a product on the `/optimize` page, the Dashboard will show empty-state cards.
+> This is intentional — there is no other source of truth. Please confirm this
+> behaviour is acceptable, or let me know if you'd like a product picker on
+> the Dashboard itself.
+
+> [!NOTE]
+> Historical chart data (multiple time-series points) requires multiple SOV
+> snapshots to exist for the product. With only one snapshot the chart will
+> show a single data point. This is correct behaviour.
+
+---
+
+## Verification Plan
+
+### Manual Verification (Fast Path)
+
+1. Run `npm run dev` in the project directory.
+2. Open `http://localhost:3000/optimize` and log in.
+3. Load an existing product or run a full analysis for a product that has SOV data.
+4. Without refreshing, navigate to `http://localhost:3000/Dashboard` (or click the sidebar).
+5. **Expected**: The three metric cards show the live SOV scores, the chart renders at least one branded data point, and the Top Prompts table shows the query insights from the latest SOV run.
+6. Click **Perplexity / Google AI Mode / ChatGPT** in the sidebar.
+7. **Expected**: The metrics and table update to reflect the selected engine's SOV snapshot.
+8. If no product is loaded on `/optimize`, navigate to `/Dashboard` directly.
+9. **Expected**: Cards show an empty-state message ("Run an analysis first") instead of zeros or dummy data.

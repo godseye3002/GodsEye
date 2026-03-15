@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     const { data, error } = await (supabaseAdmin as any)
       .from('products')
       // Also fetch related analyses from the new split tables
-      .select('*, product_analysis_google(*), product_analysis_perplexity(*)')
+      .select('*, product_analysis_google(*), product_analysis_perplexity(*), product_analysis_chatgpt(*)')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -41,9 +41,13 @@ export async function GET(request: Request) {
       const perplexityIds = Array.isArray(product.product_analysis_perplexity)
         ? product.product_analysis_perplexity.map((row: any) => row.id)
         : [];
+      const chatgptIds = Array.isArray(product.product_analysis_chatgpt)
+        ? product.product_analysis_chatgpt.map((row: any) => row.id)
+        : [];
 
       const computedGoogleHash = computeAnalysisHashFromIds(googleIds);
       const computedPerplexityHash = computeAnalysisHashFromIds(perplexityIds);
+      const computedChatgptHash = computeAnalysisHashFromIds(chatgptIds);
 
       const deep_analysis_google_up_to_date =
         Boolean(computedGoogleHash) &&
@@ -55,10 +59,16 @@ export async function GET(request: Request) {
         product.deep_analysis_perplexity_hash &&
         product.deep_analysis_perplexity_hash === computedPerplexityHash;
 
+      const deep_analysis_chatgpt_up_to_date =
+        Boolean(computedChatgptHash) &&
+        product.deep_analysis_chatgpt_hash &&
+        product.deep_analysis_chatgpt_hash === computedChatgptHash;
+
       return {
         ...product,
         deep_analysis_google_up_to_date,
         deep_analysis_perplexity_up_to_date,
+        deep_analysis_chatgpt_up_to_date,
       };
     });
 

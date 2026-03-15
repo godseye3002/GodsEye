@@ -19,17 +19,24 @@ export async function POST(request: NextRequest) {
   try {
     const payload = (await request.json()) as Record<string, unknown>;
     const analysisId = typeof payload.analysisId === 'string' ? payload.analysisId : undefined;
-    const allowed: readonly string[] = ['perplexity','google_overview','chatgpt','gemini'];
+    const allowed: readonly string[] = ['perplexity', 'google_overview', 'chatgpt', 'gemini'];
     const pipeline: PipelineId | undefined = allowed.includes(String(payload.pipeline)) ? (payload.pipeline as PipelineId) : undefined;
+
+    if (pipeline === 'chatgpt' && process.env.CHATGPT_PIPELINE !== 'true') {
+      return NextResponse.json(
+        { error: "ChatGPT pipeline is currently disabled." },
+        { status: 403 }
+      );
+    }
     const productContext: ProductContext = {
       general_product_type: String(payload.general_product_type ?? ''),
       specific_product_type: String(payload.specific_product_type ?? ''),
       targeted_market: String(payload.targeted_market ?? ''),
       problem_product_is_solving: String(payload.problem_product_is_solving ?? ''),
     };
-    
+
     const API_KEY: string = process.env.GEMINI_API_KEY || '';
-    
+
     if (!API_KEY) {
       return NextResponse.json(
         { error: "GEMINI_API_KEY is not defined in the environment variables." },
@@ -44,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     if (pipeline === 'google_overview') {
       prompt =
-`Role: You are a digital marketing analyst specializing in Google Search behavior and Answer Engine Optimization (AEO).
+        `Role: You are a digital marketing analyst specializing in Google Search behavior and Answer Engine Optimization (AEO).
 
 
 Objective: Generate a list of the most common, high-intent search queries that a potential customer would type into **Google** when they are looking for a **product recommendation**. The queries must be **specifically designed to trigger a Google AI Overview** that would likely recommend products matching the provided \`productContext\`.
@@ -75,55 +82,75 @@ Instructions:
 8. IMPORTANT NOTE 1: All instructions (especially the "Good" examples) are templates. You must replace the placeholders like [product], [problem], etc., with the specific details from the \`productContext\`.
 9. IMPORTANT NOTE 2: Use simple, common English words that a typical consumer would use.
 `;
-// `
-// Role: You are a digital marketing analyst specializing in Answer Engine Optimization (AEO).
+      // `
+      // Role: You are a digital marketing analyst specializing in Answer Engine Optimization (AEO).
 
-// Objective: Generate 5 specific, high-intent search queries that will **force a Google AI Overview** to trigger for the provided product.
+      // Objective: Generate 5 specific, high-intent search queries that will **force a Google AI Overview** to trigger for the provided product.
 
-// Product Context:
-// ${JSON.stringify(productContext, null, 2)}
+      // Product Context:
+      // ${JSON.stringify(productContext, null, 2)}
 
-// THE PROBLEM:
-// Simple queries like "Best [product]" or "Buy [product]" often fail to trigger AI Overviews because Google prefers to show "Featured Snippets" (text from a single blog) or Ads.
+      // THE PROBLEM:
+      // Simple queries like "Best [product]" or "Buy [product]" often fail to trigger AI Overviews because Google prefers to show "Featured Snippets" (text from a single blog) or Ads.
 
-// THE SOLUTION:
-// To trigger the AI, the query must require **synthesis** (combining info from multiple sources) or **complex reasoning** that a single website cannot easily answer.
+      // THE SOLUTION:
+      // To trigger the AI, the query must require **synthesis** (combining info from multiple sources) or **complex reasoning** that a single website cannot easily answer.
 
-// INSTRUCTIONS:
-// 1. **Identify Product Type:** First, determine if the product is Physical (needs durability, ingredients, material) or Digital/Service (needs features, compatibility, terms).
-// 2. **Infer Pain Points:** If the JSON is brief, INFER specific problems a user would have with *bad* versions of this product.
-// 3. **Strict Word Count:** All queries must be **7 words or longer**.
-// 4. **No Brand Names:** Keep queries unbranded.
+      // INSTRUCTIONS:
+      // 1. **Identify Product Type:** First, determine if the product is Physical (needs durability, ingredients, material) or Digital/Service (needs features, compatibility, terms).
+      // 2. **Infer Pain Points:** If the JSON is brief, INFER specific problems a user would have with *bad* versions of this product.
+      // 3. **Strict Word Count:** All queries must be **7 words or longer**.
+      // 4. **No Brand Names:** Keep queries unbranded.
 
-// MANDATORY QUERY TEMPLATES (You MUST use these structures):
+      // MANDATORY QUERY TEMPLATES (You MUST use these structures):
 
-// * **Template 1 (The "Checklist" Trigger):**
-//     * *Structure:* "Checklist for choosing [product_category] for [specific_audience/use_case]..."
-//     * *Why:* "Checklist" forces the AI to generate a bulleted guide, which single-paragraph snippets rarely do well.
-//     * *Universal Example:* "Checklist for choosing [product] for [audience] with [constraint]"
+      // * **Template 1 (The "Checklist" Trigger):**
+      //     * *Structure:* "Checklist for choosing [product_category] for [specific_audience/use_case]..."
+      //     * *Why:* "Checklist" forces the AI to generate a bulleted guide, which single-paragraph snippets rarely do well.
+      //     * *Universal Example:* "Checklist for choosing [product] for [audience] with [constraint]"
 
-// * **Template 2 (The "Avoidance" Trigger - The Negative Search):**
-//     * *Structure:* "How to find [product_category] that does not [common_negative_side_effect]..."
-//     * *Why:* Negative constraints (e.g., "doesn't rust," "no hidden fees," "non-drowsy") force the AI to filter results, which requires deep synthesis.
-//     * *Universal Example:* "How to find [product] that does not cause [problem]"
+      // * **Template 2 (The "Avoidance" Trigger - The Negative Search):**
+      //     * *Structure:* "How to find [product_category] that does not [common_negative_side_effect]..."
+      //     * *Why:* Negative constraints (e.g., "doesn't rust," "no hidden fees," "non-drowsy") force the AI to filter results, which requires deep synthesis.
+      //     * *Universal Example:* "How to find [product] that does not cause [problem]"
 
-// * **Template 3 (The "Criteria" Trigger):**
-//     * *Structure:* "Key factors to consider when buying [product_category] for [specific_outcome]..."
-//     * *Why:* This asks for *educational criteria* (how to judge quality), not just a list of items to buy.
+      // * **Template 3 (The "Criteria" Trigger):**
+      //     * *Structure:* "Key factors to consider when buying [product_category] for [specific_outcome]..."
+      //     * *Why:* This asks for *educational criteria* (how to judge quality), not just a list of items to buy.
 
-// * **Template 4 (The "Comparison" Trigger):**
-//     * *Structure:* "Difference between [Alternative A] and [Alternative B] for [specific_problem]..."
-//     * *Why:* Comparisons force the AI to look at multiple angles.
-//     * *Universal Example:* "Difference between [Material/Type A] and [Material/Type B] for [Goal]"
+      // * **Template 4 (The "Comparison" Trigger):**
+      //     * *Structure:* "Difference between [Alternative A] and [Alternative B] for [specific_problem]..."
+      //     * *Why:* Comparisons force the AI to look at multiple angles.
+      //     * *Universal Example:* "Difference between [Material/Type A] and [Material/Type B] for [Goal]"
 
-// * **Template 5 (The "Worth It" Trigger):**
-//     * *Structure:* "Is [product_category] effective for [severe_problem] in [specific_context]?"
-//     * *Why:* "Effective" or "Worth it" questions trigger a "Evidence-based" evaluation from the AI.
+      // * **Template 5 (The "Worth It" Trigger):**
+      //     * *Structure:* "Is [product_category] effective for [severe_problem] in [specific_context]?"
+      //     * *Why:* "Effective" or "Worth it" questions trigger a "Evidence-based" evaluation from the AI.
 
-// OUTPUT FORMAT:
-// Return a Python list of exactly 5 strings, one for each template above.
-// ["query_from_template_1", "query_from_template_2", ...]
-// `;
+      // OUTPUT FORMAT:
+      // Return a Python list of exactly 5 strings, one for each template above.
+      // ["query_from_template_1", "query_from_template_2", ...]
+      // `;
+    } else if (pipeline === 'chatgpt') {
+      prompt = `
+Role: You are a digital marketing analyst specializing in conversational AI platforms like ChatGPT.
+
+Objective: Generate a list of the most common and high-intent search queries that a potential customer would type into **ChatGPT** when they are actively looking for a **product recommendation** to solve their specific problem.
+
+Product Context:
+${JSON.stringify(productContext, null, 2)}
+
+Instructions:
+1.  Simulate Real Search Queries: The output must be natural, keyword-driven phrases or short questions.
+2.  Focus on Purchase Intent: The queries must reflect a user who is ready to buy, not just research the problem.
+3.  Query Type: Queries must be for general search or recommendation. Do not focus on a specific product type. Instead, focus on the user's underlying problem or the desired solution.
+4.  Incorporate Search Modifiers: Include common modifiers for quality (e.g., best, top), and desired features from the context.
+5.  Keep it General: Do not use any specific brand names.
+6.  Ranking: Rank the queries with the highest commercial intent (most likely to lead to a purchase) at the top.
+IMPORTENT NOTE: Use simple english and plain words, the ones which are largely used.
+Output Format:
+A Python list containing exactly 5 ChatGPT prompt strings. For example: ["prompt one", "prompt two", ...]
+`;
     } else {
       prompt = `
 Role: You are a digital marketing analyst specializing in consumer search behavior.
@@ -162,7 +189,7 @@ A Python list containing exactly 5 search query strings. For example: ["query on
           { inputTokens: input, outputTokens: output, totalTokens: total });
       }
       addTokens(analysisId, pipeline, 'Generate Search Queries', input, output, total);
-    } catch {}
+    } catch { }
     const text = response.text();
 
     // Parse the response to extract the Python list
@@ -172,7 +199,7 @@ A Python list containing exactly 5 search query strings. For example: ["query on
       const listMatch = text.match(/\[([^\]]+)\]/);
       if (listMatch) {
         const listContent = listMatch[1];
-        queries = listContent.split(',').map(q => 
+        queries = listContent.split(',').map(q =>
           q.replace(/['"]/g, '').trim()
         ).filter(q => q.length > 0);
       }

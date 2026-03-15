@@ -3,7 +3,27 @@ import { getSupabaseAdminClient } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
-    const { userId } = await request.json();
+    const text = await request.text();
+    if (!text) {
+      console.error('Update login API error: Request body is empty');
+      return NextResponse.json(
+        { error: 'Request body is empty' },
+        { status: 400 }
+      );
+    }
+
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.error('Update login API error: Invalid JSON', { text });
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
+
+    const { userId } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -30,7 +50,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Update login API error:', error);
+    console.error('Update login API unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

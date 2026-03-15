@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type SovEngine = 'google' | 'perplexity';
+export type SovEngine = 'google' | 'perplexity' | 'chatgpt';
 
 export interface SovProgressStatus {
   status: 'waiting_for_data' | 'processing' | 'complete';
@@ -24,13 +24,17 @@ export async function checkSovProgress(
     if (process.env.NODE_ENV === 'development') {
       console.log('🚀 [SOV Progress] Starting check for:', { current_snapshot_id, engine });
     }
-    
+
     // Step 1: Fetch the "Total Scope" (The Scraped Data)
-    const analysisTable = engine === 'google' ? 'product_analysis_google' : 'product_analysis_perplexity';
+    const analysisTable = engine === 'google'
+      ? 'product_analysis_google'
+      : engine === 'perplexity'
+        ? 'product_analysis_perplexity'
+        : 'product_analysis_chatgpt';
     if (process.env.NODE_ENV === 'development') {
       console.log('📋 [SOV Progress] Step 1: Querying table:', analysisTable);
     }
-    
+
     const { data: scrapedData, error: scrapedError } = await supabase
       .from(analysisTable)
       .select('id')
@@ -43,7 +47,7 @@ export async function checkSovProgress(
 
     const totalScrapedCount = scrapedData?.length || 0;
     const scrapedIds = scrapedData?.map(row => row.id) || [];
-    
+
     console.log('📊 [SOV Progress] Step 1 Results:', {
       tableName: analysisTable,
       snapshotId: current_snapshot_id,
@@ -57,7 +61,7 @@ export async function checkSovProgress(
 
     if (scrapedIds.length > 0) {
       console.log('🔍 [SOV Progress] Step 2: Querying sov_query_insights with IDs:', scrapedIds.length);
-      
+
       const { data: insightsData, error: insightsError } = await supabase
         .from('sov_query_insights')
         .select('id, analysis_id')
@@ -70,7 +74,7 @@ export async function checkSovProgress(
       }
 
       completedAnalysisCount = insightsData?.length || 0;
-      
+
       console.log('📊 [SOV Progress] Step 2 Results:', {
         insightsFound: completedAnalysisCount,
         insightsIds: insightsData?.map(i => i.analysis_id).slice(0, 5), // Show first 5
@@ -81,7 +85,7 @@ export async function checkSovProgress(
     }
 
     // Step 3: Determine Status
-    const progressPercentage = totalScrapedCount > 0 
+    const progressPercentage = totalScrapedCount > 0
       ? Math.round((completedAnalysisCount / totalScrapedCount) * 100)
       : 0;
 
@@ -167,7 +171,7 @@ export async function checkLatestSovProgress(
   engine: SovEngine
 ): Promise<SovProgressStatus> {
   const latestSnapshotId = await getLatestSnapshotId(productId);
-  
+
   if (!latestSnapshotId) {
     return {
       status: 'waiting_for_data',

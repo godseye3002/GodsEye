@@ -16,7 +16,7 @@ Note: The price or any data related to price should not be included in the JSON 
 
 Here is the text content:
 ---
-Based on the information available on their website, here is a detailed breakdown of Phodu Club:
+India's trusted Mutual  Fund Advisory App
 
-**Product Name** Phodu Club **Description** Phodu Club is an online educational platform (EdTech) specifically designed to help Indian engineering aspirants prepare for and crack various engineering entrance exams. Operating with the motivational tagline, *"Make the biggest comeback after JEE,"* the platform specializes in post-JEE exams, with a very strong emphasis on **BITSAT** (Birla Institute of Technology and Science Admission Test). It combines structured academic lectures with peer-level mentorship to guide students into top-tier colleges.
+Select, review, and rebalance your mutual funds with expert advice & 20 years of data. PowerUp Money helps you keep your portfolio in top form.
 ---

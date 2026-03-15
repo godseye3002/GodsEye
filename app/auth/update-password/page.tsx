@@ -40,8 +40,8 @@ export default function UpdatePasswordPage() {
         const friendly = raw.includes("password") || weak
           ? "Please choose a stronger password and try again."
           : raw.includes("rate limit")
-          ? "Too many attempts. Please wait a moment and try again."
-          : "We couldn't update your password right now. Please try again.";
+            ? "Too many attempts. Please wait a moment and try again."
+            : "We couldn't update your password right now. Please try again.";
         setError(friendly);
         return;
       }
@@ -152,6 +152,22 @@ export default function UpdatePasswordPage() {
             }}
           >
             Update password
+          </Button>
+
+          <Button
+            variant="plain"
+            onClick={() => router.push("/auth")}
+            sx={{
+              color: "rgba(162, 167, 180, 0.75)",
+              fontSize: "0.95rem",
+              "&:hover": {
+                color: "#2ED47A",
+                backgroundColor: "transparent",
+                textDecoration: "underline",
+              },
+            }}
+          >
+            Cancel
           </Button>
         </Stack>
       </Sheet>

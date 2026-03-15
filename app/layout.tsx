@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./theme-provider";
 import { AuthProvider } from "@/lib/auth-context";
 import "./globals.css";
@@ -21,14 +23,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={cn(inter.variable, "dark")} style={{ colorScheme: 'dark' }}>
       <head>
         <meta name="emotion-insertion-point" content="" />
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased overflow-x-hidden">
         <AuthProvider>
           <ThemeProvider>
-            {children}
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
             <div className="background-glow" suppressHydrationWarning aria-hidden="true"></div>
             <div className="bg-center-sheen" suppressHydrationWarning aria-hidden="true"></div>
           </ThemeProvider>

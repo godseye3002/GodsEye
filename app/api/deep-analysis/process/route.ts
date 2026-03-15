@@ -21,10 +21,17 @@ export async function POST(request: Request) {
       );
     }
 
-    if (source !== 'google' && source !== 'perplexity') {
+    if (source !== 'google' && source !== 'perplexity' && source !== 'chatgpt') {
       return NextResponse.json(
-        { error: "source must be 'google' or 'perplexity'" },
+        { error: "source must be 'google', 'perplexity', or 'chatgpt'" },
         { status: 400 }
+      );
+    }
+
+    if (source === 'chatgpt' && process.env.CHATGPT_PIPELINE !== 'true') {
+      return NextResponse.json(
+        { error: "ChatGPT pipeline is currently disabled" },
+        { status: 403 }
       );
     }
 
@@ -56,8 +63,8 @@ export async function POST(request: Request) {
     }
 
     if (process.env.NODE_ENV !== 'production') {
-        console.log('[DeepAnalysis] Upstream success', { url: `${BASE_URL}/process`, data });
-      }
+      console.log('[DeepAnalysis] Upstream success', { url: `${BASE_URL}/process`, data });
+    }
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     return NextResponse.json(

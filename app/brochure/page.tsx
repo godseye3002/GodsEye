@@ -2,6 +2,7 @@
 
 import { Box, Container, Stack, Typography, Card, Divider, Button, Chip, Table, Avatar } from "@mui/joy";
 import { testimonials } from "@/app/data/testimonials";
+import { TestimonialCarousel } from "@/components/TestimonialCarousel";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import ConstructionIcon from "@mui/icons-material/Construction";
@@ -292,7 +293,7 @@ export default function BrochurePage() {
                 </Stack>
 
                 {/* Page 5: Why GodsEye */}
-                <Stack spacing={4} sx={{ mb: { xs: 4, md: 8 } }}>
+                <Stack spacing={4} sx={{ mb: { xs: 2, md: 4 } }}>
                     <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
                         This window is open. It won't be for long.
                     </Typography>
@@ -320,7 +321,7 @@ export default function BrochurePage() {
                     </Box>
                 </Stack>
 
-                <Divider sx={{ mt: { xs: 4, md: 8 }, mb: { xs: 2, md: 4 }, opacity: 0.1 }} />
+                <Divider sx={{ mt: { xs: 2, md: 4 }, mb: { xs: 2, md: 4 }, opacity: 0.1 }} />
 
                 {/* Page 5.5: Testimonials */}
                 <Stack spacing={4} sx={{ mb: { xs: 4, md: 8 } }}>
@@ -333,53 +334,8 @@ export default function BrochurePage() {
                         </Typography>
                     </Box>
 
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, width: "100%" }}>
-                        {testimonials.map((testimonial) => (
-                            <Card
-                                key={testimonial.id}
-                                variant="outlined"
-                                sx={{
-                                    backgroundColor: "rgba(17, 19, 24, 0.6)",
-                                    borderColor: borderColor,
-                                    p: { xs: 3, md: 4 },
-                                    borderRadius: "16px",
-                                    position: "relative"
-                                }}
-                            >
-                                <Typography
-                                    sx={{
-                                        color: primaryColor,
-                                        fontSize: { xs: "1.05rem", md: "1.15rem" },
-                                        lineHeight: 1.7,
-                                        mb: 3,
-                                        fontStyle: "italic",
-                                        fontWeight: 400,
-                                        whiteSpace: "pre-wrap"
-                                    }}
-                                >
-                                    "{testimonial.content}"
-                                </Typography>
-
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                                    <Avatar
-                                        src={testimonial.image}
-                                        sx={{
-                                            width: 56,
-                                            height: 56,
-                                            border: `2px solid rgba(46, 212, 122, 0.3)`,
-                                        }}
-                                    />
-                                    <Box>
-                                        <Typography level="title-md" sx={{ color: primaryColor, fontWeight: 700 }}>
-                                            {testimonial.name}
-                                        </Typography>
-                                        <Typography level="body-sm" sx={{ color: secondaryColor }}>
-                                            {testimonial.title} @ <Box component="span" sx={{ color: accentColor }}>{testimonial.company}</Box>
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </Card>
-                        ))}
+                    <Box sx={{ width: "100%" }}>
+                        <TestimonialCarousel testimonials={testimonials} variant="brochure" />
                     </Box>
                 </Stack>
 

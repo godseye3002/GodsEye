@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { checkLatestSovProgress } from '@/lib/sovProgressCheck';
 
-export type SovEngine = 'google' | 'perplexity';
+export type SovEngine = 'google' | 'perplexity' | 'chatgpt';
 export type SovListenerStatus = 'processing' | 'completed';
 
 interface SovSnapshotRow {
@@ -27,11 +27,11 @@ function getKey(productId: string, engine: SovEngine) {
 async function fetchCurrentSovStatus(productId: string, engine: SovEngine): Promise<SovListenerStatus> {
   try {
     console.log('🔍 [SOV Listener] Checking status for:', { productId, engine });
-    
+
     // Use our new progress logic instead of non-existent status column
     const { checkLatestSovProgress } = await import('@/lib/sovProgressCheck');
     const progress = await checkLatestSovProgress(productId, engine);
-    
+
     console.log('📊 [SOV Listener] Progress result:', {
       status: progress.status,
       totalScrapedCount: progress.totalScrapedCount,
@@ -39,13 +39,13 @@ async function fetchCurrentSovStatus(productId: string, engine: SovEngine): Prom
       progressPercentage: progress.progressPercentage,
       message: progress.message
     });
-    
+
     // Map progress status to listener status
     if (progress.status === 'processing') {
       console.log('⏳ [SOV Listener] Status: PROCESSING - Analysis in progress');
       return 'processing';
     }
-    
+
     console.log('✅ [SOV Listener] Status: COMPLETED - Analysis finished');
     return 'completed';
   } catch (err) {
@@ -108,9 +108,9 @@ export function useSovSnapshotListener(productId: string, engine: SovEngine) {
           const row = payload.new as SovSnapshotRow | undefined;
           if (!row) return;
           if (row.engine !== engine) return;
-          
+
           console.log('🔄 [SOV Listener] Real-time change detected, checking completion status...');
-          
+
           // Check if analysis is actually complete using progress logic
           checkLatestSovProgress(productId, engine).then((progress) => {
             const actualStatus: SovListenerStatus = progress.status === 'complete' ? 'completed' : 'processing';

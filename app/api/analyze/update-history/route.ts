@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
-    const { userId, productId, googleAnalysisId, perplexityAnalysisId } = await request.json();
+    const { userId, productId, googleAnalysisId, perplexityAnalysisId, chatgptAnalysisId } = await request.json();
 
     if (!userId || !productId) {
       return NextResponse.json(
@@ -24,6 +24,10 @@ export async function POST(request: Request) {
 
     if (perplexityAnalysisId) {
       updateData.perplexity_analysis_id = perplexityAnalysisId;
+    }
+
+    if (chatgptAnalysisId) {
+      updateData.chatgpt_analysis_id = chatgptAnalysisId;
     }
 
     const { error } = await (supabaseAdmin as any)

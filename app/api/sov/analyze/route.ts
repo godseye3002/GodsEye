@@ -3,9 +3,9 @@ import { getSupabaseAdminClient } from '@/lib/supabase';
 // godseye-sov-production.up.railway.app
 // godseye-sov.onrender.com
 // const DEFAULT_SOV_ANALYSIS_URL = 'https://godseye-sov-production.up.railway.app/analyze';
-// const DEFAULT_SOV_ANALYSIS_URL = 'http://127.0.0.1:5000/calculate-sov'
+const DEFAULT_SOV_ANALYSIS_URL = 'https://godseye-sov-3-production.up.railway.app/calculate-sov'
 
-const DEFAULT_SOV_ANALYSIS_URL = 'https://godseye-sov-2-production.up.railway.app/calculate-sov'
+// const DEFAULT_SOV_ANALYSIS_URL = 'https://godseye-sov-2-production.up.railway.app/calculate-sov'
 
 export async function POST(request: Request) {
   try {
@@ -19,8 +19,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'product_id is required' }, { status: 400 });
     }
 
-    if (!engine || !['google', 'perplexity'].includes(engine)) {
-      return NextResponse.json({ error: 'Valid engine (google or perplexity) is required' }, { status: 400 });
+    if (!engine || !['google', 'perplexity', 'chatgpt'].includes(engine)) {
+      return NextResponse.json({ error: 'Valid engine (google, perplexity, or chatgpt) is required' }, { status: 400 });
     }
 
     // Fetch the most recent snapshot_id for this product from analysis_snapshot table
@@ -52,12 +52,12 @@ export async function POST(request: Request) {
       }
     }
 
-    const upstreamUrl = process.env.SOV_ANALYSIS_URL || DEFAULT_SOV_ANALYSIS_URL;
+    const upstreamUrl = process.env.NEXT_PUBLIC_SOV_ANALYSIS_URL || DEFAULT_SOV_ANALYSIS_URL;
 
     // Include snapshot_id in the request body
-    const requestBody = { 
-      product_id, 
-      engine, 
+    const requestBody = {
+      product_id,
+      engine,
       debug,
       ...(snapshot_id && { snapshot_id }) // Only include snapshot_id if it exists
     };

@@ -30,12 +30,23 @@ export async function GET(request: Request) {
       .eq('product_id', productId)
       .not('optimization_prompt', 'is', null);
 
+    // Fetch ChatGPT analysis queries
+    const { data: chatgptData, error: chatgptError } = await (supabaseAdmin as any)
+      .from('product_analysis_chatgpt')
+      .select('optimization_prompt')
+      .eq('product_id', productId)
+      .not('optimization_prompt', 'is', null);
+
     if (googleError) {
       console.error('[AnalysisQueries] Error fetching Google queries:', googleError);
     }
 
     if (perplexityError) {
       console.error('[AnalysisQueries] Error fetching Perplexity queries:', perplexityError);
+    }
+
+    if (chatgptError) {
+      console.error('[AnalysisQueries] Error fetching ChatGPT queries:', chatgptError);
     }
 
     // Extract and clean query strings
@@ -47,10 +58,15 @@ export async function GET(request: Request) {
       .map((row: any) => row.optimization_prompt?.trim())
       .filter((query: string | undefined) => query && query.length > 0);
 
+    const chatgptQueries = (chatgptData || [])
+      .map((row: any) => row.optimization_prompt?.trim())
+      .filter((query: string | undefined) => query && query.length > 0);
+
     return NextResponse.json({
       success: true,
       google: googleQueries,
       perplexity: perplexityQueries,
+      chatgpt: chatgptQueries,
     });
 
   } catch (error: any) {
