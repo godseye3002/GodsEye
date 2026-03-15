@@ -21,7 +21,7 @@ export async function checkSovProgress(
   engine: SovEngine
 ): Promise<SovProgressStatus> {
   try {
-    if (process.env.NODE_ENV === 'development') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.log('🚀 [SOV Progress] Starting check for:', { current_snapshot_id, engine });
     }
 
@@ -31,7 +31,7 @@ export async function checkSovProgress(
       : engine === 'perplexity'
         ? 'product_analysis_perplexity'
         : 'product_analysis_chatgpt';
-    if (process.env.NODE_ENV === 'development') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.log('📋 [SOV Progress] Step 1: Querying table:', analysisTable);
     }
 
@@ -48,19 +48,23 @@ export async function checkSovProgress(
     const totalScrapedCount = scrapedData?.length || 0;
     const scrapedIds = scrapedData?.map(row => row.id) || [];
 
-    console.log('📊 [SOV Progress] Step 1 Results:', {
-      tableName: analysisTable,
-      snapshotId: current_snapshot_id,
-      totalScrapedCount,
-      scrapedIds: scrapedIds.slice(0, 5), // Show first 5 IDs
-      allScrapedIds: scrapedIds.length > 5 ? `...(${scrapedIds.length} total)` : scrapedIds
-    });
+    if ((process.env.NODE_ENV as string) === 'debug') {
+      console.log('📊 [SOV Progress] Step 1 Results:', {
+        tableName: analysisTable,
+        snapshotId: current_snapshot_id,
+        totalScrapedCount,
+        scrapedIds: scrapedIds.slice(0, 5), // Show first 5 IDs
+        allScrapedIds: scrapedIds.length > 5 ? `...(${scrapedIds.length} total)` : scrapedIds
+      });
+    }
 
     // Step 2: Fetch the "Completed Work" (The Insights)
     let completedAnalysisCount = 0;
 
     if (scrapedIds.length > 0) {
-      console.log('🔍 [SOV Progress] Step 2: Querying sov_query_insights with IDs:', scrapedIds.length);
+      if ((process.env.NODE_ENV as string) === 'debug') {
+        console.log('🔍 [SOV Progress] Step 2: Querying sov_query_insights with IDs:', scrapedIds.length);
+      }
 
       const { data: insightsData, error: insightsError } = await supabase
         .from('sov_query_insights')
@@ -75,13 +79,17 @@ export async function checkSovProgress(
 
       completedAnalysisCount = insightsData?.length || 0;
 
-      console.log('📊 [SOV Progress] Step 2 Results:', {
-        insightsFound: completedAnalysisCount,
-        insightsIds: insightsData?.map(i => i.analysis_id).slice(0, 5), // Show first 5
-        allInsightsIds: insightsData?.length > 5 ? `...(${insightsData.length} total)` : insightsData?.map(i => i.analysis_id)
-      });
+      if ((process.env.NODE_ENV as string) === 'debug') {
+        console.log('📊 [SOV Progress] Step 2 Results:', {
+          insightsFound: completedAnalysisCount,
+          insightsIds: insightsData?.map(i => i.analysis_id).slice(0, 5), // Show first 5
+          allInsightsIds: insightsData?.length > 5 ? `...(${insightsData.length} total)` : insightsData?.map(i => i.analysis_id)
+        });
+      }
     } else {
-      console.log('📋 [SOV Progress] Step 2: No scraped IDs to check insights for');
+      if ((process.env.NODE_ENV as string) === 'debug') {
+        console.log('📋 [SOV Progress] Step 2: No scraped IDs to check insights for');
+      }
     }
 
     // Step 3: Determine Status
@@ -111,10 +119,12 @@ export async function checkSovProgress(
       message
     };
 
-    console.log('🎯 [SOV Progress] Final Result:', {
-      ...result,
-      logic: `totalScrapedCount(${totalScrapedCount}) vs completedAnalysisCount(${completedAnalysisCount}) = ${status}`
-    });
+    if ((process.env.NODE_ENV as string) === 'debug') {
+      console.log('🎯 [SOV Progress] Final Result:', {
+        ...result,
+        logic: `totalScrapedCount(${totalScrapedCount}) vs completedAnalysisCount(${completedAnalysisCount}) = ${status}`
+      });
+    }
 
     return result;
 
@@ -143,7 +153,7 @@ export async function getLatestSnapshotId(productId: string): Promise<string | n
       .eq('product_id', productId)
       .order('started_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (error.code === 'PGRST116') {

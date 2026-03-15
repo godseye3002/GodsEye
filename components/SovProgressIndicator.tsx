@@ -18,7 +18,7 @@ export function SovProgressIndicator({
   onRefresh,
   compact = false
 }: SovProgressIndicatorProps) {
-  if (process.env.NODE_ENV === 'development') {
+  if ((process.env.NODE_ENV as string) === 'debug') {
     console.log('🎨 [SovProgressIndicator] Rendering with progress:', {
       status: progress.status,
       message: progress.message,
@@ -55,12 +55,14 @@ export function SovProgressIndicator({
     }
   };
 
-  console.log('🔘 [SovProgressIndicator] Button conditions:', {
-    isComplete: progress.status === 'complete',
-    isProcessing: progress.status === 'processing',
-    isWaiting: progress.status === 'waiting_for_data',
-    hasOnRefresh: !!onRefresh
-  });
+  if ((process.env.NODE_ENV as string) === 'debug') {
+    console.log('🔘 [SovProgressIndicator] Button conditions:', {
+      isComplete: progress.status === 'complete',
+      isProcessing: progress.status === 'processing',
+      isWaiting: progress.status === 'waiting_for_data',
+      hasOnRefresh: !!onRefresh
+    });
+  }
 
   if (compact) {
     return (
@@ -75,65 +77,56 @@ export function SovProgressIndicator({
         </Chip>
         
         {progress.status === 'waiting_for_data' && onRefresh && (
-          <>
-            {console.log('🔘 [SovProgressIndicator] Rendering "Check Status" button')}
-            <Button
-              size="sm"
-              variant="outlined"
-              color="neutral"
-              onClick={onRefresh}
-              loading={isLoading}
-              startDecorator={<RefreshIcon sx={{ fontSize: 14 }} />}
-              sx={{
-                minWidth: '120px'
-              }}
-            >
-              Check Status
-            </Button>
-          </>
+          <Button
+            size="sm"
+            variant="outlined"
+            color="neutral"
+            onClick={onRefresh}
+            loading={isLoading}
+            startDecorator={<RefreshIcon sx={{ fontSize: 14 }} />}
+            sx={{
+              minWidth: '120px'
+            }}
+          >
+            Check Status
+          </Button>
         )}
         
         {progress.status === 'processing' && onRefresh && (
-          <>
-            {console.log('🔄 [SovProgressIndicator] Rendering "Refresh Analysis" button')}
-            <Button
-              size="sm"
-              variant="solid"
-              color="primary"
-              onClick={onRefresh}
-              loading={isLoading}
-              startDecorator={<RefreshIcon sx={{ fontSize: 14 }} />}
-              sx={{
-                minWidth: '120px',
-                '&:hover': {
-                  bgcolor: 'primary.solidActiveBg'
-                }
-              }}
-            >
-              Refresh Analysis
-            </Button>
-          </>
+          <Button
+            size="sm"
+            variant="solid"
+            color="primary"
+            onClick={onRefresh}
+            loading={isLoading}
+            startDecorator={<RefreshIcon sx={{ fontSize: 14 }} />}
+            sx={{
+              minWidth: '120px',
+              '&:hover': {
+                bgcolor: 'primary.solidActiveBg'
+              }
+            }}
+          >
+            Refresh Analysis
+          </Button>
         )}
         
         {progress.status === 'complete' && (
-          <>
-            {console.log('✅ [SovProgressIndicator] Rendering "Up to date" button')}
-            <Button
-              size="sm"
-              variant="soft"
-              color="success"
-              disabled
-              startDecorator={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-              sx={{
-                minWidth: '120px',
-                cursor: 'not-allowed',
-                opacity: 0.8
-              }}
-              title="Analysis is up to date"
-            >
-              Up to date
-            </Button>
-          </>
+          <Button
+            size="sm"
+            variant="soft"
+            color="success"
+            disabled
+            startDecorator={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+            sx={{
+              minWidth: '120px',
+              cursor: 'not-allowed',
+              opacity: 0.8
+            }}
+            title="Analysis is up to date"
+          >
+            Up to date
+          </Button>
         )}
       </Box>
     );
@@ -158,65 +151,56 @@ export function SovProgressIndicator({
           </Chip>
           
           {progress.status === 'waiting_for_data' && onRefresh && (
-            <>
-              {console.log('🔘 [SovProgressIndicator] Full: Rendering "Check Status" button')}
-              <Button
-                size="sm"
-                variant="outlined"
-                color="neutral"
-                onClick={onRefresh}
-                loading={isLoading}
-                startDecorator={<RefreshIcon sx={{ fontSize: 14 }} />}
-                sx={{
-                  minWidth: '140px'
-                }}
-              >
-                Check Status
-              </Button>
-            </>
+            <Button
+              size="sm"
+              variant="outlined"
+              color="neutral"
+              onClick={onRefresh}
+              loading={isLoading}
+              startDecorator={<RefreshIcon sx={{ fontSize: 14 }} />}
+              sx={{
+                minWidth: '140px'
+              }}
+            >
+              Check Status
+            </Button>
           )}
           
           {progress.status === 'processing' && onRefresh && (
-            <>
-              {console.log('🔄 [SovProgressIndicator] Full: Rendering "Refresh Analysis" button')}
-              <Button
-                size="sm"
-                variant="solid"
-                color="primary"
-                onClick={onRefresh}
-                loading={isLoading}
-                startDecorator={<RefreshIcon sx={{ fontSize: 14 }} />}
-                sx={{
-                  minWidth: '140px',
-                  '&:hover': {
-                    bgcolor: 'primary.solidActiveBg'
-                  }
-                }}
-              >
-                Refresh Analysis
-              </Button>
-            </>
+            <Button
+              size="sm"
+              variant="solid"
+              color="primary"
+              onClick={onRefresh}
+              loading={isLoading}
+              startDecorator={<RefreshIcon sx={{ fontSize: 14 }} />}
+              sx={{
+                minWidth: '140px',
+                '&:hover': {
+                  bgcolor: 'primary.solidActiveBg'
+                }
+              }}
+            >
+              Refresh Analysis
+            </Button>
           )}
           
           {progress.status === 'complete' && (
-            <>
-              {console.log('✅ [SovProgressIndicator] Full: Rendering "Up to date" button')}
-              <Button
-                size="sm"
-                variant="soft"
-                color="success"
-                disabled
-                startDecorator={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-                sx={{
-                  minWidth: '140px',
-                  cursor: 'not-allowed',
-                  opacity: 0.8
-                }}
-                title="Analysis is up to date"
-              >
-                Up to date
-              </Button>
-            </>
+            <Button
+              size="sm"
+              variant="soft"
+              color="success"
+              disabled
+              startDecorator={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+              sx={{
+                minWidth: '140px',
+                cursor: 'not-allowed',
+                opacity: 0.8
+              }}
+              title="Analysis is up to date"
+            >
+              Up to date
+            </Button>
           )}
         </Box>
       </Box>

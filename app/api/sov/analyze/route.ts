@@ -33,21 +33,21 @@ export async function POST(request: Request) {
         .eq('product_id', product_id)
         .order('started_at', { ascending: false })
         .limit(1)
-        .single() as { data: { id: string } | null; error: any };
+        .maybeSingle() as { data: { id: string } | null; error: any };
 
       if (!snapshotError && snapshotData) {
         snapshot_id = snapshotData.id;
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.log('[SOVAnalyze] Found snapshot_id:', snapshot_id);
         }
       } else if (snapshotError && snapshotError.code !== 'PGRST116') {
         // PGRST116 means no rows found, which is acceptable
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.warn('[SOVAnalyze] Error fetching snapshot_id:', snapshotError);
         }
       }
     } catch (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.warn('[SOVAnalyze] Failed to fetch snapshot_id:', error);
       }
     }
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     let json: unknown = null;
 
     // Log the full response for debugging
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.log('[SOVAnalyze] Upstream Response:', {
         url: upstreamUrl,
         method: 'POST',
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     try {
       json = text ? JSON.parse(text) : null;
     } catch {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[SOVAnalyze] Failed to parse response JSON:', {
           text: text.slice(0, 200),
           status: upstreamResponse.status,

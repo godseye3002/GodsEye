@@ -61,7 +61,7 @@ export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyz
       // If 502 (cold start) and we have retries left, retry with delay
       if (response.status === 502 && attempt < maxRetries) {
         const delay = Math.min(1000 * Math.pow(2, attempt), 3000);
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.log(`[SOV Analysis] Attempt ${attempt + 1} failed with 502, retrying in ${delay}ms...`);
         }
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -82,7 +82,7 @@ export async function triggerSovAnalysis({ productId, engine, debug }: SovAnalyz
 
       // Retry network errors too
       const delay = Math.min(1000 * Math.pow(2, attempt), 2000);
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.log(`[SOV Analysis] Network error on attempt ${attempt + 1}, retrying in ${delay}ms...`, err);
       }
       await new Promise(resolve => setTimeout(resolve, delay));

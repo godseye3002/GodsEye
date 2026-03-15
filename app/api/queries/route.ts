@@ -16,7 +16,7 @@ export async function GET(request: Request) {
       );
     }
 
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.log('[Queries] Fetching with:', { userId, productId, batchId });
     }
 
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
         .select('query_id')
         .eq('batch_id', batchId);
 
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.log('[Queries] Batch links fetched:', {
           batchId,
           batchLinksCount: batchLinks?.length || 0,
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       }
 
       if (batchError) {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.error('[Queries] Error fetching batch links:', batchError);
         }
         return NextResponse.json(
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
       }
 
       const queryIds = (batchLinks || []).map((row: any) => row.query_id).filter(Boolean);
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.log('[Queries] Query IDs extracted:', {
           queryIdsCount: queryIds.length,
           queryIds: queryIds.slice(0, 5)
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
       }
 
       if (queryIds.length === 0) {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.log('[Queries] No query IDs found, returning empty array');
         }
         return NextResponse.json({ queries: [] });
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.log('[Queries] Result:', {
         error: error?.message,
         dataCount: data?.length || 0,
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     }
 
     if (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Queries] Error fetching:', error);
       }
       return NextResponse.json(
@@ -103,7 +103,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ queries: data || [] });
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.error('[Queries] GET error:', error);
     }
     return NextResponse.json(
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.log('[Queries] POST received:', {
         userId,
         productId,
@@ -218,7 +218,7 @@ export async function POST(request: Request) {
       .select();
 
     if (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Queries] Error saving:', error);
       }
       return NextResponse.json(
@@ -241,7 +241,7 @@ export async function POST(request: Request) {
       .single();
 
     if (batchCreateError) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Queries] Error creating batch:', batchCreateError);
       }
       return NextResponse.json(
@@ -260,7 +260,7 @@ export async function POST(request: Request) {
       .insert(linkRecords);
 
     if (linkError) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Queries] Error linking queries to batch:', linkError);
       }
       return NextResponse.json(
@@ -277,7 +277,7 @@ export async function POST(request: Request) {
       perplexityCount: finalPerplexityQueries.length,
     });
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.error('[Queries] POST error:', error);
     }
     return NextResponse.json(
@@ -312,7 +312,7 @@ export async function PUT(request: Request) {
       .select();
 
     if (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Queries] Error updating:', error);
       }
       return NextResponse.json(
@@ -330,7 +330,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true, query: data[0] });
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.error('[Queries] PUT error:', error);
     }
     return NextResponse.json(
@@ -363,7 +363,7 @@ export async function DELETE(request: Request) {
       .eq('user_id', userId);
 
     if (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Queries] Error deleting:', error);
       }
       return NextResponse.json(
@@ -374,7 +374,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.error('[Queries] DELETE error:', error);
     }
     return NextResponse.json(

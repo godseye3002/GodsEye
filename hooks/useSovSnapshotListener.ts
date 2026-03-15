@@ -26,27 +26,35 @@ function getKey(productId: string, engine: SovEngine) {
 
 async function fetchCurrentSovStatus(productId: string, engine: SovEngine): Promise<SovListenerStatus> {
   try {
-    console.log('🔍 [SOV Listener] Checking status for:', { productId, engine });
+    if ((process.env.NODE_ENV as string) === 'debug') {
+      console.log('🔍 [SOV Listener] Checking status for:', { productId, engine });
+    }
 
     // Use our new progress logic instead of non-existent status column
     const { checkLatestSovProgress } = await import('@/lib/sovProgressCheck');
     const progress = await checkLatestSovProgress(productId, engine);
 
-    console.log('📊 [SOV Listener] Progress result:', {
-      status: progress.status,
-      totalScrapedCount: progress.totalScrapedCount,
-      completedAnalysisCount: progress.completedAnalysisCount,
-      progressPercentage: progress.progressPercentage,
-      message: progress.message
-    });
+    if ((process.env.NODE_ENV as string) === 'debug') {
+      console.log('📊 [SOV Listener] Progress result:', {
+        status: progress.status,
+        totalScrapedCount: progress.totalScrapedCount,
+        completedAnalysisCount: progress.completedAnalysisCount,
+        progressPercentage: progress.progressPercentage,
+        message: progress.message
+      });
+    }
 
     // Map progress status to listener status
     if (progress.status === 'processing') {
-      console.log('⏳ [SOV Listener] Status: PROCESSING - Analysis in progress');
+      if ((process.env.NODE_ENV as string) === 'debug') {
+        console.log('⏳ [SOV Listener] Status: PROCESSING - Analysis in progress');
+      }
       return 'processing';
     }
 
-    console.log('✅ [SOV Listener] Status: COMPLETED - Analysis finished');
+    if ((process.env.NODE_ENV as string) === 'debug') {
+      console.log('✅ [SOV Listener] Status: COMPLETED - Analysis finished');
+    }
     return 'completed';
   } catch (err) {
     console.error('❌ [SOV Listener] Error fetching current status:', {
@@ -109,12 +117,16 @@ export function useSovSnapshotListener(productId: string, engine: SovEngine) {
           if (!row) return;
           if (row.engine !== engine) return;
 
-          console.log('🔄 [SOV Listener] Real-time change detected, checking completion status...');
+          if ((process.env.NODE_ENV as string) === 'debug') {
+            console.log('🔄 [SOV Listener] Real-time change detected, checking completion status...');
+          }
 
           // Check if analysis is actually complete using progress logic
           checkLatestSovProgress(productId, engine).then((progress) => {
             const actualStatus: SovListenerStatus = progress.status === 'complete' ? 'completed' : 'processing';
-            console.log('📊 [SOV Listener] Actual completion status:', actualStatus, 'Progress:', progress);
+            if ((process.env.NODE_ENV as string) === 'debug') {
+              console.log('📊 [SOV Listener] Actual completion status:', actualStatus, 'Progress:', progress);
+            }
             if (actualStatus === 'completed') {
               markCompleted();
             } else {
@@ -129,7 +141,7 @@ export function useSovSnapshotListener(productId: string, engine: SovEngine) {
       )
       .subscribe((s) => {
         if (s === 'SUBSCRIBED') {
-          if (process.env.NODE_ENV !== 'production') {
+          if ((process.env.NODE_ENV as string) === 'debug') {
             console.log('[useSovSnapshotListener] Subscribed', { productId, engine });
           }
         }
@@ -139,7 +151,7 @@ export function useSovSnapshotListener(productId: string, engine: SovEngine) {
       try {
         supabase.removeChannel(channel);
       } catch (err) {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.warn('[SovSnapshotListener] Error removing channel:', {
             error: err,
             productId,

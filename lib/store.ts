@@ -201,7 +201,9 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
             const snapshotJson = await snapshotRes.json()
             const snapshotId = snapshotJson?.latestSnapshot?.id
 
-            console.log('[DashboardStore] Snapshot resolved:', { productId, engine, apiEngine, snapshotId })
+            if ((process.env.NODE_ENV as string) === 'debug') {
+                console.log('[DashboardStore] Snapshot resolved:', { productId, engine, apiEngine, snapshotId })
+            }
 
             if (!snapshotId) {
                 set({

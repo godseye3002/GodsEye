@@ -229,7 +229,7 @@ export default function SOVPerformanceCard({
     const result = await triggerSovAnalysis({
       productId,
       engine,
-      debug: process.env.NODE_ENV !== 'production',
+      debug: (process.env.NODE_ENV as string) === 'debug',
     });
 
     if ('success' in result && result.success) {

@@ -448,7 +448,7 @@ export const useProductStore = create<ProductStoreState>()(
           }));
 
         } catch (error) {
-          if (process.env.NODE_ENV !== 'production') {
+          if ((process.env.NODE_ENV as string) === 'debug') {
             console.error('[Store] Error loading products:', error);
           }
         }
@@ -647,7 +647,7 @@ export const useProductStore = create<ProductStoreState>()(
       saveQueriesToSupabase: async (userId: string) => {
         const state = get();
         if (!state.currentProductId) {
-          if (process.env.NODE_ENV !== 'production') {
+          if ((process.env.NODE_ENV as string) === 'debug') {
             console.error('[Store] Cannot save queries: no currentProductId');
           }
           return;
@@ -656,13 +656,13 @@ export const useProductStore = create<ProductStoreState>()(
         const totalCount = state.allPerplexityQueries.length + state.allGoogleQueries.length + state.allChatgptQueries.length;
 
         if (totalCount === 0) {
-          if (process.env.NODE_ENV !== 'production') {
+          if ((process.env.NODE_ENV as string) === 'debug') {
             console.log('[Store] No queries to save');
           }
           return;
         }
 
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.log('[Store] Saving queries:', {
             userId,
             productId: state.currentProductId,
@@ -690,11 +690,11 @@ export const useProductStore = create<ProductStoreState>()(
             throw new Error(error.error || 'Failed to save queries');
           }
 
-          if (process.env.NODE_ENV !== 'production') {
+          if ((process.env.NODE_ENV as string) === 'debug') {
             console.log('[Store] Queries saved successfully to queries table');
           }
         } catch (error) {
-          if (process.env.NODE_ENV !== 'production') {
+          if ((process.env.NODE_ENV as string) === 'debug') {
             console.error('[Store] Error saving queries:', error);
           }
           throw error;

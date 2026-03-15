@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Products] Error fetching:', error);
       }
       return NextResponse.json(
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ products: enhancedProducts });
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.error('[Products] GET error:', error);
     }
     return NextResponse.json(
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Products] Error creating:', error);
       }
       return NextResponse.json(
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ product: data });
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.error('[Products] POST error:', error);
     }
     return NextResponse.json(
@@ -193,7 +193,7 @@ export async function PUT(request: Request) {
       .single();
 
     if (updateError) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Products] Error updating:', updateError);
       }
       return NextResponse.json(
@@ -204,7 +204,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ product: updated });
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.error('[Products] PUT error:', error);
     }
     return NextResponse.json(
@@ -257,7 +257,7 @@ export async function DELETE(request: Request) {
       .eq('id', productId);
 
     if (deleteError) {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[Products] Error deleting:', deleteError);
       }
       return NextResponse.json(
@@ -268,7 +268,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    if (process.env.NODE_ENV !== 'production') {
+    if ((process.env.NODE_ENV as string) === 'debug') {
       console.error('[Products] DELETE error:', error);
     }
     return NextResponse.json(

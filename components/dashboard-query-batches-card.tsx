@@ -161,7 +161,7 @@ export function DashboardQueryBatchesCard() {
       const data = await response.json();
       setQueryBatches(Array.isArray(data?.batches) ? data.batches : []);
     } catch (error) {
-      if (process.env.NODE_ENV !== "production") {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error("[Dashboard Query Batches] Failed to load:", error);
       }
     } finally {
@@ -224,7 +224,7 @@ export function DashboardQueryBatchesCard() {
 
       return { perplexity, google, chatgpt };
     } catch (error) {
-      if (process.env.NODE_ENV !== "production") {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error("[Dashboard Batch Queries] Failed to load:", error);
       }
       return null;
@@ -658,7 +658,7 @@ export function DashboardQueryBatchesCard() {
         .eq("batch_id", latestBatch.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
         setIsNewBatchEnabled(false);

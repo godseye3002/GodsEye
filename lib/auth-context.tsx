@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       setProfile(data);
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('not found'));
 
       if (isMissingProfile) {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.warn('[AuthService] Profile not found for user. Clearing session.', {
             userId: session?.user?.id,
             timestamp: new Date().toISOString()
@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.error('[AuthService] Error fetching profile:', {
           error,
           timestamp: new Date().toISOString()
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.warn('[AuthService] Failed to get initial session:', error.message);
         }
         // Force cleanup if session is invalid
@@ -123,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         // Do not block loading on profile fetch; run in background
         fetchProfile(session.user.id).catch((e) => {
-          if (process.env.NODE_ENV !== 'production') {
+          if ((process.env.NODE_ENV as string) === 'debug') {
             console.error('[AuthService] Background profile fetch failed:', {
               error: e,
               userId: session?.user?.id,
@@ -141,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               body: JSON.stringify({ userId: session.user.id }),
             });
           } catch (loginError) {
-            if (process.env.NODE_ENV !== 'production') {
+            if ((process.env.NODE_ENV as string) === 'debug') {
               console.error('[AuthService] Failed to update last login:', {
                 error: loginError,
                 userId: session?.user?.id,
@@ -174,7 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({ userId: data.user.id }),
         });
       } catch (loginError) {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.error('[AuthService] Failed to update last login:', {
             error: loginError,
             userId: data?.user?.id,

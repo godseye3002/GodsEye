@@ -375,7 +375,7 @@ function OptimizePageContent() {
 
     setIsLoadingBatchQueries(true);
     try {
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.log('[Frontend] Loading queries for batch:', { batchId, userId: user.id, productId: currentProductId });
       }
 
@@ -390,7 +390,7 @@ function OptimizePageContent() {
       const data = await response.json();
       const rows = Array.isArray(data?.queries) ? data.queries : [];
 
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.log('[Frontend] Batch queries response:', {
           batchId,
           rowsCount: rows.length,
@@ -401,7 +401,7 @@ function OptimizePageContent() {
       // Safety check: verify all returned queries belong to the current product
       // This prevents stale batchIds (from localStorage persistence) from loading wrong data
       if (rows.length > 0 && rows[0]?.product_id && rows[0].product_id !== currentProductId) {
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.warn('[Frontend] Batch belongs to a different product! Ignoring stale batch.', {
             batchProductId: rows[0].product_id,
             currentProductId,
@@ -428,7 +428,7 @@ function OptimizePageContent() {
         .map((q: any) => q?.query_text)
         .filter((q: any) => typeof q === 'string' && q.trim().length > 0);
 
-      if (process.env.NODE_ENV !== 'production') {
+      if ((process.env.NODE_ENV as string) === 'debug') {
         console.log('[Frontend] Filtered queries:', {
           batchId,
           perplexityCount: perplexity.length,
@@ -561,7 +561,7 @@ function OptimizePageContent() {
         .eq('batch_id', latestBatch.id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) {
         if (error.code !== 'PGRST116') { // PGRST116 is "Row not found"
@@ -888,7 +888,7 @@ function OptimizePageContent() {
         .eq('batch_id', batchId)
         .order('started_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (fetchError && fetchError.code !== 'PGRST116') {
         // PGRST116 means no rows found, which is expected
@@ -922,7 +922,7 @@ function OptimizePageContent() {
               total_no_of_query: totalNumberOfQueries,
             })
             .select()
-            .single();
+            .maybeSingle();
 
           if (createError) {
             console.error('[Snapshot] Failed to create new snapshot:', createError);
@@ -963,7 +963,7 @@ function OptimizePageContent() {
           total_no_of_query: totalNumberOfQueries,
         })
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('[Snapshot] Failed to create snapshot:', error);
@@ -998,7 +998,7 @@ function OptimizePageContent() {
         .from('analysis_snapshots')
         .select('no_of_query')
         .eq('id', snapshotId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
         console.error('[Snapshot] Failed to fetch existing snapshot:', fetchError);

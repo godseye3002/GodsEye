@@ -45,15 +45,19 @@ export async function GET(request: Request) {
       .limit(2) as { data: SOVSnapshot[] | null; error: any };
 
     if (snapshotsError || !snapshotsData || snapshotsData.length === 0) {
-      if (snapshotsError?.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'No Share of Voice data available for this product.' },
-          { status: 404 }
-        );
+      if (snapshotsError?.code === 'PGRST116' || (!snapshotsError && snapshotsData?.length === 0)) {
+        return NextResponse.json({
+          latestSnapshot: null,
+          previousSnapshot: null,
+          insights: [],
+          message: 'No Share of Voice data available for this product.'
+        }, { status: 200 });
       }
-      console.error('Snapshot fetch error:', snapshotsError);
+      if ((process.env.NODE_ENV as string) === 'debug') {
+        console.error('Snapshot fetch error:', snapshotsError);
+      }
       return NextResponse.json(
-        { error: 'Failed to load Share of Voice data.' },
+        { error: snapshotsError?.message || 'Failed to load Share of Voice data.' },
         { status: 500 }
       );
     }
@@ -72,7 +76,9 @@ export async function GET(request: Request) {
       .limit(insightsLimit);
 
     if (insightsError) {
-      console.error('Insights fetch error:', insightsError);
+      if ((process.env.NODE_ENV as string) === 'debug') {
+        console.error('Insights fetch error:', insightsError);
+      }
       // Continue without insights if there's an error
     }
 
@@ -83,7 +89,9 @@ export async function GET(request: Request) {
     });
 
   } catch (error: any) {
-    console.error('SOV API error:', error);
+    if ((process.env.NODE_ENV as string) === 'debug') {
+      console.error('SOV API error:', error);
+    }
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

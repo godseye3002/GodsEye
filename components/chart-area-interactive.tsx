@@ -82,12 +82,14 @@ export function ChartAreaInteractive({ data, brands }: ChartAreaInteractiveProps
 
   // Debug logging
   React.useEffect(() => {
-    console.log('[ChartAreaInteractive] Props:', {
-      dataLength: data?.length,
-      brandsLength: brands?.length,
-      firstDataItem: data?.[0],
-      firstBrand: brands?.[0],
-    })
+    if ((process.env.NODE_ENV as string) === 'debug') {
+      console.log('[ChartAreaInteractive] Props:', {
+        dataLength: data?.length,
+        brandsLength: brands?.length,
+        firstDataItem: data?.[0],
+        firstBrand: brands?.[0],
+      })
+    }
   }, [data, brands])
 
   // Initialize active brands state based on available brands

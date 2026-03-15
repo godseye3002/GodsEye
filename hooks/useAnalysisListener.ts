@@ -76,7 +76,7 @@ export function useAnalysisListener<T = any>(productId: string, source: Analysis
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          if (process.env.NODE_ENV !== 'production') {
+          if ((process.env.NODE_ENV as string) === 'debug') {
             console.log('[useAnalysisListener] Subscribed to', table, productId);
           }
         }
@@ -89,7 +89,7 @@ export function useAnalysisListener<T = any>(productId: string, source: Analysis
         supabase.removeChannel(channel);
       } catch (err) {
         // Silently handle channel removal errors
-        if (process.env.NODE_ENV !== 'production') {
+        if ((process.env.NODE_ENV as string) === 'debug') {
           console.warn('[AnalysisListener] Error removing channel:', {
             error: err,
             table,
