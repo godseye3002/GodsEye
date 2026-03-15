@@ -1,42 +1,40 @@
 {
   "product": {
     "product_name": "PowerUp Money",
-    "description": "PowerUp Money is India's trusted Mutual Fund Advisory App. It empowers users to select, review, and rebalance their mutual funds with expert advice and 20 years of data, helping them maintain an optimal portfolio.",
+    "description": "PowerUp Money is India's trusted Mutual Fund Advisory App that helps users select, review, and rebalance their mutual funds with expert advice and 20 years of data. The app is designed to keep investment portfolios in top form.",
     "general_product_type": "Financial App",
     "specific_product_type": "Mutual Fund Advisory App",
     "specifications": {
-      "data_provided": "20 years of data"
+      "data_history": "20 years"
     },
     "features": [
       {
+        "name": "Expert Advice",
+        "description": "Provides expert guidance for mutual fund investments."
+      },
+      {
         "name": "Mutual Fund Selection",
-        "description": "Allows users to select mutual funds."
+        "description": "Helps users select appropriate mutual funds."
       },
       {
         "name": "Mutual Fund Review",
-        "description": "Enables users to review their mutual funds."
+        "description": "Allows users to review their existing mutual funds."
       },
       {
         "name": "Mutual Fund Rebalancing",
-        "description": "Facilitates rebalancing of mutual fund portfolios."
+        "description": "Facilitates the rebalancing of mutual fund portfolios."
       },
       {
-        "name": "Expert Advice",
-        "description": "Provides expert guidance for mutual fund management."
-      },
-      {
-        "name": "Data Integration",
-        "description": "Utilizes 20 years of data for insights and recommendations."
-      },
-      {
-        "name": "Portfolio Management",
-        "description": "Helps users keep their portfolio in top form."
+        "name": "Portfolio Optimization",
+        "description": "Aims to keep the user's portfolio in top form."
       }
     ],
-    "targeted_market": "Individuals in India who are looking for expert guidance and data-driven insights to manage their mutual fund investments effectively. This includes both novice investors and those with existing portfolios seeking to optimize their performance.",
-    "problem_product_is_solving": "The app addresses the complexity and uncertainty associated with selecting, reviewing, and rebalancing mutual funds. It aims to solve the problem of investors lacking the necessary expertise, time, or data to make informed decisions, thereby helping them achieve and maintain an optimal investment portfolio.",
-    "formulation_attribution": "The product is described as 'India's trusted Mutual Fund Advisory App', implying it is developed and operated within India and trusted by its users. No specific manufacturer or formulation details are provided."
+    "targeted_market": "Indian investors who are looking for expert guidance and tools to manage their mutual fund portfolios effectively. This includes individuals who want to select, review, and rebalance their investments with data-driven insights.",
+    "problem_product_is_solving": "The app addresses the challenges individuals face in selecting the right mutual funds, understanding their portfolio's performance, and knowing when and how to rebalance it to achieve optimal results. It aims to simplify mutual fund management through expert advice and historical data.",
+    "formulation_attribution": null
   },
   "extraction_method": "selectors-fallback",
-  "missing_fields": []
+  "missing_fields": [
+    "formulation_attribution"
+  ]
 }

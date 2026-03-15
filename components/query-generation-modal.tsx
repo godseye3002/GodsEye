@@ -54,6 +54,7 @@ export function QueryGenerationModal({ onBatchCreated, loadQueryBatches }: Query
     setIsGeneratingQuery,
     setQueryGenerationError,
     setSelectedBatchId,
+    setActiveSection,
   } = useProductStore();
 
   const [modalStep, setModalStep] = React.useState<"choice" | "ai_setup" | "upload" | "review">("choice");
@@ -127,7 +128,8 @@ export function QueryGenerationModal({ onBatchCreated, loadQueryBatches }: Query
 
       if (batch?.id) {
         if (onBatchCreated) await onBatchCreated(batch.id);
-        setSelectedBatchId(batch.id);
+        setSelectedBatchId(null);
+        setActiveSection("query");
       }
       handleClose();
     } catch (error: any) {
@@ -339,7 +341,8 @@ export function QueryGenerationModal({ onBatchCreated, loadQueryBatches }: Query
       if (loadQueryBatches) await loadQueryBatches();
       if (batch?.id) {
         if (onBatchCreated) await onBatchCreated(batch.id);
-        setSelectedBatchId(batch.id);
+        setSelectedBatchId(null);
+        setActiveSection("query");
       }
       handleClose();
     } catch (error: any) {

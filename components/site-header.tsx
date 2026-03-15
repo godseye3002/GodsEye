@@ -7,7 +7,7 @@ import { Copy01Icon, CheckmarkCircle02Icon, SidebarLeftIcon } from "@hugeicons/c
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-export function SiteHeader({ title = "Overview", actions }: { title?: string; actions?: React.ReactNode }) {
+export function SiteHeader({ title = "Dashboard", actions }: { title?: string; actions?: React.ReactNode }) {
   const currentProductId = useProductStore((state) => state.currentProductId)
   const products = useProductStore((state) => state.products)
   const [copied, setCopied] = React.useState(false)

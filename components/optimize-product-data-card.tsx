@@ -83,6 +83,7 @@ export function OptimizeProductDataCard() {
     const isGeneratingQuery = useProductStore((state) => state.isGeneratingQuery);
     const setIsGeneratingQuery = useProductStore((state) => state.setIsGeneratingQuery);
     const queryGenerationError = useProductStore((state) => state.queryGenerationError);
+    const setSelectedBatchId = useProductStore((state) => state.setSelectedBatchId);
 
     const isAnalyzing = useProductStore((state) => state.isAnalyzing);
     const missingFields = useProductStore((state) => state.missingFields);
@@ -614,6 +615,7 @@ export function OptimizeProductDataCard() {
                 await saveQueriesToSupabase(user.id);
             }
 
+            setSelectedBatchId(null);
             setActiveSection("query");
             setDashboardActiveSection("queries");
         } catch (error: any) {
@@ -639,6 +641,7 @@ export function OptimizeProductDataCard() {
         setMissingFields,
         setQueryData,
         setQueryGenerationError,
+        setSelectedBatchId,
         setShowMissingFieldsWarning,
         user,
     ]);
@@ -950,10 +953,8 @@ export function OptimizeProductDataCard() {
                         <Button
                             type="button"
                             onClick={() => void scrapeProductData()}
-                            disabled={
-                                isScraping ||
-                                !formData.url.trim()
-                            }
+                            loading={isScraping}
+                            disabled={!formData.url.trim()}
                             size="md"
                             sx={{
                                 minHeight: 48,
@@ -981,8 +982,7 @@ export function OptimizeProductDataCard() {
                                 },
                             }}
                         >
-                            {isScraping && <CircularProgress size="sm" thickness={2} sx={{ color: "#0D0F14", mr: 1 }} />}
-                            {isScraping ? "Processing..." : inputMode === "url" ? "Fetch Info" : "Process Text"}
+                            {isScraping ? "Fetching Info..." : "Fetch Info"}
                         </Button>
                     </Stack>
 
@@ -1053,7 +1053,8 @@ export function OptimizeProductDataCard() {
                         <Button
                             type="button"
                             onClick={() => void scrapeProductData()}
-                            disabled={isScraping || !productText.trim()}
+                            loading={isScraping}
+                            disabled={!productText.trim()}
                             size="md"
                             sx={{
                                 minHeight: 44,
@@ -1080,7 +1081,7 @@ export function OptimizeProductDataCard() {
                                 },
                             }}
                         >
-                            {isScraping ? "Processing..." : "Process Text"}
+                            {isScraping ? "Processing Text..." : "Process Text"}
                         </Button>
                     </Stack>
 
@@ -1411,7 +1412,8 @@ export function OptimizeProductDataCard() {
                                         type="submit"
                                         variant="solid"
                                         size="lg"
-                                        disabled={isGeneratingQuery || isAnalyzing || hasFormBlockingMissing}
+                                        loading={isGeneratingQuery || isAnalyzing}
+                                        disabled={hasFormBlockingMissing}
                                         sx={{
                                             flex: 1,
                                             width: { xs: "100%", sm: "auto" },

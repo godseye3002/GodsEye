@@ -73,7 +73,7 @@ const data = {
       ],
     },
     {
-      title: "Overview",
+      title: "Dashboard",
       url: "/optimize",
       icon: (
         <HugeiconsIcon icon={ComputerTerminalIcon} strokeWidth={2} />
