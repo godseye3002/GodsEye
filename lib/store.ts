@@ -110,8 +110,8 @@ interface DashboardStore {
     setActiveEngine: (engine: EngineType) => void
 
     // UI section
-    activeSection: 'overview' | 'product_information' | 'competitors_data' | 'queries' | 'documentation'
-    setActiveSection: (section: 'overview' | 'product_information' | 'competitors_data' | 'queries' | 'documentation') => void
+    activeSection: 'overview' | 'product_information' | 'competitors_data' | 'queries' | 'documentation' | 'website_audit'
+    setActiveSection: (section: 'overview' | 'product_information' | 'competitors_data' | 'queries' | 'documentation' | 'website_audit') => void
 
     // Snapshot tracking
     snapshotId: string | null
@@ -229,20 +229,21 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
                 fetch(`/api/dashboard/vishnu-graph?productId=${productId}&engine=${apiEngine}`).then(r => r.ok ? r.json() : Promise.reject(new Error(`Vishnu graph failed: ${r.status}`))),
                 fetch(`/api/dashboard/shiva-graph?productId=${productId}&engine=${apiEngine}`).then(r => r.ok ? r.json() : Promise.reject(new Error(`Shiva graph failed: ${r.status}`))),
             ])
-
             // Debug logging
-            console.log('[DashboardStore] API Results:', {
-                topCards: topCardsRes.status === 'fulfilled' ? 'fulfilled' : topCardsRes.reason,
-                brandCoverage: brandCoverageRes.status === 'fulfilled'
-                    ? { dataLength: brandCoverageRes.value?.data?.length, brandsLength: brandCoverageRes.value?.brands?.length }
-                    : brandCoverageRes.reason,
-                brandRanking: brandRes.status === 'fulfilled'
-                    ? { dataLength: brandRes.value?.data?.length }
-                    : brandRes.reason,
-                topPrompts: promptsRes.status === 'fulfilled'
-                    ? { dataLength: promptsRes.value?.data?.length }
-                    : promptsRes.reason,
-            })
+            // if (process.env.NODE_ENV === 'development') {
+            //     console.log('[DashboardStore] API Results:', {
+            //         topCards: topCardsRes.status === 'fulfilled' ? 'fulfilled' : topCardsRes.reason,
+            //         brandCoverage: brandCoverageRes.status === 'fulfilled'
+            //             ? { dataLength: (brandCoverageRes.value as any)?.data?.length, brandsLength: (brandCoverageRes.value as any)?.brands?.length }
+            //             : brandCoverageRes.reason,
+            //         brandRanking: brandRes.status === 'fulfilled'
+            //             ? { dataLength: (brandRes.value as any)?.data?.length }
+            //             : brandRes.reason,
+            //         topPrompts: promptsRes.status === 'fulfilled'
+            //             ? { dataLength: (promptsRes.value as any)?.data?.length }
+            //             : promptsRes.reason,
+            //     })
+            // }
 
             set({
                 topCards: topCardsRes.status === 'fulfilled' ? topCardsRes.value?.data ?? null : null,

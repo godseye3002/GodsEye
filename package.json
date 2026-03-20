@@ -29,6 +29,7 @@
     "clsx": "^2.1.1",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
+    "framer-motion": "^12.38.0",
     "jspdf": "^3.0.3",
     "next": "^16.1.1",
     "next-themes": "^0.4.6",

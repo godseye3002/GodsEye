@@ -29,6 +29,7 @@ export function NavMain({
     icon?: React.ReactNode
     isActive?: boolean
     disabled?: boolean
+    badge?: string
     items?: {
       title: string
       url: string
@@ -67,6 +68,11 @@ export function NavMain({
                     Soon
                   </span>
                 )}
+                {item.badge && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#2ED47A] text-[#0D0F14] uppercase tracking-wider whitespace-nowrap ml-1">
+                    {item.badge}
+                  </span>
+                )}
               </span>
               <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} className="ml-auto transition-transform duration-200 group-data-open/collapsible:rotate-90" />
             </CollapsibleTrigger>
@@ -78,7 +84,8 @@ export function NavMain({
                   const isQueries = subItem.title === "Queries"
                   const isCompetitorsData = subItem.title === "Competitors Data"
                   const isUnderstandDashboard = subItem.title === "Understand Dashboard"
-                  const isSpecialSection = isDashboard || isProductInfo || isQueries || isCompetitorsData || isUnderstandDashboard
+                  const isWebsiteAudit = subItem.title === "Website Audit"
+                  const isSpecialSection = isDashboard || isProductInfo || isQueries || isCompetitorsData || isUnderstandDashboard || isWebsiteAudit
 
                   const isActive = isDashboard
                     ? (subItem.title === activeEngine && pathname === "/optimize" && activeSection === 'overview')
@@ -87,10 +94,10 @@ export function NavMain({
                       : isQueries
                         ? (activeSection === 'queries' && pathname === "/optimize")
                         : isCompetitorsData
-                          ? (activeSection === 'competitors_data' && pathname === "/optimize")
-                          : isUnderstandDashboard
                             ? (activeSection === 'documentation' && pathname === "/optimize")
-                            : (pathname === subItem.url)
+                            : isWebsiteAudit
+                              ? (activeSection === 'website_audit' && pathname === "/optimize")
+                              : (pathname === subItem.url)
 
                   return (
                     <SidebarMenuSubItem key={subItem.title}>
@@ -113,6 +120,8 @@ export function NavMain({
                               setActiveSection('queries');
                             } else if (isUnderstandDashboard) {
                               setActiveSection('documentation');
+                            } else if (isWebsiteAudit) {
+                              setActiveSection('website_audit');
                             } else if (isCompetitorsData) {
                               setActiveSection('competitors_data');
                             }

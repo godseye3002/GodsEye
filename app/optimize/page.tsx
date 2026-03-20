@@ -58,6 +58,7 @@ import { PackageIcon } from "@hugeicons/core-free-icons";
 import axios from 'axios';
 import { useRouter } from "next/navigation";
 import { useProductStore } from "./store";
+import WebsiteAuditManager from "@/components/WebsiteAuditManager";
 import type { QueryData } from "./store";
 import { warmupService } from "@/lib/warmupService";
 import { fetchUsedQueriesFromAnalysisClient } from "@/lib/analysis-queries";
@@ -5067,6 +5068,13 @@ function OptimizePageContent() {
           </Box>
         )}
 
+        {/* Website Audit Section */}
+        {activeSection === 'website_audit' && (
+          <Box sx={{ width: '100%', mt: 0 }}>
+            <WebsiteAuditManager />
+          </Box>
+        )}
+
         {/* Product Data Section */}
         {activeSection === "product" && (
           <Card
@@ -8733,6 +8741,7 @@ export default function OptimizePage() {
     if (activeSection === "competitors_data") return "Competitors Data";
     if (activeSection === "documentation") return "Dashboard Help Guide";
     if (activeSection === "mcp_documentation") return "MCP Documentation";
+    if (activeSection === "website_audit") return "Website Audit";
     return "Optimize";
   })();
 

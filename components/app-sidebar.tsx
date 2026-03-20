@@ -15,7 +15,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { LayoutBottomIcon, AudioWave01Icon, CommandIcon, ComputerTerminalIcon, RoboticIcon, BookOpen02Icon, Settings05Icon, CropIcon, PieChartIcon, MapsIcon, PackageIcon, UserGroupIcon } from "@hugeicons/core-free-icons"
+import { LayoutBottomIcon, AudioWave01Icon, CommandIcon, ComputerTerminalIcon, RoboticIcon, BookOpen02Icon, Settings05Icon, CropIcon, PieChartIcon, MapsIcon, PackageIcon, UserGroupIcon, SearchList01Icon } from "@hugeicons/core-free-icons"
 import { getWebsiteIcon } from "@/lib/favicon"
 
 // This is sample data.
@@ -117,6 +117,20 @@ const data = {
           ],
         },
         */
+    {
+      title: "Audit",
+      url: "#",
+      badge: "Beta",
+      icon: (
+        <HugeiconsIcon icon={SearchList01Icon} strokeWidth={2} />
+      ),
+      items: [
+        {
+          title: "Website Audit",
+          url: "#",
+        },
+      ],
+    },
     {
       title: "Documentation",
       url: "#",

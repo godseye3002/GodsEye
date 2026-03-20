@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from 'next/script';
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./theme-provider";
@@ -37,6 +38,33 @@ export default function RootLayout({
             <div className="bg-center-sheen" suppressHydrationWarning aria-hidden="true"></div>
           </ThemeProvider>
         </AuthProvider>
+        <Script id="godseye-tracker" strategy="afterInteractive">
+          {`
+            (function () {
+                // Check if we already tracked this page load in this session
+                const pageId = "tracked_" + window.location.pathname;
+                if (sessionStorage.getItem(pageId)) {
+                    return; // Silently exit, do not send ping
+                }
+
+                const payload = {
+                    url: window.location.href,
+                    referrer: document.referrer
+                };
+
+                fetch('https://zeolitic-zion-sociologically.ngrok-free.dev/track', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    keepalive: true
+                }).then(() => {
+                    // Lock the gate so it doesn't fire again
+                    sessionStorage.setItem(pageId, 'true');
+                    console.log("GodsEye Tracker: Ping sent successfully.");
+                }).catch(err => console.error("GodsEye Tracker failure:", err));
+            })();
+          `}
+        </Script>
       </body>
     </html>
   );

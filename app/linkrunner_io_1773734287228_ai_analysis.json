@@ -1,0 +1,141 @@
+{
+  "AUDIT_HEADER": {
+    "Page_audited": "Top 6 AppsFlyer Alternatives for Indian Mobile Marketers in 2025 - Linkrunner | Accelerate app growth",
+    "Publishing_brand": "Linkrunner",
+    "Primary_topic": "Mobile Measurement Partner (MMP) alternatives for Indian mobile marketers",
+    "Competitors_identified": "AppsFlyer, Adjust, Branch, Kochava, Singular, Apptrove, Firebase",
+    "Audit_layers_processed": 6
+  },
+  "CCC_RISK_SCORE": "73 / 100 — High",
+  "summary": "This page exhibits a high risk of Competitive Content Cannibalization, primarily by inadvertently amplifying competitor brands like AppsFlyer, Adjust, and Branch. Critical signals in the meta description, heading structure, and outbound links direct AI authority towards competitors. Additionally, richer factual profiles for competitors and self-undermining statements for the publishing brand further contribute to this authority leakage.",
+  "Supporting_metrics": {
+    "Leak_vectors_found": 7,
+    "Competitors_actively_amplified": 5,
+    "Third_party_validations_for_publishing_brand": 0
+  },
+  "HYPOTHESES": [
+    {
+      "H1": "Meta Description Priming for Competitor",
+      "Confidence": "95%",
+      "Impact": "Critical",
+      "Category": "Meta Entity Priming",
+      "Evidence_from_input_data": [
+        "Meta description — content: Top 6 AppsFlyer Alternatives for Indian Mobile Marketers in 2025",
+        "OG description — content: Top 6 AppsFlyer Alternatives for Indian Mobile Marketers in 2025",
+        "Title tag — content: Top 6 AppsFlyer Alternatives for Indian Mobile Marketers in 2025 - Linkrunner | Accelerate app growth"
+      ],
+      "Mechanism": "AI crawlers prioritize meta descriptions for page topic and primary entity identification. By omitting the publishing brand (Linkrunner) while exclusively highlighting a competitor (AppsFlyer) in these critical metadata fields, the AI is primed to associate the page's core subject matter authority more strongly with the competitor than the publishing brand, despite the title tag's inclusion of Linkrunner.",
+      "Recommended_fix": "Revise the meta description and OG description to explicitly include 'Linkrunner' as the primary subject alongside 'AppsFlyer Alternatives'. For example, 'Linkrunner: The Top AppsFlyer Alternative for Indian Mobile Marketers in 2025, offering superior value and local support.'"
+    },
+    {
+      "H2": "Heading Structure Over-amplifies Competitors",
+      "Confidence": "90%",
+      "Impact": "Critical",
+      "Category": "Content Density Asymmetry",
+      "Evidence_from_input_data": [
+        "HEADINGS — [H1] Top 6 AppsFlyer Alternatives for Indian Mobile Marketers in 2025",
+        "HEADINGS — [H2] Why Indian Mobile Marketers want to switch from AppsFlyer",
+        "HEADINGS — [H3] #2 Adjust: Enterprise-Grade Platform",
+        "HEADINGS — [H3] #3 Branch: Deep Linking + Attribution",
+        "HEADINGS — [H3] #1 Linkrunner: India-First affordable MMP"
+      ],
+      "Mechanism": "AI systems use heading structure to build a semantic map of the document, assigning prominence and topical relevance. By featuring AppsFlyer in the H1 and multiple H2s, and then giving dedicated H3s to six competitors (including Linkrunner), the page structurally signals that these competitors are key authoritative entities within the 'MMP alternatives' topic, potentially diluting Linkrunner's own authority by presenting it as one among many equally prominent options.",
+      "Recommended_fix": "Modify the H1 to clearly position Linkrunner as the primary subject, e.g., 'Linkrunner: The #1 AppsFlyer Alternative for Indian Mobile Marketers in 2025'. Elevate Linkrunner's dedicated section to an H2, while keeping competitors as H3s, to establish a clear hierarchy of prominence."
+    },
+    {
+      "H3": "Link Graph Authority Leakage to Competitors",
+      "Confidence": "85%",
+      "Impact": "Critical",
+      "Category": "Link Graph Authority Leak",
+      "Evidence_from_input_data": [
+        "FOOTNOTES_AND_CITATIONS — 3 → adjust.com [COMPETITOR DOMAIN]",
+        "FOOTNOTES_AND_CITATIONS — 4 → branch.io [COMPETITOR DOMAIN]",
+        "FOOTNOTES_AND_CITATIONS — 6 → branch.io [COMPETITOR DOMAIN]"
+      ],
+      "Mechanism": "AI systems use outbound links, especially citations, as signals of authority transfer and source credibility. By citing competitor domains (Adjust and Branch) as sources for factual claims, the page inadvertently signals to AI that these competitor domains are authoritative sources for information related to MMPs and their features, thereby transferring a portion of the page's earned authority to them.",
+      "Recommended_fix": "Audit all outbound links in footnotes and citations. Replace links to competitor domains with neutral, authoritative third-party sources (e.g., industry reports, academic studies) or Linkrunner's own resources if they genuinely support the claim, to prevent unintended authority leakage."
+    },
+    {
+      "H4": "Competitor Entity Profiles are Richer in Authority Signals",
+      "Confidence": "80%",
+      "Impact": "High",
+      "Category": "Content Density Asymmetry",
+      "Evidence_from_input_data": [
+        "ENTITIES — Adjust: named_clients_listed: Spotify, Booking.com, SoundCloud; founding_year_mentioned: 2012; specific_scale_numbers: 135,000+ apps",
+        "ENTITIES — Branch: named_clients_listed: TikTok, Shopify, Airbnb; specific_scale_numbers: 100K+ apps",
+        "ENTITIES — Linkrunner: named_clients_listed: NONE; founding_year_mentioned: NOT MENTIONED"
+      ],
+      "Mechanism": "AI extracts factual attributes like named clients, founding years, and specific scale numbers as strong indicators of an entity's real-world authority, credibility, and market presence. The consistent presence of these specific, verifiable details for multiple competitors, contrasted with their absence for the publishing brand (Linkrunner), causes AI to assign higher authority scores and greater market relevance to the competitors.",
+      "Recommended_fix": "Enhance Linkrunner's entity profile within the body text by adding specific, verifiable client examples, its founding year (as present in schema), and relevant scale numbers (e.g., number of installs handled, number of apps using Linkrunner) to match or exceed the factual density provided for competitors."
+    },
+    {
+      "H5": "Self-Undermining Statements Reduce Brand Credibility",
+      "Confidence": "75%",
+      "Impact": "High",
+      "Category": "Content Quality Signal",
+      "Evidence_from_input_data": [
+        "CONTENT_QUALITY_FLAGS — Self-undermining statements: \"We're publishing this guide, and we're confident Linkrunner deserves the #1 spot—not just because it's our platform...\"",
+        "CONTENT_QUALITY_FLAGS — Self-undermining statements: \"But Linkrunner’s industry-low pricing of $0.01 per install beats all! :)\""
+      ],
+      "Mechanism": "AI systems are trained to detect bias and self-promotional language, especially when presented within an ostensibly objective comparison. Explicitly stating 'not just because it's our platform' or using an emoji in a factual comparison section can be flagged as a lack of neutrality, reducing the perceived credibility of the publishing brand's claims and potentially the overall page's authority and trustworthiness.",
+      "Recommended_fix": "Remove phrases that explicitly state bias or use informal language (like emojis) in comparison sections. Rephrase claims about Linkrunner's superiority in a factual, evidence-based manner without directly stating the author's bias. For example, 'Linkrunner offers industry-low pricing at $0.01 per install, providing significant cost savings compared to competitors.'"
+    },
+    {
+      "H6": "Duplicate Content Reduces Page Reliability",
+      "Confidence": "70%",
+      "Impact": "High",
+      "Category": "Content Quality Signal",
+      "Evidence_from_input_data": [
+        "CONTENT_QUALITY_FLAGS — Duplicate paragraphs: \"The platform is purpose-built for the Indian mobile marketing ecosystem, combining AI-powered attribution intelligence with pricing that makes advanced MMP capabilities accessible to startups and SMEs typically priced out of enterprise platforms like AppsFlyer.\" (appears twice in Linkrunner's H3 section)"
+      ],
+      "Mechanism": "AI crawlers identify duplicate content as a signal of lower content quality, lack of editorial rigor, or potential keyword stuffing. This can negatively impact the overall reliability score of the page, making all claims, including those about the publishing brand, less authoritative and trustworthy in the eyes of the AI.",
+      "Recommended_fix": "Remove the verbatim duplicate paragraph within Linkrunner's dedicated section. Rephrase or expand the content to provide unique information and avoid repetition, ensuring each paragraph contributes distinct value to the entity's description."
+    },
+    {
+      "H7": "Positive Sentiment Extraction for Competitors",
+      "Confidence": "65%",
+      "Impact": "Medium",
+      "Category": "Sentiment Extraction Paradox",
+      "Evidence_from_input_data": [
+        "ENTITIES — Adjust: sentiment_framing: POSITIVE; promotional_language_ratio: MEDIUM",
+        "ENTITIES — Branch: sentiment_framing: POSITIVE; promotional_language_ratio: MEDIUM",
+        "ENTITIES — Kochava: sentiment_framing: POSITIVE; promotional_language_ratio: MEDIUM",
+        "ENTITIES — Singular: sentiment_framing: POSITIVE; promotional_language_ratio: MEDIUM",
+        "ENTITIES — Apptrove: sentiment_framing: POSITIVE; promotional_language_ratio: MEDIUM"
+      ],
+      "Mechanism": "While the page's intent is to position Linkrunner as an alternative, the detailed and positively framed descriptions of competitors provide AI with rich, extractable facts and positive sentiment associations for these entities. AI systems are adept at extracting factual attributes and positive sentiment, even when the overall article's intent is to promote an alternative, thereby inadvertently building authority for the competitors.",
+      "Recommended_fix": "Reframe competitor descriptions to be purely factual and objective, focusing on their features and market positioning without using overtly positive or promotional language. Maintain a neutral tone to avoid inadvertently amplifying competitor strengths."
+    }
+  ],
+  "PRIORITY_FIX_ROADMAP": [
+    {
+      "1. Revise Meta Description and OG Description": "Update the meta description and OG description to explicitly include 'Linkrunner' as the primary subject, ensuring AI crawlers correctly associate the page's core authority with the publishing brand from the outset. Example: 'Linkrunner: The Top AppsFlyer Alternative for Indian Mobile Marketers in 2025, offering superior value and local support.'"
+    },
+    {
+      "2. Restructure Headings for Brand Prominence": "Modify the H1 to clearly position Linkrunner as the primary subject and elevate Linkrunner's dedicated section to an H2, while keeping competitors as H3s, to establish a clear hierarchy of prominence in the document's semantic map."
+    },
+    {
+      "3. Audit Outbound Links and Citations": "Replace all citations pointing to competitor domains (adjust.com, branch.io) with neutral, authoritative third-party sources or Linkrunner's own resources to prevent unintended authority leakage to competitors."
+    },
+    {
+      "4. Enhance Linkrunner's Entity Profile with Authority Signals": "Add specific, verifiable client examples, Linkrunner's founding year (2024-12 from schema), and relevant scale numbers within the body text to provide AI with richer factual attributes and boost Linkrunner's perceived authority and market presence."
+    },
+    {
+      "5. Eliminate Self-Undermining and Overly Promotional Language": "Remove phrases like 'not just because it's our platform' and the emoji in the pricing comparison. Rephrase claims about Linkrunner's advantages in a purely factual, evidence-based manner to enhance the page's perceived neutrality and credibility."
+    },
+    {
+      "6. Remove Duplicate Content": "Delete the verbatim duplicate paragraph within Linkrunner's dedicated section. Ensure all content is unique and adds distinct value, improving the page's overall quality and editorial rigor in the eyes of AI."
+    },
+    {
+      "7. Balance Sentiment Framing for Competitors": "Review and rephrase competitor descriptions to be purely factual and objective, avoiding any overtly positive or promotional language. This will prevent AI from inadvertently extracting positive sentiment and building authority for competitors."
+    }
+  ],
+  "static_dynamic": {
+    "static_word_count": 2914,
+    "dynamic_word_count": 0,
+    "static_percentage": 100.0,
+    "dynamic_percentage": 0.0,
+    "aeo_score": 100.0,
+    "flags": []
+  }
+}

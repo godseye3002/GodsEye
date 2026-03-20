@@ -32,6 +32,7 @@ export function NavMainOptimize({
     icon?: React.ReactNode
     isActive?: boolean
     disabled?: boolean
+    badge?: string
     items?: {
       title: string
       url: string
@@ -53,6 +54,7 @@ export function NavMainOptimize({
     if (title === "Competitors Data") return "competitors_data"
     if (title === "Understand Dashboard") return "documentation"
     if (title === "MCP Documentation") return "mcp_documentation"
+    if (title === "Website Audit") return "website_audit"
     return null
   }
 
@@ -104,6 +106,11 @@ export function NavMainOptimize({
                 {item.disabled && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-linear-to-r from-[#2ED47A]/20 to-[#2ED47A]/10 border border-[#2ED47A]/20 text-[#2ED47A] uppercase tracking-wider whitespace-nowrap">
                     Soon
+                  </span>
+                )}
+                {item.badge && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#2ED47A] text-[#0D0F14] uppercase tracking-wider whitespace-nowrap ml-1">
+                    {item.badge}
                   </span>
                 )}
               </span>
