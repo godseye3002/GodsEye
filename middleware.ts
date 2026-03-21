@@ -11,8 +11,9 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
     console.log(`[GodsEye Middleware] 🕵️ User-Agent: ${userAgent}`);
 
     // Regex to catch AI Search Bots
-    const isAIBot = /PerplexityBot|OAI-SearchBot|ChatGPT-User|GPTBot|ClaudeBot|GoogleOther/i.test(userAgent);
-
+    // const isAIBot = /PerplexityBot|OAI-SearchBot|ChatGPT-User|GPTBot|ClaudeBot|GoogleOther/i.test(userAgent);
+    // Updated to catch both PerplexityBot AND Perplexity-User
+    const isAIBot = /Perplexity|OAI-SearchBot|ChatGPT-User|GPTBot|ClaudeBot|GoogleOther/i.test(userAgent);
     // 3. Log the Regex evaluation
     console.log(`[GodsEye Middleware] 🤖 Is AI Bot Match? ${isAIBot}`);
 
