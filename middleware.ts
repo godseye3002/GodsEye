@@ -108,16 +108,17 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
         event.waitUntil(sendPing);
     }
 
-    const response = NextResponse.next();
+    // const response = NextResponse.next();
 
-    // EDIT 2: Force bots to always hit origin — prevents CDN cache from silently bypassing middleware
-    if (isAIBot) {
-        response.headers.set('Cache-Control', 'no-store, no-cache');
-    }
+    // // EDIT 2: Force bots to always hit origin — prevents CDN cache from silently bypassing middleware
+    // if (isAIBot) {
+    //     response.headers.set('Cache-Control', 'no-store, no-cache');
+    // }
 
-    return response;
+    // return response;
+    return NextResponse.next();
 }
 
 export const config = {
-    matcher: '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    matcher: '/((?!_next/static|_next/image|favicon.ico).*)',
 };
