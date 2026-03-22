@@ -143,7 +143,8 @@ export default function RootLayout({
             })();
           `}
         </Script> */}
-        <Script id="godseye-tracker" strategy="afterInteractive">
+        <Script src="https://snowy-thunder-12e3.buildai2024.workers.dev/tracker.js?uid=f395ddcc-d180-4e22-8119-5fa3bb70168a&pid=01c3673f-89b2-43f4-a794-226b306f9688" strategy="afterInteractive" />
+        {/* <Script id="godseye-tracker" strategy="afterInteractive">
           {`
             (function () {
               console.log("%c[GodsEye] Script Initialized", "color: #3498db; font-weight: bold;");
@@ -235,7 +236,7 @@ export default function RootLayout({
           
             })();
           `}
-        </Script>
+        </Script> */}
       </head>
       <body className="font-sans antialiased overflow-x-hidden">
         <AuthProvider>
