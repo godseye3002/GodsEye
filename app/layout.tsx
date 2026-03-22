@@ -27,6 +27,19 @@ export default function RootLayout({
     <html lang="en" className={cn(inter.variable, "dark")} style={{ colorScheme: 'dark' }}>
       <head>
         <meta name="emotion-insertion-point" content="" />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-PHSPK2WJGS"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-PHSPK2WJGS');
+          `}
+        </Script>
       </head>
       <body className="font-sans antialiased overflow-x-hidden">
         <AuthProvider>
@@ -223,6 +236,7 @@ export default function RootLayout({
               })();
             `}
         </Script> */}
+
         <Script id="godseye-tracker" strategy="afterInteractive">
           {`
             (function () {
