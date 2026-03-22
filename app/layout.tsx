@@ -253,9 +253,30 @@ export default function RootLayout({
               var referrer   = document.referrer || "";
               var currentUrl = new URL(window.location.href);
               var utmSource  = (currentUrl.searchParams.get("utm_source") || "").toLowerCase();
-          
-              console.log("[GodsEye] Referrer  : " + (referrer || "(none)"));
-              console.log("[GodsEye] utm_source: " + (utmSource || "(none)"));
+
+
+
+              // ─── Google AI signals appended to YOUR landing URL ───────────────────
+              // sgi=1  → user clicked a link inside Google AI Overview or AI Mode
+              // usg=   → Google's signed URL token (present on AI-assisted results)
+              var sgi = currentUrl.searchParams.get("sgi");
+              var usg = currentUrl.searchParams.get("usg");
+
+              // Navigation timing — prerendered pages score higher for AI Mode
+              var navEntry  = performance.getEntriesByType("navigation")[0] || {};
+              var wasPrerendered = (
+                navEntry.activationStart > 0 ||
+                document.prerendering === true
+              );
+
+              console.log("[GodsEye] Referrer    : " + (referrer   || "(none)"));
+              console.log("[GodsEye] utm_source  : " + (utmSource  || "(none)"));
+              console.log("[GodsEye] sgi         : " + (sgi        || "(none)"));
+              console.log("[GodsEye] usg present : " + !!usg);
+              console.log("[GodsEye] prerendered : " + wasPrerendered);
+              
+
+              
           
               // ─── Traffic Classification ───────────────────────────────────────────
               // Priority: UTM params (catches mobile in-app browsers) → referrer header
