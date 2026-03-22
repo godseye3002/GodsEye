@@ -127,7 +127,7 @@ export default function RootLayout({
             })();
           `}
         </Script> */}
-        <Script id="godseye-tracker" strategy="afterInteractive">
+        {/* <Script id="godseye-tracker" strategy="afterInteractive">
           {`
               (function () {
                 console.log("%c[GodsEye] Script Initialized", "color: #3498db; font-weight: bold;");
@@ -222,6 +222,106 @@ export default function RootLayout({
             
               })();
             `}
+        </Script> */}
+        <Script id="godseye-tracker" strategy="afterInteractive">
+          {`
+            (function () {
+              console.log("%c[GodsEye] Script Initialized", "color: #3498db; font-weight: bold;");
+          
+              // ─── CONFIG ───────────────────────────────────────────────────────────
+              var cfg        = window.GodsEyeConfig || {};
+              var userId     = cfg.user_id    || null;
+              var productId  = cfg.product_id || null;
+              var workerUrl  = cfg.worker_url || "https://godseye-ingest.buildai2024.workers.dev";
+              var apiKey     = cfg.api_key    || "ge_live_test_123";
+              // ──────────────────────────────────────────────────────────────────────
+          
+              var referrer   = document.referrer || "";
+              var currentUrl = new URL(window.location.href);
+              var utmSource  = (currentUrl.searchParams.get("utm_source") || "").toLowerCase();
+          
+              console.log("[GodsEye] Referrer  : " + (referrer || "(none)"));
+              console.log("[GodsEye] utm_source: " + (utmSource || "(none)"));
+          
+              // ─── Traffic Classification ───────────────────────────────────────────
+              // Priority: UTM params (catches mobile in-app browsers) → referrer header
+              function classify(referrer, utmSource) {
+          
+                // ── 1. UTM-based detection (mobile apps strip referrer, but keep UTM) ──
+                if (utmSource) {
+                  if (utmSource.indexOf("chatgpt")    !== -1) return make("chatgpt",    "utm");
+                  if (utmSource.indexOf("perplexity") !== -1) return make("perplexity", "utm");
+                  if (utmSource.indexOf("claude")     !== -1) return make("claude",     "utm");
+                  if (utmSource.indexOf("google")     !== -1) return make("google",     "utm");
+                  if (utmSource.indexOf("bing")       !== -1) return make("bing_copilot","utm");
+                }
+          
+                // ── 2. Referrer-based detection ──────────────────────────────────────
+                if (!referrer) {
+                  return { isAI: false, source: "direct", eventType: "direct_visit", detectedVia: "none" };
+                }
+          
+                if (/perplexity\\.ai/i.test(referrer))  return make("perplexity",  "referrer");
+                if (/chatgpt\\.com/i.test(referrer))     return make("chatgpt",     "referrer");
+                if (/claude\\.ai/i.test(referrer))       return make("claude",      "referrer");
+                if (/copilot\\.microsoft\\.com/i.test(referrer)) return make("bing_copilot", "referrer");
+          
+                // Google: referrer is ALWAYS stripped to https://www.google.com/ by
+                // Google's Referrer-Policy — udm=50 is never forwarded.
+                // We track all Google referrals; the source field will be "google".
+                // Use utm_source=google_ai_mode on your own links if you want to
+                // distinguish AI Mode manually (e.g. in a UTM-tagged bio link).
+                if (/(?:^|\\.)google\\.[a-z]{2,}/i.test(referrer)) return make("google", "referrer");
+          
+                // Everything else — not AI, log as generic referral
+                return { isAI: false, source: "other_referral", eventType: "referral_visit", detectedVia: "referrer" };
+              }
+          
+              function make(source, via) {
+                return { isAI: true, source: source, eventType: "ai_referral", detectedVia: via };
+              }
+              // ──────────────────────────────────────────────────────────────────────
+          
+              var result = classify(referrer, utmSource);
+              console.log("[GodsEye] Classification:", JSON.stringify(result));
+          
+              if (!result.isAI) {
+                console.log("[GodsEye] Non-AI traffic (" + result.source + "). Skipping.");
+                return;
+              }
+          
+              console.log("%c[GodsEye] 🧍 AI Traffic Detected! Source: " + result.source + " via " + result.detectedVia, "color: #2ecc71; font-weight: bold;");
+          
+              var payload = {
+                event_type:   result.eventType,
+                source:       result.source,
+                detected_via: result.detectedVia,   // "utm" or "referrer"
+                user_agent:   navigator.userAgent,
+                target_url:   window.location.href,
+                referrer:     referrer || "direct",
+                user_id:      userId,
+                product_id:   productId
+              };
+          
+              fetch(workerUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type":  "application/json",
+                  "Authorization": "Bearer " + apiKey
+                },
+                body: JSON.stringify(payload),
+                keepalive: true
+              })
+              .then(function(res) {
+                if (res.ok) console.log("%c[GodsEye] ✅ Logged to Edge API", "color: #2ecc71;");
+                else        console.error("[GodsEye] 🔴 Edge API rejected:", res.status);
+              })
+              .catch(function(err) {
+                console.error("[GodsEye] 🔴 Fetch Error:", err);
+              });
+          
+            })();
+          `}
         </Script>
       </body>
     </html>
