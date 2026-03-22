@@ -108,15 +108,19 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
         event.waitUntil(sendPing);
     }
 
-    // const response = NextResponse.next();
+    const response = NextResponse.next();
 
-    // // EDIT 2: Force bots to always hit origin — prevents CDN cache from silently bypassing middleware
-    // if (isAIBot) {
-    //     response.headers.set('Cache-Control', 'no-store, no-cache');
-    // }
+    // ← This is the homepage fix.
+    // Sets Cache-Control on the response Vercel stores in its edge cache.
+    // Next time any bot requests /, Vercel fetches fresh from origin instead of
+    // returning the cached copy before middleware runs.
+    if (req.nextUrl.pathname === '/') {
+        response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+        response.headers.set('CDN-Cache-Control', 'no-store');
+        response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
+    }
 
-    // return response;
-    return NextResponse.next();
+    return response;
 }
 
 export const config = {
