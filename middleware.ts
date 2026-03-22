@@ -67,68 +67,68 @@
 
 
 
-// import { NextResponse } from 'next/server';
-// import type { NextFetchEvent, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextFetchEvent, NextRequest } from 'next/server';
 
-// export default function middleware(req: NextRequest, event: NextFetchEvent) {
-//     const userAgent = req.headers.get('user-agent') || '';
-//     const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'Unknown';
-//     const isAIBot = /Perplexity|OAI-SearchBot|ChatGPT-User|GPTBot|ClaudeBot|GoogleOther/i.test(userAgent);
+export default function middleware(req: NextRequest, event: NextFetchEvent) {
+    const userAgent = req.headers.get('user-agent') || '';
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'Unknown';
+    const isAIBot = /Perplexity|OAI-SearchBot|ChatGPT-User|GPTBot|ClaudeBot|GoogleOther/i.test(userAgent);
 
-//     // EDIT 1: Single combined log — Vercel Edge only reliably flushes ONE log per request
-//     console.log(JSON.stringify({
-//         tag: '[GodsEye]',
-//         url: req.url,
-//         userAgent,   // ← this is what was missing before
-//         ip,
-//         isAIBot,
-//     }));
+    // EDIT 1: Single combined log — Vercel Edge only reliably flushes ONE log per request
+    console.log(JSON.stringify({
+        tag: '[GodsEye]',
+        url: req.url,
+        userAgent,   // ← this is what was missing before
+        ip,
+        isAIBot,
+    }));
 
-//     if (isAIBot) {
-//         const payload = {
-//             event_type: "bot_crawl",
-//             user_agent: userAgent,
-//             target_url: req.url,
-//             referrer: req.headers.get('referer') || "Direct",
-//             ip_address: ip
-//         };
+    if (isAIBot) {
+        const payload = {
+            event_type: "bot_crawl",
+            user_agent: userAgent,
+            target_url: req.url,
+            referrer: req.headers.get('referer') || "Direct",
+            ip_address: ip
+        };
 
-//         const sendPing = fetch("https://godseye-ingest.buildai2024.workers.dev", {
-//             method: "POST",
-//             headers: {
-//                 "Content-Type": "application/json",
-//                 "Authorization": "Bearer ge_live_test_123"
-//             },
-//             body: JSON.stringify(payload)
-//         })
-//             .then(async (res) => {
-//                 if (res.ok) {
-//                     console.log(JSON.stringify({ tag: '[GodsEye Ping OK]', status: res.status }));
-//                 } else {
-//                     const errText = await res.text();
-//                     console.error(JSON.stringify({ tag: '[GodsEye Ping FAILED]', status: res.status, error: errText }));
-//                 }
-//             })
-//             .catch(err => console.error(JSON.stringify({ tag: '[GodsEye Network Error]', error: String(err) })));
+        const sendPing = fetch("https://godseye-ingest.buildai2024.workers.dev", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer ge_live_test_123"
+            },
+            body: JSON.stringify(payload)
+        })
+            .then(async (res) => {
+                if (res.ok) {
+                    console.log(JSON.stringify({ tag: '[GodsEye Ping OK]', status: res.status }));
+                } else {
+                    const errText = await res.text();
+                    console.error(JSON.stringify({ tag: '[GodsEye Ping FAILED]', status: res.status, error: errText }));
+                }
+            })
+            .catch(err => console.error(JSON.stringify({ tag: '[GodsEye Network Error]', error: String(err) })));
 
-//         event.waitUntil(sendPing);
-//     }
+        event.waitUntil(sendPing);
+    }
 
-//     const response = NextResponse.next();
+    const response = NextResponse.next();
 
-//     // ← This is the homepage fix.
-//     // Sets Cache-Control on the response Vercel stores in its edge cache.
-//     // Next time any bot requests /, Vercel fetches fresh from origin instead of
-//     // returning the cached copy before middleware runs.
-//     if (req.nextUrl.pathname === '/') {
-//         response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
-//         response.headers.set('CDN-Cache-Control', 'no-store');
-//         response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
-//     }
+    // ← This is the homepage fix.
+    // Sets Cache-Control on the response Vercel stores in its edge cache.
+    // Next time any bot requests /, Vercel fetches fresh from origin instead of
+    // returning the cached copy before middleware runs.
+    if (req.nextUrl.pathname === '/') {
+        response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+        response.headers.set('CDN-Cache-Control', 'no-store');
+        response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
+    }
 
-//     return response;
-// }
+    return response;
+}
 
-// export const config = {
-//     matcher: '/((?!_next/static|_next/image|favicon.ico).*)',
-// };
+export const config = {
+    matcher: '/((?!_next/static|_next/image|favicon.ico).*)',
+};
