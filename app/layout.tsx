@@ -27,6 +27,19 @@ export default function RootLayout({
     <html lang="en" className={cn(inter.variable, "dark")} style={{ colorScheme: 'dark' }}>
       <head>
         <meta name="emotion-insertion-point" content="" />
+
+        <script dangerouslySetInnerHTML={{
+          __html: `
+          (function() {
+            var hash = window.location.hash || "";
+            window.__godsEyeTextFragment = hash.indexOf(":~:text=") !== -1;
+            if (window.__godsEyeTextFragment) {
+              console.log("%c[GodsEye Early] ✅ Text Fragment captured", "color: #2ecc71; font-weight: bold;");
+            }
+          })();
+        `}} />
+
+
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-PHSPK2WJGS"
           strategy="afterInteractive"
@@ -38,32 +51,6 @@ export default function RootLayout({
             gtag('js', new Date());
 
             gtag('config', 'G-PHSPK2WJGS');
-          `}
-        </Script>
-        {/* Runs synchronously in <head> — captures fragment BEFORE Chrome strips it */}
-        <Script id="godseye-fragment-capture" strategy="beforeInteractive">
-          {`
-            (function() {
-              // Must run before Chrome processes and strips the text fragment
-              var hasFragment = false;
-          
-              // Primary: fragmentDirective API
-              if (
-                document.fragmentDirective &&
-                document.fragmentDirective.items &&
-                document.fragmentDirective.items.length > 0
-              ) {
-                hasFragment = true;
-              }
-          
-              // Fallback: raw hash (only accessible this early)
-              if (!hasFragment && window.location.hash.indexOf(":~:text=") !== -1) {
-                hasFragment = true;
-              }
-          
-              // Store for the main tracker to read
-              window.__godsEyeTextFragment = hasFragment;
-            })();
           `}
         </Script>
 
