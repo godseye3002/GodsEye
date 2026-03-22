@@ -28,17 +28,6 @@ export default function RootLayout({
       <head>
         <meta name="emotion-insertion-point" content="" />
 
-        <script dangerouslySetInnerHTML={{
-          __html: `
-          (function() {
-            var hash = window.location.hash || "";
-            window.__godsEyeTextFragment = hash.indexOf(":~:text=") !== -1;
-            if (window.__godsEyeTextFragment) {
-              console.log("%c[GodsEye Early] ✅ Text Fragment captured", "color: #2ecc71; font-weight: bold;");
-            }
-          })();
-        `}} />
-
 
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-PHSPK2WJGS"
@@ -54,7 +43,7 @@ export default function RootLayout({
           `}
         </Script>
 
-        {/* Main tracker — runs after interactive as before */}
+        {/* Main tracker — runs after interactive as before
         <Script id="godseye-tracker" strategy="afterInteractive">
           {`
             (function () {
@@ -122,6 +111,99 @@ export default function RootLayout({
               }
           
               console.log("%c[GodsEye] 🧍 AI Traffic! Source: " + result.source + " via " + result.detectedVia, "color: #2ecc71; font-weight: bold;");
+          
+              var payload = {
+                event_type:   result.eventType,
+                source:       result.source,
+                detected_via: result.detectedVia,
+                user_agent:   navigator.userAgent,
+                target_url:   currentUrl.origin + currentUrl.pathname + currentUrl.search,
+                referrer:     referrer || "direct",
+                user_id:      userId,
+                product_id:   productId
+              };
+          
+              fetch(workerUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type":  "application/json",
+                  "Authorization": "Bearer " + apiKey
+                },
+                body: JSON.stringify(payload),
+                keepalive: true
+              })
+              .then(function(res) {
+                if (res.ok) console.log("%c[GodsEye] ✅ Logged", "color: #2ecc71;");
+                else        console.error("[GodsEye] 🔴 Rejected:", res.status);
+              })
+              .catch(function(err) {
+                console.error("[GodsEye] 🔴 Fetch Error:", err);
+              });
+          
+            })();
+          `}
+        </Script> */}
+        <Script id="godseye-tracker" strategy="afterInteractive">
+          {`
+            (function () {
+              console.log("%c[GodsEye] Script Initialized", "color: #3498db; font-weight: bold;");
+          
+              var cfg       = window.GodsEyeConfig || {};
+              var userId    = cfg.user_id    || "f395ddcc-d180-4e22-8119-5fa3bb70168a";
+              var productId = cfg.product_id || "01c3673f-89b2-43f4-a794-226b306f9688";
+              var workerUrl = cfg.worker_url || "https://godseye-ingest.buildai2024.workers.dev";
+              var apiKey    = cfg.api_key    || "ge_live_test_123";
+          
+              var referrer   = document.referrer || "";
+              var currentUrl = new URL(window.location.href);
+              var utmSource  = (currentUrl.searchParams.get("utm_source") || "").toLowerCase();
+          
+              console.log("[GodsEye] Referrer  : " + (referrer  || "(none)"));
+              console.log("[GodsEye] utm_source: " + (utmSource || "(none)"));
+          
+              function classify(referrer, utmSource) {
+          
+                // 1. UTM-based
+                if (utmSource) {
+                  if (utmSource.indexOf("chatgpt")    !== -1) return make("chatgpt",        "utm");
+                  if (utmSource.indexOf("perplexity") !== -1) return make("perplexity",     "utm");
+                  if (utmSource.indexOf("claude")     !== -1) return make("claude",         "utm");
+                  if (utmSource.indexOf("bing")       !== -1) return make("bing_copilot",   "utm");
+                  if (utmSource.indexOf("google_ai")  !== -1) return make("google_ai_mode", "utm");
+                }
+          
+                // 2. Non-Google AI referrers
+                if (/perplexity\\.ai/i.test(referrer))           return make("perplexity",   "referrer");
+                if (/chatgpt\\.com/i.test(referrer))             return make("chatgpt",      "referrer");
+                if (/claude\\.ai/i.test(referrer))               return make("claude",       "referrer");
+                if (/copilot\\.microsoft\\.com/i.test(referrer)) return make("bing_copilot", "referrer");
+          
+                // 3. Google — save all of it, organic + AI Mode both included
+                //    Cannot distinguish client-side, both tracked as google_unclassified
+                if (/(?:^|\\.)google\\.[a-z]{2,}/i.test(referrer)) {
+                  return make("google_unclassified", "referrer");
+                }
+          
+                if (!referrer) {
+                  return { isAI: false, source: "direct", eventType: "direct_visit", detectedVia: "none" };
+                }
+          
+                return { isAI: false, source: "other_referral", eventType: "referral_visit", detectedVia: "referrer" };
+              }
+          
+              function make(source, via) {
+                return { isAI: true, source: source, eventType: "ai_referral", detectedVia: via };
+              }
+          
+              var result = classify(referrer, utmSource);
+              console.log("[GodsEye] Classification:", JSON.stringify(result));
+          
+              if (!result.isAI) {
+                console.log("[GodsEye] Non-AI traffic (" + result.source + "). Skipping.");
+                return;
+              }
+          
+              console.log("%c[GodsEye] 🧍 Traffic detected! Source: " + result.source + " via " + result.detectedVia, "color: #2ecc71; font-weight: bold;");
           
               var payload = {
                 event_type:   result.eventType,
