@@ -230,8 +230,8 @@ export default function RootLayout({
           
               // ─── CONFIG ───────────────────────────────────────────────────────────
               var cfg        = window.GodsEyeConfig || {};
-              var userId     = cfg.user_id    || null;
-              var productId  = cfg.product_id || null;
+              var userId     = cfg.user_id    || "f395ddcc-d180-4e22-8119-5fa3bb70168a";
+              var productId  = cfg.product_id || "01c3673f-89b2-43f4-a794-226b306f9688";
               var workerUrl  = cfg.worker_url || "https://godseye-ingest.buildai2024.workers.dev";
               var apiKey     = cfg.api_key    || "ge_live_test_123";
               // ──────────────────────────────────────────────────────────────────────
