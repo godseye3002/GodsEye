@@ -283,22 +283,24 @@ export default function ConversionStats({
               return (
                 <Chip
                   key={page.page_path}
-                  variant={active ? "solid" : "outlined"}
                   onClick={() => setSelectedPath(page.page_path)}
+                  variant="plain"
                   sx={{
                     px: 2,
                     py: 0.75,
                     borderRadius: "12px",
-                    borderColor: active ? T.blue : "rgba(255,255,255,0.1)",
-                    bgcolor: active ? T.blue : "transparent",
-                    color: active ? "#0D0F14" : T.textPrimary,
+                    border: "1px solid",
+                    borderColor: active ? `${T.accent} !important` : "rgba(255,255,255,0.1) !important",
+                    background: active ? `${T.accent} !important` : "transparent !important",
+                    color: active ? "#ffffff !important" : `${T.textPrimary} !important`,
                     fontWeight: 600,
                     fontSize: "13px",
                     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                    boxShadow: active ? "0 0 20px rgba(56,189,248,0.3)" : "none",
+                    boxShadow: active ? `0 0 10px ${T.accentDim}` : "none",
+                    cursor: "pointer",
                     "&:hover": {
-                      borderColor: T.blue,
-                      bgcolor: active ? T.blue : T.blueDim,
+                      borderColor: T.purple,
+                      bgcolor: active ? T.purple : "rgba(124, 108, 250, 0.1)",
                       transform: "translateY(-1px)",
                     },
                   }}
