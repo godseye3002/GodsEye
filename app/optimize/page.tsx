@@ -45,6 +45,7 @@ import { QueryGenerationModal } from "@/components/query-generation-modal";
 import { OptimizeProductDataCard } from "@/components/optimize-product-data-card";
 import { DashboardDocumentation } from "@/components/dashboard-documentation";
 import { MCPDocumentation } from "@/components/mcp-documentation";
+import { ConversionDocumentation } from "@/components/conversion-documentation";
 import { supabase } from "@/lib/supabase";
 import SOVPerformanceCard from "@/components/SOVPerformanceCard";
 import DeepAnalysisCard from "@/components/DeepAnalysisCard";
@@ -60,6 +61,7 @@ import { useRouter } from "next/navigation";
 import { useProductStore } from "./store";
 import WebsiteAuditManager from "@/components/WebsiteAuditManager";
 import ConversionStats from "@/components/ConversionStats";
+import { ConversionTrackerSetup } from "@/components/conversion-tracker-setup";
 import type { QueryData } from "./store";
 import { warmupService } from "@/lib/warmupService";
 import { fetchUsedQueriesFromAnalysisClient } from "@/lib/analysis-queries";
@@ -5057,6 +5059,18 @@ function OptimizePageContent() {
           </Box>
         )}
 
+        {/* Conversion Documentation Section */}
+        {activeSection === 'conversion_documentation' && (
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <ConversionDocumentation />
+            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+              <Typography level="body-sm" sx={{ color: 'rgba(242, 245, 250, 0.45)', fontStyle: 'italic' }}>
+                End of Conversion Documentation • GodsEye Optimization Guide
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
         {/* MCP Documentation Section */}
         {activeSection === 'mcp_documentation' && (
           <Box sx={{ width: '100%', mt: 2 }}>
@@ -5080,6 +5094,13 @@ function OptimizePageContent() {
         {activeSection === 'conversions' && (
           <Box sx={{ width: '100%', mt: 2 }}>
             <ConversionStats productId={currentProductId || undefined} userId={user?.id} />
+          </Box>
+        )}
+
+        {/* Conversion Tracker Setup Section */}
+        {activeSection === 'conversion_tracker' && (
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <ConversionTrackerSetup />
           </Box>
         )}
 

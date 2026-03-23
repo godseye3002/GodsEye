@@ -107,6 +107,11 @@ const data = {
           url: "/optimize",
           section: "conversions",
         },
+        {
+          title: "Tracking Script",
+          url: "/optimize",
+          section: "conversion_tracker",
+        },
       ],
     },
     /*
@@ -156,6 +161,10 @@ const data = {
       items: [
         {
           title: "Understand Dashboard",
+          url: "#",
+        },
+        {
+          title: "Conversion Dashboard",
           url: "#",
         },
         {

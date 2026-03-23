@@ -1,71 +1,43 @@
+// hooks/useConversions.ts
 import useSWR from "swr";
+import type { PageConversions } from "@/app/api/conversions/route";
 
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    const error = new Error(errorData.error || 'Failed to fetch conversion data');
-    (error as any).status = res.status;
-    (error as any).info = errorData;
-    throw error;
+  const r = await fetch(url);
+  if (!r.ok) {
+    const info = await r.json().catch(() => ({}));
+    throw new Error(info.error || 'Fetch failed');
   }
-  return res.json();
+  return r.json();
 };
 
-export type SourceBreakdown = {
-  source: string;
-  conversions: number;
-  total_visits: number;
-  conversion_rate: number;
-};
-
-export type PageConversions = {
-  page_path: string;
-  page_description: string;
-  total_conversions: number;
-  sources: SourceBreakdown[];
-};
-
-export type UseConversionsOptions = {
-  productId?: string;
-  userId?: string;
+export function useConversions({
+  productId,
+  userId,
+  pagePath,
+  interval = 10000,
+}: {
+  productId: string;
+  userId:    string;
   pagePath?: string;
-  refreshInterval?: number;
-};
+  interval?: number;
+}) {
+  const params = new URLSearchParams({ product_id: productId, user_id: userId });
+  if (pagePath) params.set("page_path", pagePath);
 
-/**
- * useConversions Hook 
- * Fetches hierarchical conversion data (Pages -> Sources)
- */
-export function useConversions({ 
-  productId, 
-  userId, 
-  pagePath, 
-  refreshInterval = 10000 
-}: UseConversionsOptions) {
-  
-  const params = new URLSearchParams({
-    ...(productId ? { product_id: productId } : {}),
-    ...(userId    ? { user_id: userId } : {}),
-    ...(pagePath  ? { page_path: pagePath } : {}),
-  });
-
-  const url = `/api/conversions?${params.toString()}`;
-
-  const { data, error, isLoading, mutate } = useSWR<PageConversions[]>(
-    productId && userId ? url : null, 
+  const { data, error, isLoading } = useSWR<PageConversions[]>(
+    productId && userId ? `/api/conversions?${params}` : null,
     fetcher,
-    { refreshInterval }
+    { refreshInterval: interval }
   );
 
-  // Derived Values
-  const grandTotal = data?.reduce((sum, page) => sum + (page.total_conversions || 0), 0) || 0;
+  const grandTotal = Array.isArray(data) 
+    ? data.reduce((sum, p) => sum + p.total, 0) 
+    : 0;
 
-  return { 
-    data, 
-    error, 
-    isLoading, 
-    grandTotal, 
-    mutate 
-  };
+  const totalVisits = Array.isArray(data)
+    ? data.reduce((sum, p) => sum + p.total_visits, 0)
+    : 0;
+    
+  return { data, grandTotal, totalVisits, error, isLoading };
 }

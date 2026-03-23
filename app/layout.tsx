@@ -41,10 +41,7 @@ export default function RootLayout({
           `}
         </Script>
         {/* <Script src="https://snowy-thunder-12e3.buildai2024.workers.dev/tracker.js?uid=3c451d93-1287-4b20-9d08-a0eaa8f953e9&pid=0630c72a-fcf3-4c76-b373-372a1fc67402" strategy="afterInteractive" /> */}
-        <Script
-          src="https://snowy-thunder-12e3.buildai2024.workers.dev/tracker.js?uid=3c451d93-1287-4b20-9d08-a0eaa8f953e9&pid=0630c72a-fcf3-4c76-b373-372a1fc67402&desc=Homepage+landing+page"
-          strategy="afterInteractive"
-        />
+        <Script src="https://snowy-thunder-12e3.buildai2024.workers.dev/tracker.js?uid=3c451d93-1287-4b20-9d08-a0eaa8f953e9&pid=0630c72a-fcf3-4c76-b373-372a1fc67402&desc=Homepage+landing+page" strategy="afterInteractive" />
       </head>
       <body className="font-sans antialiased overflow-x-hidden">
         <AuthProvider>

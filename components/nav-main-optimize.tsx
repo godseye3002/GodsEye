@@ -144,6 +144,11 @@ export function NavMainOptimize({
                             setActiveSection('documentation')
                             return
                           }
+                          if (subItem.title === "Conversion Dashboard") {
+                            e.preventDefault()
+                            setActiveSection('conversion_documentation')
+                            return
+                          }
                           if (subItem.title === "MCP Documentation") {
                             e.preventDefault()
                             setActiveSection('mcp_documentation')
@@ -155,7 +160,7 @@ export function NavMainOptimize({
                           }
                         }}
                         isActive={isActive}
-                        render={(isOptimizeSection || subItem.title === "Understand Dashboard" || subItem.title === "MCP Documentation") ? <button /> : <a href={subItem.url} />}
+                        render={(isOptimizeSection || subItem.title === "Understand Dashboard" || subItem.title === "Conversion Dashboard" || subItem.title === "MCP Documentation") ? <button /> : <a href={subItem.url} />}
                         className={subItem.disabled ? "opacity-50 cursor-not-allowed" : ""}
                       >
                         <span className="flex items-center justify-between w-full gap-3">
