@@ -55,6 +55,7 @@ export function NavMainOptimize({
     if (title === "Understand Dashboard") return "documentation"
     if (title === "MCP Documentation") return "mcp_documentation"
     if (title === "Website Audit") return "website_audit"
+    if (title === "Conversions") return "conversions"
     return null
   }
 

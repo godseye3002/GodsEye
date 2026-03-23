@@ -82,10 +82,11 @@ export function NavMain({
                   const isDashboard = subItem.url === "/optimize"
                   const isProductInfo = subItem.title === "Product Information"
                   const isQueries = subItem.title === "Queries"
+                  const isConversions = subItem.title === "Conversions"
                   const isCompetitorsData = subItem.title === "Competitors Data"
                   const isUnderstandDashboard = subItem.title === "Understand Dashboard"
                   const isWebsiteAudit = subItem.title === "Website Audit"
-                  const isSpecialSection = isDashboard || isProductInfo || isQueries || isCompetitorsData || isUnderstandDashboard || isWebsiteAudit
+                  const isSpecialSection = isDashboard || isProductInfo || isQueries || isConversions || isCompetitorsData || isUnderstandDashboard || isWebsiteAudit
 
                   const isActive = isDashboard
                     ? (subItem.title === activeEngine && pathname === "/optimize" && activeSection === 'overview')
@@ -93,11 +94,13 @@ export function NavMain({
                       ? (activeSection === 'product_information' && pathname === "/optimize")
                       : isQueries
                         ? (activeSection === 'queries' && pathname === "/optimize")
-                        : isCompetitorsData
-                            ? (activeSection === 'documentation' && pathname === "/optimize")
-                            : isWebsiteAudit
-                              ? (activeSection === 'website_audit' && pathname === "/optimize")
-                              : (pathname === subItem.url)
+                        : isConversions
+                          ? (activeSection === 'conversions' && pathname === "/optimize")
+                          : isCompetitorsData
+                              ? (activeSection === 'documentation' && pathname === "/optimize")
+                              : isWebsiteAudit
+                                ? (activeSection === 'website_audit' && pathname === "/optimize")
+                                : (pathname === subItem.url)
 
                   return (
                     <SidebarMenuSubItem key={subItem.title}>
@@ -118,6 +121,8 @@ export function NavMain({
                               setActiveSection('product_information');
                             } else if (isQueries) {
                               setActiveSection('queries');
+                            } else if (isConversions) {
+                              setActiveSection('conversions');
                             } else if (isUnderstandDashboard) {
                               setActiveSection('documentation');
                             } else if (isWebsiteAudit) {

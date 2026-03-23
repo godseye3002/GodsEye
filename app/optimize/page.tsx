@@ -59,6 +59,7 @@ import axios from 'axios';
 import { useRouter } from "next/navigation";
 import { useProductStore } from "./store";
 import WebsiteAuditManager from "@/components/WebsiteAuditManager";
+import ConversionStats from "@/components/ConversionStats";
 import type { QueryData } from "./store";
 import { warmupService } from "@/lib/warmupService";
 import { fetchUsedQueriesFromAnalysisClient } from "@/lib/analysis-queries";
@@ -5075,6 +5076,13 @@ function OptimizePageContent() {
           </Box>
         )}
 
+        {/* Conversions Section */}
+        {activeSection === 'conversions' && (
+          <Box sx={{ width: '100%', mt: 2 }}>
+            <ConversionStats productId={currentProductId || undefined} userId={user?.id} />
+          </Box>
+        )}
+
         {/* Product Data Section */}
         {activeSection === "product" && (
           <Card
@@ -8742,6 +8750,7 @@ export default function OptimizePage() {
     if (activeSection === "documentation") return "Dashboard Help Guide";
     if (activeSection === "mcp_documentation") return "MCP Documentation";
     if (activeSection === "website_audit") return "Website Audit";
+    if (activeSection === "conversions") return "Conversion Performance";
     return "Optimize";
   })();
 

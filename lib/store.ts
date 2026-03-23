@@ -110,8 +110,8 @@ interface DashboardStore {
     setActiveEngine: (engine: EngineType) => void
 
     // UI section
-    activeSection: 'overview' | 'product_information' | 'competitors_data' | 'queries' | 'documentation' | 'website_audit'
-    setActiveSection: (section: 'overview' | 'product_information' | 'competitors_data' | 'queries' | 'documentation' | 'website_audit') => void
+    activeSection: 'overview' | 'product_information' | 'competitors_data' | 'queries' | 'documentation' | 'website_audit' | 'conversions'
+    setActiveSection: (section: 'overview' | 'product_information' | 'competitors_data' | 'queries' | 'documentation' | 'website_audit' | 'conversions') => void
 
     // Snapshot tracking
     snapshotId: string | null

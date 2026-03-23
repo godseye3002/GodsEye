@@ -92,6 +92,10 @@ const data = {
           url: "/optimize",
           disabled: true,
         },
+        {
+          title: "Conversions",
+          url: "/optimize",
+        },
       ],
     },
     /*
