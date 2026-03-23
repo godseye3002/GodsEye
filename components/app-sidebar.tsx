@@ -92,9 +92,20 @@ const data = {
           url: "/optimize",
           disabled: true,
         },
+      ],
+    },
+    {
+      title: "Conversions",
+      url: "#",
+      icon: (
+        <HugeiconsIcon icon={PieChartIcon} strokeWidth={2} />
+      ),
+      badge: "Beta",
+      items: [
         {
-          title: "Conversions",
+          title: "Dashboard",
           url: "/optimize",
+          section: "conversions",
         },
       ],
     },

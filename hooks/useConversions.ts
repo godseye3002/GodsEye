@@ -12,28 +12,60 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export type ConversionRow = {
-  product_id:  string;
-  user_id:     string;
-  source:      string;
+export type SourceBreakdown = {
+  source: string;
   conversions: number;
-  last_seen:   string;
+  total_visits: number;
+  conversion_rate: number;
 };
 
-export function useConversions(productId?: string, userId?: string) {
-  // Use a stable URL or null if missing keys
-  const params = new URLSearchParams({ 
-    ...(productId ? { product_id: productId } : {}), 
-    ...(userId    ? { user_id: userId } : {}) 
+export type PageConversions = {
+  page_path: string;
+  page_description: string;
+  total_conversions: number;
+  sources: SourceBreakdown[];
+};
+
+export type UseConversionsOptions = {
+  productId?: string;
+  userId?: string;
+  pagePath?: string;
+  refreshInterval?: number;
+};
+
+/**
+ * useConversions Hook 
+ * Fetches hierarchical conversion data (Pages -> Sources)
+ */
+export function useConversions({ 
+  productId, 
+  userId, 
+  pagePath, 
+  refreshInterval = 10000 
+}: UseConversionsOptions) {
+  
+  const params = new URLSearchParams({
+    ...(productId ? { product_id: productId } : {}),
+    ...(userId    ? { user_id: userId } : {}),
+    ...(pagePath  ? { page_path: pagePath } : {}),
   });
+
   const url = `/api/conversions?${params.toString()}`;
 
-  // If productId and userId are required for the fetch, use them as the key
-  const { data, error, isLoading } = useSWR<ConversionRow[]>(
+  const { data, error, isLoading, mutate } = useSWR<PageConversions[]>(
     productId && userId ? url : null, 
     fetcher,
-    { refreshInterval: 10000 }
+    { refreshInterval }
   );
 
-  return { data, error, isLoading };
+  // Derived Values
+  const grandTotal = data?.reduce((sum, page) => sum + (page.total_conversions || 0), 0) || 0;
+
+  return { 
+    data, 
+    error, 
+    isLoading, 
+    grandTotal, 
+    mutate 
+  };
 }

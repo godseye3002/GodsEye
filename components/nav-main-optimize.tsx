@@ -37,6 +37,8 @@ export function NavMainOptimize({
       title: string
       url: string
       disabled?: boolean
+      badge?: string
+      section?: string
     }[]
   }[]
 }) {
@@ -45,7 +47,8 @@ export function NavMainOptimize({
   const setDashboardActiveSection = useDashboardStore((state) => state.setActiveSection)
   const router = useRouter()
 
-  const mapTitleToOptimizeSection = (title: string): string | null => {
+  const mapTitleToOptimizeSection = (title: string, section?: string): string | null => {
+    if (section) return section
     if (title === "Product Information") return "product"
     if (title === "Queries") return "query"
     if (title === "Perplexity") return "perplexity"
@@ -59,10 +62,10 @@ export function NavMainOptimize({
     return null
   }
 
-  const shouldGroupBeOpen = (groupItems?: { title: string; url: string }[]) => {
+  const shouldGroupBeOpen = (groupItems?: { title: string; url: string; section?: string }[]) => {
     if (!groupItems || groupItems.length === 0) return false
     return groupItems.some(
-      (subItem) => mapTitleToOptimizeSection(subItem.title) === activeSection,
+      (subItem) => mapTitleToOptimizeSection(subItem.title, subItem.section) === activeSection,
     )
   }
 
@@ -124,7 +127,7 @@ export function NavMainOptimize({
             <CollapsibleContent>
               <SidebarMenuSub>
                 {item.items?.map((subItem) => {
-                  const mappedSection = mapTitleToOptimizeSection(subItem.title)
+                  const mappedSection = mapTitleToOptimizeSection(subItem.title, subItem.section)
                   const isOptimizeSection = mappedSection !== null
                   const isActive = isOptimizeSection ? activeSection === mappedSection : false
 
@@ -157,6 +160,11 @@ export function NavMainOptimize({
                       >
                         <span className="flex items-center justify-between w-full gap-3">
                           <span className="flex items-center gap-2">{subItem.title}</span>
+                          {subItem.badge && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#2ED47A] text-[#0D0F14] uppercase tracking-wider whitespace-nowrap ml-auto">
+                              {subItem.badge}
+                            </span>
+                          )}
                           {subItem.disabled && (
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-linear-to-r from-[#2ED47A]/20 to-[#2ED47A]/10 border border-[#2ED47A]/20 text-[#2ED47A] uppercase tracking-wider whitespace-nowrap ml-auto">
                               Soon
