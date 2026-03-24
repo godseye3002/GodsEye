@@ -328,16 +328,16 @@ export default function LandingPage() {
         >
           {[
             {
-              icon: "Research",
-              title: "Smart Product Analysis",
+              icon: "Audit",
+              title: "Website AEO Audit",
               description:
-                "Extract and analyze product data from any URL. Our AI understands your product's unique value proposition.",
+                "Scan live pages for semantic gaps and extract layout geometry to expose exactly what AI crawlers see before they index you.",
             },
             {
-              icon: "AI",
-              title: "AI Search Optimization",
+              icon: "Track",
+              title: "Conversion Intelligence",
               description:
-                "Get tailored recommendations to improve your product's visibility in Perplexity, ChatGPT, and Google AI.",
+                "Analytics tools strip AI referral data. Our invisible tracker captures full visitor journeys directly from ChatGPT and Perplexity.",
             },
             {
               icon: "Insights",
@@ -556,6 +556,20 @@ export default function LandingPage() {
           heading: "Edit and enrich product information in seconds",
           body: "Pull data from any URL and fine-tune specifications before sending it through our optimization flow.",
           image: "product-form.png",
+          align: "right",
+        },
+        {
+          eyebrow: "AEO Website Audit",
+          heading: "Scan and fix your live code for AI ingestion",
+          body: "Our intelligent auditor extracts your layout, semantic density, and metadata to expose exactly where your brand narrative is getting lost before the AI scraper can even read it.",
+          image: "Audit-Website-Dashboard.png",
+          align: "left",
+        },
+        {
+          eyebrow: "Conversion Tracker",
+          heading: "Prove AI ROI with true source attribution",
+          body: "Traditional analytics strip referral data from AI chats, making traffic look \"Direct\". Our invisible tracking snippet captures complete visitor journeys directly from ChatGPT, Perplexity, Claude, and Google AI.",
+          image: "Conversion-tracking-dashboard.png",
           align: "right",
         },
         {

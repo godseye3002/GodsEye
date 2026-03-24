@@ -22,11 +22,11 @@ export function useJourney({
   );
 
   // Group journeys by source for easy rendering
-  const bySource = (data ?? []).reduce<Record<string, JourneyRow[]>>((acc, row) => {
+  const bySource = Array.isArray(data) ? data.reduce<Record<string, JourneyRow[]>>((acc, row) => {
     if (!acc[row.source]) acc[row.source] = [];
     acc[row.source].push(row);
     return acc;
-  }, {});
+  }, {}) : {};
 
   return { data, bySource, error, isLoading };
 }

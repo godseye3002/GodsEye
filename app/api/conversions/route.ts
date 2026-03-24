@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchConversionsFromSupabase } from "@/lib/fetchers/supabase-conversions";
 
 const TINYBIRD_TOKEN = process.env.TINYBIRD_TOKEN!;
 const TINYBIRD_PIPE  = "conversions_by_source";
+const USE_TINYBIRD   = process.env.TINYBIRD === "True";
 
 export type SourceBreakdown = {
   source:                   string;
@@ -35,23 +37,36 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const params = new URLSearchParams({ product_id: productId, user_id: userId });
-  if (pagePath) params.set("page_path", pagePath);
+  try {
+    let rows: RawRow[];
 
-  // Note: Using the base Tinybird API URL as provided in the update
-  const url = `https://api.us-east.aws.tinybird.co/v0/pipes/${TINYBIRD_PIPE}.json?${params}`;
+    if (USE_TINYBIRD) {
+      // ── Tinybird path (original) ──────────────────────────────────
+      const params = new URLSearchParams({ product_id: productId, user_id: userId });
+      if (pagePath) params.set("page_path", pagePath);
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${TINYBIRD_TOKEN}` },
-    next: { revalidate: 10 },
-  });
+      const url = `https://api.us-east.aws.tinybird.co/v0/pipes/${TINYBIRD_PIPE}.json?${params}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${TINYBIRD_TOKEN}` },
+        next: { revalidate: 10 },
+      });
 
-  if (!res.ok) {
-    return NextResponse.json({ error: "Tinybird fetch failed" }, { status: 500 });
+      if (!res.ok) {
+        return NextResponse.json({ error: "Tinybird fetch failed" }, { status: 500 });
+      }
+
+      const json = await res.json();
+      rows = json.data;
+    } else {
+      // ── Supabase path ─────────────────────────────────────────────
+      rows = await fetchConversionsFromSupabase(productId, userId, pagePath) as RawRow[];
+    }
+
+    return NextResponse.json(groupByPage(rows));
+  } catch (err: any) {
+    console.error("[conversions] fetch error:", err);
+    return NextResponse.json({ error: err.message || "Fetch failed" }, { status: 500 });
   }
-
-  const json = await res.json();
-  return NextResponse.json(groupByPage(json.data));
 }
 
 type RawRow = SourceBreakdown & { user_id: string; product_id: string; page_path: string; page_description: string; };

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchJourneyFromSupabase } from "@/lib/fetchers/supabase-journey";
 
 const TINYBIRD_TOKEN = process.env.TINYBIRD_TOKEN!;
 const JOURNEY_PIPE   = "visitor_journey";
+const USE_TINYBIRD   = process.env.TINYBIRD === "True";
 
 export type JourneyRow = {
   user_id:        string;
@@ -30,18 +32,33 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const params = new URLSearchParams({ product_id: productId, user_id: userId });
-  const url = `https://api.us-east.aws.tinybird.co/v0/pipes/${JOURNEY_PIPE}.json?${params}`;
+  try {
+    let data: JourneyRow[];
 
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${TINYBIRD_TOKEN}` },
-    next: { revalidate: 10 },
-  });
+    if (USE_TINYBIRD) {
+      // ── Tinybird path (original) ──────────────────────────────────
+      const params = new URLSearchParams({ product_id: productId, user_id: userId });
+      const url = `https://api.us-east.aws.tinybird.co/v0/pipes/${JOURNEY_PIPE}.json?${params}`;
 
-  if (!res.ok) {
-    return NextResponse.json({ error: "Tinybird fetch failed" }, { status: 500 });
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${TINYBIRD_TOKEN}` },
+        next: { revalidate: 10 },
+      });
+
+      if (!res.ok) {
+        return NextResponse.json({ error: "Tinybird fetch failed" }, { status: 500 });
+      }
+
+      const json = await res.json();
+      data = json.data as JourneyRow[];
+    } else {
+      // ── Supabase path ─────────────────────────────────────────────
+      data = await fetchJourneyFromSupabase(productId, userId) as JourneyRow[];
+    }
+
+    return NextResponse.json(data);
+  } catch (err: any) {
+    console.error("[journey] fetch error:", err);
+    return NextResponse.json({ error: err.message || "Fetch failed" }, { status: 500 });
   }
-
-  const json = await res.json();
-  return NextResponse.json(json.data as JourneyRow[]);
 }

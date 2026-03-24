@@ -6,6 +6,8 @@ import { TestimonialCarousel } from "@/components/TestimonialCarousel";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import BugReportIcon from "@mui/icons-material/BugReport";
 import ConstructionIcon from "@mui/icons-material/Construction";
+import TroubleshootIcon from "@mui/icons-material/Troubleshoot";
+import TimelineIcon from "@mui/icons-material/Timeline";
 
 export default function BrochurePage() {
     const accentColor = "#2ED47A";
@@ -245,6 +247,47 @@ export default function BrochurePage() {
                             title="Re-Audit & Track"
                             description="Once changes go live, we re-run the audit. You see immediate movement in your visibility score and AI Presence Score."
                         />
+                    </Box>
+                </Stack>
+
+                <Divider sx={{ my: { xs: 4, md: 8 }, opacity: 0.1 }} />
+
+                {/* Page 3.5: The Core Features */}
+                <Stack spacing={4} sx={{ mb: { xs: 4, md: 8 } }}>
+                    <Typography level="h2" sx={{ color: primaryColor, fontWeight: 700, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
+                        Prove AI ROI with our tracking and auditing engines.
+                    </Typography>
+
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 4 }}>
+                        <Card variant="outlined" sx={{ backgroundColor: cardBg, borderColor: borderColor, p: 4, borderRadius: "16px" }}>
+                            <Box sx={{ display: 'inline-flex', p: 1.5, borderRadius: '12px', backgroundColor: 'rgba(56, 189, 248, 0.1)', mb: 2 }}>
+                                <TroubleshootIcon sx={{ color: '#38BDF8', fontSize: '2rem' }} />
+                            </Box>
+                            <Typography level="h3" sx={{ color: primaryColor, mb: 1.5 }}>AEO Website Audit</Typography>
+                            <Typography level="body-md" sx={{ color: secondaryColor, mb: 3 }}>
+                                Stop guessing what AI engines want. Our intelligent auditor scans your live pages, extracting your layout, semantic density, and metadata. It identifies exactly where your brand narrative is getting lost before the AI scraper can even read it.
+                            </Typography>
+                            <Box component="ul" sx={{ pl: 2, m: 0, color: secondaryColor, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <li><strong>Semantic Check:</strong> Verifies schema and semantic HTML5.</li>
+                                <li><strong>Density Analysis:</strong> Ensures your core USP isn't buried in noise.</li>
+                                <li><strong>Readability Score:</strong> Optimizes content for LLM ingestion.</li>
+                            </Box>
+                        </Card>
+
+                        <Card variant="outlined" sx={{ backgroundColor: cardBg, borderColor: borderColor, p: 4, borderRadius: "16px" }}>
+                            <Box sx={{ display: 'inline-flex', p: 1.5, borderRadius: '12px', backgroundColor: 'rgba(46, 212, 122, 0.1)', mb: 2 }}>
+                                <TimelineIcon sx={{ color: accentColor, fontSize: '2rem' }} />
+                            </Box>
+                            <Typography level="h3" sx={{ color: primaryColor, mb: 1.5 }}>Conversion Tracker</Typography>
+                            <Typography level="body-md" sx={{ color: secondaryColor, mb: 3 }}>
+                                Analytics tools like Google Analytics strip referral data from AI chats, making traffic look "Direct". Our invisible tracking script captures full visitor journeys directly from ChatGPT, Perplexity, Claude, and Google AI.
+                            </Typography>
+                            <Box component="ul" sx={{ pl: 2, m: 0, color: secondaryColor, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <li><strong>True Source Attribution:</strong> See exactly which AI engine sent the user.</li>
+                                <li><strong>Journey Mapping:</strong> Track navigation from the landing page to conversion.</li>
+                                <li><strong>Bottom-Funnel Tracking:</strong> Prove that AEO optimizations are driving revenue.</li>
+                            </Box>
+                        </Card>
                     </Box>
                 </Stack>
 
