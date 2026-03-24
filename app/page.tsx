@@ -552,23 +552,16 @@ export default function LandingPage() {
           align: "left",
         },
         {
-          eyebrow: "Product Data Workspace",
-          heading: "Edit and enrich product information in seconds",
-          body: "Pull data from any URL and fine-tune specifications before sending it through our optimization flow.",
-          image: "product-form.png",
-          align: "right",
-        },
-        {
           eyebrow: "AEO Website Audit",
-          heading: "Scan and fix your live code for AI ingestion",
-          body: "Our intelligent auditor extracts your layout, semantic density, and metadata to expose exactly where your brand narrative is getting lost before the AI scraper can even read it.",
+          heading: "Optimize your layout for AI crawlers",
+          body: "Our intelligent auditor extracts your site's semantic density and metadata to expose exactly where your brand narrative is getting lost before the AI scraper can even read it.",
           image: "Audit-Website-Dashboard.png",
           align: "left",
         },
         {
           eyebrow: "Conversion Tracker",
-          heading: "Prove AI ROI with true source attribution",
-          body: "Traditional analytics strip referral data from AI chats, making traffic look \"Direct\". Our invisible tracking snippet captures complete visitor journeys directly from ChatGPT, Perplexity, Claude, and Google AI.",
+          heading: "Capture the full AI visitor journey",
+          body: "Traditional analytics strip referral data from AI chats. Our invisible tracking snippet captures complete visitor journeys directly from ChatGPT, Perplexity, and Google Search AI.",
           image: "Conversion-tracking-dashboard.png",
           align: "right",
         },
@@ -578,7 +571,8 @@ export default function LandingPage() {
           body: "Get competitor comparisons, messaging direction, and export-ready insights tailored to your product.",
           image: "analysis-results.png",
           align: "left",
-        }].map((section, index) => (
+        },
+      ].map((section, index) => (
           <Box
             key={section.eyebrow}
             sx={{
