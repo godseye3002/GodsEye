@@ -62,26 +62,42 @@ export function ConversionDocumentation() {
                                     <Typography level="title-md" sx={{ color: 'white' }}>Network Conversions</Typography>
                                 </Stack>
                                 <Typography level="body-sm" sx={{ color: '#A2A7B4', mb: 2 }}>
-                                    Your ultimate success number. This counts <span style={{ color: '#fff' }}>every single successful conversion event</span> (purchases, signups, etc.) that originated from any tracked AI Engine across all landing pages. 
+                                    Your discovery success number. This counts <span style={{ color: '#fff' }}>every single successful arrival</span> on your website that originated from a tracked AI Engine. It represents the "Handover" from the AI search engine to your domain. 
                                 </Typography>
                                 <Chip size="sm" variant="soft" color="neutral" sx={{ color: '#2ED47A', fontWeight: 600 }}>
-                                    Calculation: Total Conversion Events Logged
+                                    Calculation: Total AI-referral Entry Events
                                 </Chip>
                             </Card>
 
-                            {/* Metric 2: Total Visits */}
+                            {/* Metric 2: Total Reach / Visits */}
                             <Card className="bg-[#161922] border-none shadow-none p-5">
                                 <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                                     <Box sx={{ p: 1, borderRadius: '8px', bgcolor: 'rgba(56, 189, 248, 0.1)' }}>
                                         <HugeiconsIcon icon={Target02Icon} strokeWidth={2} className="size-5 text-[#38BDF8]" />
                                     </Box>
-                                    <Typography level="title-md" sx={{ color: 'white' }}>Total Visits</Typography>
+                                    <Typography level="title-md" sx={{ color: 'white' }}>Total Reach (Visits)</Typography>
                                 </Stack>
                                 <Typography level="body-sm" sx={{ color: '#A2A7B4', mb: 2 }}>
-                                    Your total traffic volume. This counts <span style={{ color: '#fff' }}>every unique connection</span> originating from AI engines, regardless of whether that user ended up converting or bouncing.
+                                    Your total traffic volume. This counts <span style={{ color: '#fff' }}>every single session</span> originating from AI engines, including repeat visits from the same users.
                                 </Typography>
                                 <Chip size="sm" variant="soft" color="neutral" sx={{ color: '#38BDF8', fontWeight: 600 }}>
                                     Calculation: Total Number of Tracked Sessions
+                                </Chip>
+                            </Card>
+
+                            {/* Metric 3: Unique Visitors */}
+                            <Card className="bg-[#161922] border-none shadow-none p-5">
+                                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                                    <Box sx={{ p: 1, borderRadius: '8px', bgcolor: 'rgba(124, 108, 250, 0.1)' }}>
+                                        <HugeiconsIcon icon={MapsIcon} strokeWidth={2} className="size-5 text-[#7C6CFA]" />
+                                    </Box>
+                                    <Typography level="title-md" sx={{ color: 'white' }}>Unique Visitors</Typography>
+                                </Stack>
+                                <Typography level="body-sm" sx={{ color: '#A2A7B4', mb: 2 }}>
+                                    The "Real People" count. This uses IP tracking to identify <span style={{ color: '#fff' }}>individual users</span>. If one person visits your site 5 times from ChatGPT, they count as 5 Reach but 1 Unique Visitor.
+                                </Typography>
+                                <Chip size="sm" variant="soft" color="neutral" sx={{ color: '#7C6CFA', fontWeight: 600 }}>
+                                    Calculation: Distinct IP addresses per Product
                                 </Chip>
                             </Card>
                         </div>
@@ -108,15 +124,19 @@ export function ConversionDocumentation() {
                                     </li>
                                     <li>
                                         <span className="text-[#38BDF8] font-bold">Total Reach:</span>
-                                        <span className="text-white"> Top of the Funnel.</span> The raw number of people who opened this exact page, coming from the given AI source.
+                                        <span className="text-white"> Top of the Funnel.</span> The total number of sessions initiated from this AI source to this specific page.
                                     </li>
                                     <li>
-                                        <span className="text-white font-medium">Converted:</span>
-                                        The number of those visitors who successfully triggered a conversion event directly on this page. By comparing this to Total Reach, you get your unspoken conversion rate.
+                                        <span className="text-[#7C6CFA] font-bold">Unique Visitors:</span>
+                                        <span className="text-white"> Audience Size.</span> The number of distinct individuals who landed here from the AI engine (filtered by IP address).
                                     </li>
                                     <li>
-                                        <span className="text-[#7C6CFA] font-bold">Navigation Conv. (Continuation):</span>
-                                        <span className="text-white"> Long-tail Success.</span> Users who landed on your site from AI, clicked around to multiple pages, and eventually converted. This proves the initial AI link brought in a high-intent, interested user.
+                                        <span className="text-[#2ED47A] font-bold">Converted:</span>
+                                        <span className="text-white"> Direct Acquisition.</span> The number of visitors who successfully entered your site through this page via an AI link.
+                                    </li>
+                                    <li>
+                                        <span className="text-[#7C6CFA] font-bold">Navigation Conv. (Depth):</span>
+                                        <span className="text-white"> Engagement Level.</span> The number of additional pages the visitor looked at *after* landing. A high number here proves the AI is sending high-intent researchers who are exploring your site.
                                     </li>
                                 </ul>
                             </Box>

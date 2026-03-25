@@ -376,6 +376,7 @@ export default function AuthPage() {
               onClick={() => setMode("signup")}
               size="md"
               variant={mode === "signup" ? "solid" : "plain"}
+              data-godseye-cta="Signup"
               sx={{
                 flex: 1,
                 fontWeight: 600,

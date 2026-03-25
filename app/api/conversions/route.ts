@@ -12,6 +12,7 @@ export type SourceBreakdown = {
   entry_conversions:        number;   // first landing
   continuation_conversions: number;   // spa hops
   total_visits:             number;
+  unique_visitors:          number;
   conversion_rate:          number;
   last_seen:                string;
 };
@@ -21,6 +22,7 @@ export type PageConversions = {
   page_description: string;
   total:            number;
   total_visits:     number;
+  unique_visitors:  number;
   sources:          SourceBreakdown[];
 };
 
@@ -80,12 +82,14 @@ function groupByPage(rows: RawRow[]): PageConversions[] {
         page_description: row.page_description,
         total:            0,
         total_visits:     0,
+        unique_visitors:  0,
         sources:          [],
       });
     }
     const page = map.get(row.page_path)!;
     page.total += row.conversions;
     page.total_visits += row.total_visits;
+    page.unique_visitors += (row.unique_visitors || 0);
 
     const existingSource = page.sources.find(s => s.source === row.source);
     if (existingSource) {
@@ -93,6 +97,7 @@ function groupByPage(rows: RawRow[]): PageConversions[] {
       existingSource.entry_conversions += row.entry_conversions;
       existingSource.continuation_conversions += row.continuation_conversions;
       existingSource.total_visits += row.total_visits;
+      existingSource.unique_visitors += (row.unique_visitors || 0);
       existingSource.conversion_rate = existingSource.total_visits > 0 
         ? (existingSource.conversions / existingSource.total_visits) * 100 
         : 0;
@@ -107,6 +112,7 @@ function groupByPage(rows: RawRow[]): PageConversions[] {
         entry_conversions:        row.entry_conversions,
         continuation_conversions: row.continuation_conversions,
         total_visits:             row.total_visits,
+        unique_visitors:          row.unique_visitors || 0,
         conversion_rate:          row.conversion_rate,
         last_seen:                row.last_seen,
       });

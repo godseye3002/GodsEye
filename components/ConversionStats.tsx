@@ -213,7 +213,6 @@ export default function ConversionStats({
         {/* Grand Total */}
         <Stack
           direction="row"
-          spacing={4}
           sx={{
             p: 3,
             borderRadius: "20px",
@@ -221,45 +220,44 @@ export default function ConversionStats({
             border: "1px solid rgba(255,255,255,0.05)",
             mb: 4,
             alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
-          <Box>
+          <Box sx={{ flex: 1, px: 2, textAlign: "center" }}>
             <Typography
               level="body-xs"
-              sx={{ color: T.textSecondary, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}
-            >
-              Total Visits
-            </Typography>
-            <Typography level="h1" sx={{ color: T.blue, fontSize: "2.5rem", fontWeight: 900 }}>
-              {(journey.data?.length ?? 0).toLocaleString()}
-            </Typography>
-          </Box>
-          <Divider orientation="vertical" />
-          <Box>
-            <Typography
-              level="body-xs"
-              sx={{ color: T.textSecondary, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}
+              sx={{ color: T.textSecondary, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, mb: 1 }}
             >
               Network Conversions
             </Typography>
-            <Typography level="h1" sx={{ color: T.accent, fontSize: "2.5rem", fontWeight: 900 }}>
+            <Typography level="h1" sx={{ color: T.accent, fontSize: "2.5rem", fontWeight: 900, lineHeight: 1 }}>
               {summary.grandTotal.toLocaleString()}
             </Typography>
           </Box>
           <Divider orientation="vertical" />
-          <Stack spacing={0.5}>
-            <Typography level="body-xs" sx={{ color: T.textSecondary }}>
-              Performance Period
-            </Typography>
-            <Chip
-              startDecorator={<HugeiconsIcon icon={GlobalIcon} size={14} />}
-              size="sm"
-              variant="soft"
-              sx={{ bgcolor: "rgba(255,255,255,0.05)", color: T.textPrimary }}
+          <Box sx={{ flex: 1, px: 2, textAlign: "center" }}>
+            <Typography
+              level="body-xs"
+              sx={{ color: T.textSecondary, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, mb: 1 }}
             >
-              All AI Sources Active
-            </Chip>
-          </Stack>
+              Total Reach
+            </Typography>
+            <Typography level="h1" sx={{ color: T.blue, fontSize: "2.5rem", fontWeight: 900, lineHeight: 1 }}>
+              {(journey.data?.length ?? 0).toLocaleString()}
+            </Typography>
+          </Box>
+          <Divider orientation="vertical" />
+          <Box sx={{ flex: 1, px: 2, textAlign: "center" }}>
+            <Typography
+              level="body-xs"
+              sx={{ color: T.textSecondary, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, mb: 1 }}
+            >
+              Unique Visitors
+            </Typography>
+            <Typography level="h1" sx={{ color: T.purple, fontSize: "2.5rem", fontWeight: 900, lineHeight: 1 }}>
+              {summary.data?.reduce((acc, p) => acc + (p.unique_visitors || 0), 0).toLocaleString() ?? 0}
+            </Typography>
+          </Box>
         </Stack>
 
         {/* Route Tags */}
@@ -361,6 +359,7 @@ export default function ConversionStats({
                   <tr>
                     <th>Traffic Source</th>
                     <th style={{ textAlign: "right" }}>Total Reach</th>
+                    <th style={{ textAlign: "right" }}>Unique Visitors</th>
                     <th style={{ textAlign: "right" }}>Converted</th>
                     <th style={{ textAlign: "right" }}>Navigation Conv.</th>
                   </tr>
@@ -390,12 +389,17 @@ export default function ConversionStats({
                         </Typography>
                       </td>
                       <td style={{ textAlign: "right" }}>
-                        <Typography level="body-sm" sx={{ color: T.textSecondary }}>
-                          {s.total_visits.toLocaleString()}
+                        <Typography level="body-sm" sx={{ color: T.purple, fontWeight: 700 }}>
+                          {(s.unique_visitors || 0).toLocaleString()}
                         </Typography>
                       </td>
                       <td style={{ textAlign: "right" }}>
-                        <Typography level="body-sm" sx={{ color: T.purple, fontWeight: 600 }}>
+                        <Typography level="body-sm" sx={{ color: T.textSecondary }}>
+                          {(s.conversions || 0).toLocaleString()}
+                        </Typography>
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <Typography level="body-sm" sx={{ color: T.accent, fontWeight: 600 }}>
                           {s.continuation_conversions?.toLocaleString() ?? "—"}
                         </Typography>
                       </td>
