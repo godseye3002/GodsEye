@@ -128,6 +128,7 @@ export default function LandingPage() {
           <Button
             onClick={() => router.push("/products")}
             variant="solid"
+            data-godseye-cta="GetStarted"
             sx={{
               backgroundColor: "#2ED47A",
               color: "#0D0F14",
@@ -231,6 +232,7 @@ export default function LandingPage() {
             onClick={() => router.push("/auth")}
             size="lg"
             variant="solid"
+            data-godseye-cta="StartOptimizing"
             endDecorator={<Box component="span" sx={{ fontSize: 20 }}>→</Box>}
             sx={{
               backgroundColor: "#2ED47A",
@@ -788,6 +790,7 @@ export default function LandingPage() {
           onClick={() => router.push("/products")}
           size="lg"
           variant="solid"
+          data-godseye-cta="GetStartedFree"
           endDecorator={<Box component="span" sx={{ fontSize: 20 }}>→</Box>}
           sx={{
             backgroundColor: "#2ED47A",
