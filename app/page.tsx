@@ -126,7 +126,7 @@ export default function LandingPage() {
           </Box>
 
           <Button
-            onClick={() => router.push("/products")}
+            onClick={() => router.push(user ? "/products" : "/auth")}
             variant="solid"
             data-godseye-cta="GetStarted"
             sx={{
@@ -787,7 +787,7 @@ export default function LandingPage() {
           Start optimizing your products today and get discovered by millions using AI search engines.
         </Typography>
         <Button
-          onClick={() => router.push("/products")}
+          onClick={() => router.push(user ? "/products" : "/auth")}
           size="lg"
           variant="solid"
           data-godseye-cta="GetStartedFree"
