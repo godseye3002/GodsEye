@@ -277,3 +277,67 @@ export async function DELETE(request: Request) {
     );
   }
 }
+
+// PATCH - Toggle daily_tracker for a product
+export async function PATCH(request: Request) {
+  try {
+    const { productId, userId, daily_tracker } = await request.json();
+
+    if (!productId || !userId) {
+      return NextResponse.json(
+        { error: 'Product ID and User ID are required' },
+        { status: 400 }
+      );
+    }
+
+    const supabaseAdmin = getSupabaseAdminClient();
+
+    // Verify ownership
+    const { data: product, error: fetchError } = await (supabaseAdmin as any)
+      .from('products')
+      .select('user_id')
+      .eq('id', productId)
+      .single();
+
+    if (fetchError || !product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    if (product.user_id !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 403 }
+      );
+    }
+
+    const { data: updated, error: updateError } = await (supabaseAdmin as any)
+      .from('products')
+      .update({ daily_tracker: daily_tracker })
+      .eq('id', productId)
+      .select()
+      .single();
+
+    if (updateError) {
+      if ((process.env.NODE_ENV as string) === 'debug') {
+        console.error('[Products] PATCH error:', updateError);
+      }
+      return NextResponse.json(
+        { error: 'Failed to update daily_tracker', details: updateError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, product: updated });
+  } catch (error: any) {
+    if ((process.env.NODE_ENV as string) === 'debug') {
+      console.error('[Products] PATCH error:', error);
+    }
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
+  }
+}

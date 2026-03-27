@@ -13,6 +13,7 @@ export type SourceBreakdown = {
   continuation_conversions: number;   // spa hops
   total_visits:             number;
   unique_visitors:          number;
+  interactions:             number;
   conversion_rate:          number;
   last_seen:                string;
 };
@@ -23,6 +24,7 @@ export type PageConversions = {
   total:            number;
   total_visits:     number;
   unique_visitors:  number;
+  interactions:     number;
   sources:          SourceBreakdown[];
 };
 
@@ -83,6 +85,7 @@ function groupByPage(rows: RawRow[]): PageConversions[] {
         total:            0,
         total_visits:     0,
         unique_visitors:  0,
+        interactions:     0,
         sources:          [],
       });
     }
@@ -90,6 +93,7 @@ function groupByPage(rows: RawRow[]): PageConversions[] {
     page.total += row.conversions;
     page.total_visits += row.total_visits;
     page.unique_visitors += (row.unique_visitors || 0);
+    page.interactions += (row.interactions || 0);
 
     const existingSource = page.sources.find(s => s.source === row.source);
     if (existingSource) {
@@ -98,6 +102,7 @@ function groupByPage(rows: RawRow[]): PageConversions[] {
       existingSource.continuation_conversions += row.continuation_conversions;
       existingSource.total_visits += row.total_visits;
       existingSource.unique_visitors += (row.unique_visitors || 0);
+      existingSource.interactions += (row.interactions || 0);
       existingSource.conversion_rate = existingSource.total_visits > 0 
         ? (existingSource.conversions / existingSource.total_visits) * 100 
         : 0;
@@ -113,6 +118,7 @@ function groupByPage(rows: RawRow[]): PageConversions[] {
         continuation_conversions: row.continuation_conversions,
         total_visits:             row.total_visits,
         unique_visitors:          row.unique_visitors || 0,
+        interactions:             row.interactions || 0,
         conversion_rate:          row.conversion_rate,
         last_seen:                row.last_seen,
       });

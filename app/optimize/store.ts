@@ -33,6 +33,30 @@ export interface QueryData {
   };
 }
 
+export interface UserSubscription {
+  tier: 'free' | 'pro' | 'pro_max';
+  isActive: boolean;
+  credits: number;
+  interactionsUsed: number;
+  trialStartedAt: string | null;
+  trialExpiresAt: string | null;
+}
+
+export interface SubscriptionAlert {
+  isOpen: boolean;
+  reason: string;
+  message: string;
+}
+
+export interface UserPlan {
+  displayName: string;
+  productLimit: number | null;
+  interactionLimit: number | null;
+  credits: number;
+  features: Record<string, boolean>;
+  priceMonthly: string;
+}
+
 interface ProductStoreState {
   formData: ProductFormData;
   originalScrapedData: ProductFormData | null;
@@ -64,6 +88,9 @@ interface ProductStoreState {
   products: OptimizedProduct[];
   userInfo: UserInfoState | null;
   userCredits: number | null;
+  subscription: UserSubscription | null;
+  subscriptionAlert: SubscriptionAlert | null;
+  plan: UserPlan | null;
   processedSources: ProcessedSource[];
   sourceLinks: any[];
   currentProductId: string | null;
@@ -118,6 +145,10 @@ interface ProductStoreState {
   setUserInfo: (info: UserInfoState | null) => void;
   setUserCredits: (credits: number | null) => void;
   adjustUserCredits: (delta: number) => void;
+  setSubscription: (sub: UserSubscription | null) => void;
+  setSubscriptionAlert: (alert: SubscriptionAlert | null) => void;
+  setPlan: (plan: UserPlan | null) => void;
+  refreshSubscription: (userId: string) => Promise<void>;
   setProcessedSources: (sources: ProcessedSource[]) => void;
   setSourceLinks: (links: any[]) => void;
   setCurrentProductId: (id: string | null) => void;
@@ -130,6 +161,7 @@ interface ProductStoreState {
   setShowDeepAnalysis: (show: boolean) => void;
   setSovCardEngine: (engine: 'perplexity' | 'google' | 'chatgpt' | null) => void;
   setGenerateBatchModalOpen: (open: boolean) => void;
+  toggleDailyTracker: (productId: string, userId: string, enabled: boolean) => Promise<void>;
 }
 
 export const useProductStore = create<ProductStoreState>()(
@@ -165,6 +197,9 @@ export const useProductStore = create<ProductStoreState>()(
       products: [],
       userInfo: null,
       userCredits: null,
+      subscription: null,
+      subscriptionAlert: null,
+      plan: null,
       processedSources: [],
       sourceLinks: [],
       currentProductId: null,
@@ -434,6 +469,7 @@ export const useProductStore = create<ProductStoreState>()(
               deep_analysis_google_up_to_date: googleUpToDate,
               deep_analysis_perplexity_up_to_date: perplexityUpToDate,
               deep_analysis_chatgpt_up_to_date: chatgptUpToDate,
+              daily_tracker: p.daily_tracker || false,
             };
           });
 
@@ -625,6 +661,33 @@ export const useProductStore = create<ProductStoreState>()(
           const updated = state.userCredits + delta;
           return { ...state, userCredits: Math.max(0, Math.round(updated)) };
         }),
+      setSubscription: (sub) => set({ subscription: sub }),
+      setSubscriptionAlert: (alert) => set({ subscriptionAlert: alert }),
+      setPlan: (plan) => set({ plan }),
+      refreshSubscription: async (userId: string) => {
+        try {
+          const response = await fetch('/api/subscription/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, operation: 'run_analysis' }),
+          });
+          if (!response.ok) return;
+          const data = await response.json();
+          if (data.profile) {
+            set({
+              subscription: data.profile,
+              userCredits: data.profile.credits,
+            });
+          }
+          if (data.plan) {
+            set({ plan: data.plan });
+          }
+        } catch (error) {
+          if ((process.env.NODE_ENV as string) === 'debug') {
+            console.error('[Store] Failed to refresh subscription:', error);
+          }
+        }
+      },
       setProcessedSources: (sources) => set({ processedSources: sources }),
       setSourceLinks: (links) => set({ sourceLinks: links }),
       setCurrentProductId: (id) =>
@@ -700,6 +763,27 @@ export const useProductStore = create<ProductStoreState>()(
           throw error;
         }
       },
+      toggleDailyTracker: async (productId: string, userId: string, enabled: boolean) => {
+        try {
+          const response = await fetch('/api/products', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId, userId, daily_tracker: enabled }),
+          });
+
+          if (!response.ok) throw new Error('Failed to toggle daily tracker');
+
+          // Update local state
+          set((state) => ({
+            products: state.products.map((p) =>
+              p.id === productId ? { ...p, daily_tracker: enabled } : p
+            ),
+          }));
+        } catch (error) {
+          console.error('Error toggling daily tracker:', error);
+          throw error;
+        }
+      },
     }),
     {
       name: "godseye-product-store",
@@ -721,6 +805,8 @@ export const useProductStore = create<ProductStoreState>()(
         products: state.products,
         userInfo: state.userInfo,
         userCredits: state.userCredits,
+        subscription: state.subscription,
+        plan: state.plan,
         formData: state.formData,
         originalScrapedData: state.originalScrapedData,
         optimizationAnalysis: state.optimizationAnalysis,

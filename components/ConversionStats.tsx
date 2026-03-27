@@ -14,6 +14,7 @@ import {
 } from "@mui/joy";
 import { useConversions } from "@/hooks/useConversions";
 import { useJourney } from "@/hooks/useJourney";
+import { useCtaPerformance } from "@/hooks/useCta";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ZapIcon,
@@ -75,6 +76,9 @@ const tableStyles = {
   },
 };
 
+const normalizePath = (p: string) => 
+  !p || p === "/" ? "/" : p.replace(/\/+$/, "");
+
 // ════════════════════════════════════════════════════════════════════
 //   C O M P O N E N T
 // ════════════════════════════════════════════════════════════════════
@@ -91,6 +95,11 @@ export default function ConversionStats({
   });
 
   const journey = useJourney({
+    productId: productId as string,
+    userId: userId as string,
+  });
+
+  const cta = useCtaPerformance({
     productId: productId as string,
     userId: userId as string,
   });
@@ -136,21 +145,30 @@ export default function ConversionStats({
   const selectedPageData = summary.data?.find((p) => p.page_path === selectedPath);
   const rawJourneys = journey.data ?? [];
 
+  type SessionCta = { cta_label: string; page_path: string };
   const groupedJourneysMap = rawJourneys.reduce((acc, j) => {
     const pathSteps = j.path_array ?? j.journey?.split(" → ") ?? [];
-    const pathKey = pathSteps.join(" → ");
-    const key = `${j.source}|||${pathKey}`;
+    const normalizedPathKey = pathSteps.map(normalizePath).join(" → ");
+    const key = `${j.source}|||${normalizedPathKey}`;
 
     if (!acc[key]) {
       acc[key] = {
         ...j,
         pathSteps,
         count: 0,
+        sessionCtas: [] as SessionCta[],
       };
     }
     acc[key].count += 1;
+    // Accumulate CTA interactions from this specific session
+    const ctas = (j as any).clicked_ctas;
+    if (Array.isArray(ctas)) {
+      for (const c of ctas) {
+        acc[key].sessionCtas.push({ cta_label: c.cta_label, page_path: c.page_path });
+      }
+    }
     return acc;
-  }, {} as Record<string, typeof rawJourneys[0] & { pathSteps: string[], count: number }>);
+  }, {} as Record<string, typeof rawJourneys[0] & { pathSteps: string[], count: number, sessionCtas: SessionCta[] }>);
 
   const groupedJourneys = Object.values(groupedJourneysMap).sort((a, b) => b.count - a.count);
 
@@ -230,7 +248,7 @@ export default function ConversionStats({
             >
               Network Conversions
             </Typography>
-            <Typography level="h1" sx={{ color: T.accent, fontSize: "2.5rem", fontWeight: 900, lineHeight: 1 }}>
+            <Typography level="h1" sx={{ color: T.accent, fontSize: "2rem", fontWeight: 900, lineHeight: 1 }}>
               {summary.grandTotal.toLocaleString()}
             </Typography>
           </Box>
@@ -242,7 +260,7 @@ export default function ConversionStats({
             >
               Total Reach
             </Typography>
-            <Typography level="h1" sx={{ color: T.blue, fontSize: "2.5rem", fontWeight: 900, lineHeight: 1 }}>
+            <Typography level="h1" sx={{ color: T.blue, fontSize: "2rem", fontWeight: 900, lineHeight: 1 }}>
               {(journey.data?.length ?? 0).toLocaleString()}
             </Typography>
           </Box>
@@ -254,8 +272,20 @@ export default function ConversionStats({
             >
               Unique Visitors
             </Typography>
-            <Typography level="h1" sx={{ color: T.purple, fontSize: "2.5rem", fontWeight: 900, lineHeight: 1 }}>
+            <Typography level="h1" sx={{ color: T.purple, fontSize: "2rem", fontWeight: 900, lineHeight: 1 }}>
               {summary.data?.reduce((acc, p) => acc + (p.unique_visitors || 0), 0).toLocaleString() ?? 0}
+            </Typography>
+          </Box>
+          <Divider orientation="vertical" />
+          <Box sx={{ flex: 1, px: 2, textAlign: "center" }}>
+            <Typography
+              level="body-xs"
+              sx={{ color: T.textSecondary, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, mb: 1 }}
+            >
+              Total Interactions
+            </Typography>
+            <Typography level="h1" sx={{ color: "#FBBF24", fontSize: "2rem", fontWeight: 900, lineHeight: 1 }}>
+              {summary.data?.reduce((acc, p) => acc + (p.interactions || 0), 0).toLocaleString() ?? 0}
             </Typography>
           </Box>
         </Stack>
@@ -360,6 +390,7 @@ export default function ConversionStats({
                     <th>Traffic Source</th>
                     <th style={{ textAlign: "right" }}>Total Reach</th>
                     <th style={{ textAlign: "right" }}>Unique Visitors</th>
+                    <th style={{ textAlign: "right" }}>Interactions</th>
                     <th style={{ textAlign: "right" }}>Converted</th>
                     <th style={{ textAlign: "right" }}>Navigation Conv.</th>
                   </tr>
@@ -391,6 +422,11 @@ export default function ConversionStats({
                       <td style={{ textAlign: "right" }}>
                         <Typography level="body-sm" sx={{ color: T.purple, fontWeight: 700 }}>
                           {(s.unique_visitors || 0).toLocaleString()}
+                        </Typography>
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <Typography level="body-sm" sx={{ color: "#FBBF24", fontWeight: 700 }}>
+                          {(s.interactions || 0).toLocaleString()}
                         </Typography>
                       </td>
                       <td style={{ textAlign: "right" }}>
@@ -531,48 +567,89 @@ export default function ConversionStats({
                   </Stack>
 
                   {/* Journey Path Visualization */}
-                  <Stack direction="row" spacing={0} alignItems="center" sx={{ flexWrap: "wrap", gap: 0.75 }}>
+                  <Stack direction="row" spacing={0} alignItems="flex-start" sx={{ flexWrap: "wrap", gap: 0.75 }}>
                     {pathSteps.map((step: string, sIdx: number) => {
                       const isEntry = sIdx === 0;
                       const isExit = sIdx === pathSteps.length - 1;
+
+                      // Deduplicate per-session CTAs for this specific step
+                      const stepCtaMap = new Map<string, number>();
+                      for (const c of (j as any).sessionCtas ?? []) {
+                        const matchesBranch = normalizePath(c.page_path) === normalizePath(step);
+                        if (matchesBranch) {
+                          stepCtaMap.set(c.cta_label, (stepCtaMap.get(c.cta_label) || 0) + 1);
+                        }
+                      }
+                      const stepCtas = Array.from(stepCtaMap.entries());
+
                       return (
                         <React.Fragment key={sIdx}>
                           {sIdx > 0 && (
-                            <HugeiconsIcon
-                              icon={ArrowRight01Icon}
-                              size={12}
-                              style={{ color: "rgba(255,255,255,0.15)", flexShrink: 0 }}
-                            />
+                            <Box sx={{ mt: 0.6 }}>
+                              <HugeiconsIcon
+                                icon={ArrowRight01Icon}
+                                size={12}
+                                style={{ color: "rgba(255,255,255,0.15)", flexShrink: 0 }}
+                              />
+                            </Box>
                           )}
-                          <Chip
-                            size="sm"
-                            variant={isEntry ? "solid" : "outlined"}
-                            sx={{
-                              px: 1.5,
-                              borderRadius: "8px",
-                              fontSize: "11px",
-                              fontWeight: isEntry || isExit ? 700 : 500,
-                              fontFamily: "monospace",
-                              ...(isEntry
-                                ? {
-                                  bgcolor: srcColor,
-                                  color: "#0D0F14",
-                                  boxShadow: `0 0 12px ${srcColor}40`,
-                                }
-                                : isExit
+                          <Stack alignItems="center" spacing={0.5}>
+                            <Chip
+                              size="sm"
+                              variant={isEntry ? "solid" : "outlined"}
+                              sx={{
+                                px: 1.5,
+                                borderRadius: "8px",
+                                fontSize: "11px",
+                                fontWeight: isEntry || isExit ? 700 : 500,
+                                fontFamily: "monospace",
+                                ...(isEntry
                                   ? {
-                                    borderColor: "rgba(244,96,74,0.4)",
-                                    color: "#f4604a",
-                                    bgcolor: "rgba(244,96,74,0.06)",
+                                    bgcolor: srcColor,
+                                    color: "#0D0F14",
+                                    boxShadow: `0 0 12px ${srcColor}40`,
                                   }
-                                  : {
-                                    borderColor: "rgba(255,255,255,0.08)",
-                                    color: T.textSecondary,
-                                  }),
-                            }}
-                          >
-                            {step}
-                          </Chip>
+                                  : isExit
+                                    ? {
+                                      borderColor: "rgba(244,96,74,0.4)",
+                                      color: "#f4604a",
+                                      bgcolor: "rgba(244,96,74,0.06)",
+                                    }
+                                    : {
+                                      borderColor: "rgba(255,255,255,0.08)",
+                                      color: T.textSecondary,
+                                    }),
+                              }}
+                            >
+                              {step}
+                            </Chip>
+                            
+                            {/* CTA visualization (Tree branch) — only from THIS journey's sessions */}
+                            {stepCtas.map(([label, clickCount]) => (
+                              <Stack key={label} alignItems="center" spacing={0.5}>
+                                <Box sx={{ width: "2px", height: "12px", bgcolor: "rgba(46, 212, 122, 0.25)", borderRadius: "1px" }} />
+                                <Chip
+                                  size="sm"
+                                  variant="outlined"
+                                  sx={{
+                                    px: 1,
+                                    py: 0,
+                                    minHeight: "20px",
+                                    fontSize: "9px",
+                                    fontWeight: 700,
+                                    borderColor: "rgba(46, 212, 122, 0.3)",
+                                    color: "#2ED47A",
+                                    bgcolor: "rgba(46, 212, 122, 0.05)",
+                                    textTransform: "uppercase",
+                                    letterSpacing: "0.05em",
+                                  }}
+                                  title={`${clickCount} click${clickCount !== 1 ? 's' : ''}`}
+                                >
+                                  {label}
+                                </Chip>
+                              </Stack>
+                            ))}
+                          </Stack>
                         </React.Fragment>
                       );
                     })}
@@ -606,6 +683,138 @@ export default function ConversionStats({
               </Typography>
             </Box>
           )
+        )}
+      </Card>
+
+      {/* ───────── CARD 3 — CTA Performance Story ───────── */}
+      <Card
+        variant="outlined"
+        sx={{
+          p: { xs: 3, md: 4 },
+          background: T.surface,
+          backdropFilter: "blur(20px)",
+          borderColor: T.border,
+          borderRadius: "24px",
+          boxShadow: "0 24px 80px rgba(0, 0, 0, 0.6)",
+        }}
+      >
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 3 }}>
+          <Stack spacing={0.5}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg, rgba(56,189,248,0.15), rgba(56,189,248,0.03))",
+                  border: "1px solid rgba(56,189,248,0.25)",
+                  display: "flex",
+                }}
+              >
+                <HugeiconsIcon icon={GlobalIcon} size={18} style={{ color: T.blue }} />
+              </Box>
+              <Typography level="h3" sx={{ color: T.textPrimary, fontSize: "1.4rem", fontWeight: 800 }}>
+                High-Intent Conversions (CTA Conversion)
+              </Typography>
+            </Box>
+            <Typography level="body-sm" sx={{ color: T.textSecondary }}>
+              Tracking the final step of your AI referral pipeline
+            </Typography>
+          </Stack>
+        </Box>
+
+        <Typography level="body-sm" sx={{ color: T.textSecondary, mb: 4, lineHeight: 1.6, maxWidth: 800 }}>
+          Unlike standard web traffic where users are just browsing, visitors arriving from AI search engines (like Perplexity or ChatGPT) have already qualified themselves by asking deep questions. When these users click your buttons, they aren't just engaging—they are converting. Below is the performance of your tracked buttons driven specifically by AI channels.
+        </Typography>
+
+        {cta.isLoading ? (
+          <CircularProgress size="sm" sx={{ color: T.blue }} />
+        ) : cta.data && cta.data.length > 0 ? (
+          <Stack spacing={2}>
+            {cta.data.map((row, idx) => (
+              <Box
+                key={`${row.cta_label}-${row.page_path}-${row.source}-${idx}`}
+                sx={{
+                  p: 3,
+                  borderRadius: "16px",
+                  bgcolor: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    width: "4px",
+                    bgcolor: SOURCE_COLORS[row.source] || T.blue,
+                  }}
+                />
+                <Stack direction={{ xs: "column", md: "row" }} alignItems="center" justifyContent="space-between" spacing={3}>
+                  <Box sx={{ flex: 1 }}>
+                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+                      <Chip
+                        size="sm"
+                        variant="soft"
+                        sx={{
+                          bgcolor: `${SOURCE_COLORS[row.source] || T.blue}15`,
+                          color: SOURCE_COLORS[row.source] || T.blue,
+                          fontWeight: 700,
+                          fontSize: "11px",
+                        }}
+                      >
+                        {SOURCE_LABELS[row.source] || row.source}
+                      </Chip>
+                      <Typography level="body-xs" sx={{ color: T.textSecondary, fontFamily: "monospace", letterSpacing: "0.05em" }}>
+                        {row.page_path}
+                      </Typography>
+                    </Stack>
+                    
+                    <Typography level="title-lg" sx={{ color: T.textPrimary, fontWeight: 700, mb: 0.5 }}>
+                      <Typography sx={{ color: T.textSecondary, fontWeight: 500, fontSize: "0.9em" }}>Button clicked:</Typography> "{row.cta_label}"
+                    </Typography>
+                    
+                    <Typography level="body-sm" sx={{ color: T.textSecondary, mt: 1.5, lineHeight: 1.5 }}>
+                      Out of the <Typography sx={{ color: T.textPrimary, fontWeight: 700 }}>{row.sessions_visited}</Typography> AI-referred visitors who landed here from {SOURCE_LABELS[row.source] || row.source}, <Typography sx={{ color: T.accent, fontWeight: 700 }}>{row.sessions_converted}</Typography> clicked your <Typography sx={{ color: T.textPrimary }}>"{row.cta_label}"</Typography> button.
+                    </Typography>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      p: 2.5,
+                      borderRadius: "16px",
+                      background: "rgba(10, 12, 16, 0.4)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                      minWidth: 160,
+                      textAlign: "center",
+                    }}
+                  >
+                    <Typography level="body-xs" sx={{ color: T.textSecondary, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, mb: 1 }}>
+                      Conversion Rate
+                    </Typography>
+                    <Typography level="h1" sx={{ color: T.accent, fontSize: "2rem", fontWeight: 900, lineHeight: 1 }}>
+                      {row.cta_click_rate_pct}%
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+            ))}
+          </Stack>
+        ) : (
+          <Box
+            sx={{
+              p: 4,
+              textAlign: "center",
+              border: "1px dashed rgba(255,255,255,0.1)",
+              borderRadius: "20px",
+            }}
+          >
+            <Typography level="body-sm" sx={{ color: T.textSecondary }}>
+              No CTA clicks recorded yet from your AI traffic. Make sure you have added the `data-godseye-cta` attribute to your buttons.
+            </Typography>
+          </Box>
         )}
       </Card>
     </Stack>

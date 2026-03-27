@@ -18,6 +18,7 @@ export type SupabaseConversionRow = {
   conversions:              number;
   total_visits:             number;
   unique_visitors:          number;
+  interactions:             number;
   conversion_rate:          number;
   last_seen:                string;
 };

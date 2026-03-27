@@ -5,6 +5,12 @@ const TINYBIRD_TOKEN = process.env.TINYBIRD_TOKEN!;
 const JOURNEY_PIPE   = "visitor_journey";
 const USE_TINYBIRD   = process.env.TINYBIRD === "True";
 
+export type CtaInteraction = {
+  cta_label: string;
+  page_path: string;
+  timestamp: string;
+};
+
 export type JourneyRow = {
   user_id:        string;
   product_id:     string;
@@ -18,6 +24,7 @@ export type JourneyRow = {
   session_start:  string;
   session_end:    string;
   duration_seconds: number;
+  clicked_ctas:   CtaInteraction[];
 };
 
 export async function GET(req: NextRequest) {

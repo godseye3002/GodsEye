@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "./theme-provider";
 import { AuthProvider } from "@/lib/auth-context";
+import SubscriptionAlertModal from "@/components/SubscriptionAlertModal";
 import "./globals.css";
 
 const inter = Inter({
@@ -48,6 +49,7 @@ export default function RootLayout({
           <ThemeProvider>
             <TooltipProvider>
               {children}
+              <SubscriptionAlertModal />
             </TooltipProvider>
             <div className="background-glow" suppressHydrationWarning aria-hidden="true"></div>
             <div className="bg-center-sheen" suppressHydrationWarning aria-hidden="true"></div>

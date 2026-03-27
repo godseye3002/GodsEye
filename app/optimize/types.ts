@@ -76,6 +76,7 @@ export interface OptimizedProduct extends OptimizedProductSummary {
   processedSources?: ProcessedSource[];
   // Optional list of all related analysis records from product_analyses for history
   analyses?: any[];
+  daily_tracker?: boolean;
 }
 
 export interface OptimizationAnalysis {

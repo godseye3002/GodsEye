@@ -9,7 +9,9 @@ import {
     Target02Icon,
     ArrowRight01Icon,
     MapsIcon,
-    ZapIcon
+    ZapIcon,
+    CursorIcon,
+    MouseIcon
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
@@ -94,10 +96,26 @@ export function ConversionDocumentation() {
                                     <Typography level="title-md" sx={{ color: 'white' }}>Unique Visitors</Typography>
                                 </Stack>
                                 <Typography level="body-sm" sx={{ color: '#A2A7B4', mb: 2 }}>
-                                    The "Real People" count. This uses IP tracking to identify <span style={{ color: '#fff' }}>individual users</span>. If one person visits your site 5 times from ChatGPT, they count as 5 Reach but 1 Unique Visitor.
+                                    The "Real People" count. Identifying <span style={{ color: '#fff' }}>individual users</span>. If one person visits your site 5 times from ChatGPT, they count as 5 Reach but 1 Unique Visitor.
                                 </Typography>
                                 <Chip size="sm" variant="soft" color="neutral" sx={{ color: '#7C6CFA', fontWeight: 600 }}>
                                     Calculation: Distinct IP addresses per Product
+                                </Chip>
+                            </Card>
+
+                            {/* Metric 4: Total Interactions */}
+                            <Card className="bg-[#161922] border-none shadow-none p-5">
+                                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                                    <Box sx={{ p: 1, borderRadius: '8px', bgcolor: 'rgba(251, 191, 36, 0.1)' }}>
+                                        <HugeiconsIcon icon={CursorIcon} strokeWidth={2} className="size-5 text-[#FBBF24]" />
+                                    </Box>
+                                    <Typography level="title-md" sx={{ color: 'white' }}>Total Interactions</Typography>
+                                </Stack>
+                                <Typography level="body-sm" sx={{ color: '#A2A7B4', mb: 2 }}>
+                                    Engagement volume. Every <span style={{ color: '#fff' }}>initial website visit, button click, form focus, and goal milestone</span> triggered by AI-referred users across your tracked pages.
+                                </Typography>
+                                <Chip size="sm" variant="soft" color="neutral" sx={{ color: '#FBBF24', fontWeight: 600 }}>
+                                    Calculation: Cumulative count of all tracked events
                                 </Chip>
                             </Card>
                         </div>
@@ -131,12 +149,16 @@ export function ConversionDocumentation() {
                                         <span className="text-white"> Audience Size.</span> The number of distinct individuals who landed here from the AI engine (filtered by IP address).
                                     </li>
                                     <li>
+                                        <span className="text-[#FBBF24] font-bold">Interactions:</span>
+                                        <span className="text-white"> Engagement.</span> The quantity of specific clicks and interactions performed by users from this source on the selected page.
+                                    </li>
+                                    <li>
                                         <span className="text-[#2ED47A] font-bold">Converted:</span>
-                                        <span className="text-white"> Direct Acquisition.</span> The number of visitors who successfully entered your site through this page via an AI link.
+                                        <span className="text-white"> Entry Acquisition.</span> The number of visitors who successfully entered your site through this page specifically from the AI engine link.
                                     </li>
                                     <li>
                                         <span className="text-[#7C6CFA] font-bold">Navigation Conv. (Depth):</span>
-                                        <span className="text-white"> Engagement Level.</span> The number of additional pages the visitor looked at *after* landing. A high number here proves the AI is sending high-intent researchers who are exploring your site.
+                                        <span className="text-white"> Interest Proof.</span> The number of additional pages the visitor explored *after* landing. High numbers here prove AI is sending high-intent researchers, not just random clicks.
                                     </li>
                                 </ul>
                             </Box>
@@ -160,6 +182,34 @@ export function ConversionDocumentation() {
                                     <li>
                                         <span className="text-[#F4604A] font-bold">Exit Page (Red Outline):</span>
                                         The final page they looked at before leaving your site (or converting). This is crucial for identifying drop-off holes in your funnel.
+                                    </li>
+                                    <li>
+                                        <span className="text-[#2ED47A] font-bold">Tree-Branch Visualization (CTA Tracking):</span>
+                                        When a user clicks a button (CTA) during their journey, it appears as a <span className="text-white">vertical branch</span> below the page they were on. This shows you exactly <span className="italic font-medium text-white">where</span> in their path they decided to take action.
+                                    </li>
+                                </ul>
+                            </Box>
+
+                            <Box sx={{ p: 4, borderRadius: '12px', bgcolor: 'rgba(56, 189, 248, 0.03)', border: '1px solid rgba(56, 189, 248, 0.1)' }}>
+                                <Typography level="h4" sx={{ color: 'white', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <HugeiconsIcon icon={MouseIcon} strokeWidth={2} className="size-5 text-[#38BDF8]" />
+                                    High-Intent Conversions (CTA Performance)
+                                </Typography>
+                                <Typography level="body-lg" sx={{ color: '#A2A7B4', mb: 3 }}>
+                                    This tracks the <span className="font-bold text-white">"Final Click"</span>—the ultimate goal of your marketing funnel.
+                                </Typography>
+                                <ul className="list-disc pl-6 space-y-3 text-[16px] text-[#A2A7B4]">
+                                    <li>
+                                        <span className="text-white font-medium">Qualified Leads:</span>
+                                        Visitors from AI engines represent "qualified intent." If they click a CTA, they are significantly more valuable than standard SEO traffic.
+                                    </li>
+                                    <li>
+                                        <span className="text-[#2ED47A] font-bold">Conversion Rate Calculation:</span>
+                                        We divide the <span className="text-white font-medium">unique sessions that clicked the button</span> by the <span className="text-white font-medium">total sessions that landed on that specific page</span> from that AI source.
+                                    </li>
+                                    <li>
+                                        <span className="text-white font-medium">Interpreting with the Journey:</span>
+                                        If you notice a high conversion rate on one page but an exit on another, use the <span className="font-bold text-white">Visitor Journeys</span> above to see if users are getting lost in between.
                                     </li>
                                 </ul>
                             </Box>

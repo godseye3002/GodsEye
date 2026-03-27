@@ -261,6 +261,8 @@ function OptimizePageContent() {
     setUserInfo,
     setUserCredits,
     adjustUserCredits,
+    refreshSubscription,
+    setSubscriptionAlert,
     userInfo,
     userCredits,
     setProcessedSources,
@@ -772,30 +774,9 @@ function OptimizePageContent() {
   }, [currentProductId, isAnalyzing, isScraping, isGeneratingQuery, optimizationAnalysis, googleOverviewAnalysis, generatedQuery, setOptimizationAnalysis, setGoogleOverviewAnalysis, setGeneratedQuery]);
 
   useEffect(() => {
-    const fetchCredits = async () => {
-      if (!user) return;
-      try {
-        const response = await fetch('/api/analyze/check-credits', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
-        });
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `Failed to fetch credits (${response.status})`);
-        }
-        const data = await response.json();
-        if (typeof data.currentCredits === 'number') {
-          setUserCredits(data.currentCredits);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user credits:', error);
-        // Don't block the app, just log the error
-      }
-    };
-
-    fetchCredits();
-  }, [user, setUserCredits]);
+    if (!user) return;
+    refreshSubscription(user.id);
+  }, [user, refreshSubscription]);
 
   const createProductRecord = (
     perplexityAnalysis: OptimizationAnalysis | null,
@@ -2195,34 +2176,43 @@ function OptimizePageContent() {
     // -----------------------------------------------------------------------
     if (!usePythonBackend) {
       try {
-        const creditCheckResponse = await fetch('/api/analyze/check-credits', {
+        const gateResponse = await fetch('/api/subscription/check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: user.id,
-            creditsRequired: totalRequiredCredits,
+            operation: 'run_analysis',
           }),
         });
 
-        if (!creditCheckResponse.ok) {
-          throw new Error('Failed to check credits');
+        if (!gateResponse.ok) {
+          throw new Error('Failed to check subscription limits');
         }
 
-        const creditCheckData = await creditCheckResponse.json();
+        const gateData = await gateResponse.json();
 
-        if (!creditCheckData.hasEnoughCredits) {
-          setServerError(
-            `Insufficient credits. Required: ${totalRequiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`
-          );
+        if (!gateData.allowed) {
+          const reason = gateData.reason;
+          const messages: Record<string, string> = {
+            trial_expired: 'Your free trial has expired. Please upgrade to continue.',
+            account_inactive: 'Your account is inactive. Please contact support.',
+            no_credits: `You have no credits left. Available: 0, Required: ${totalRequiredCredits}. Please upgrade your plan.`,
+            interaction_limit_reached: `You have reached your interaction limit (${gateData.current}/${gateData.limit}). Please upgrade your plan.`,
+          };
+          setSubscriptionAlert({
+            isOpen: true,
+            reason: reason,
+            message: messages[reason] || `Cannot run analysis: ${reason}`,
+          });
           return;
         }
-        if (typeof creditCheckData.currentCredits === 'number') {
-          setUserCredits(creditCheckData.currentCredits);
+        if (gateData.profile && typeof gateData.profile.credits === 'number') {
+          setUserCredits(gateData.profile.credits);
         }
-        console.log(`[Credit Check] Passed — required: ${totalRequiredCredits}, available: ${creditCheckData.currentCredits}`);
+        console.log(`[Subscription Check] Passed — tier: ${gateData.profile?.tier}, credits: ${gateData.profile?.credits}`);
       } catch (creditError) {
-        console.error('Credit check error:', creditError);
-        setServerError('Failed to verify credits. Please try again.');
+        console.error('Subscription check error:', creditError);
+        setServerError('Failed to verify subscription. Please try again.');
         return;
       }
     }
@@ -3095,34 +3085,44 @@ function OptimizePageContent() {
     // Update the current query for analysis (legacy: store first query)
     setGeneratedQuery(primaryQuery);
 
-    // 1) Check credits for this analysis (scaled by query count)
     const requiredCredits = queriesToRun.length;
     try {
-      const creditCheckResponse = await fetch('/api/analyze/check-credits', {
+      const gateResponse = await fetch('/api/subscription/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
-          creditsRequired: requiredCredits,
+          operation: 'run_analysis',
         }),
       });
 
-      if (!creditCheckResponse.ok) {
-        throw new Error('Failed to check credits');
+      if (!gateResponse.ok) {
+        throw new Error('Failed to check subscription limits');
       }
 
-      const creditCheckData = await creditCheckResponse.json();
+      const gateData = await gateResponse.json();
 
-      if (!creditCheckData.hasEnoughCredits) {
-        setServerError(`Insufficient credits. Required: ${requiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`);
+      if (!gateData.allowed) {
+        const reason = gateData.reason;
+        const messages: Record<string, string> = {
+          trial_expired: 'Your free trial has expired. Please upgrade to continue.',
+          account_inactive: 'Your account is inactive. Please contact support.',
+          no_credits: `Insufficient credits. Required: ${requiredCredits}, Available: ${gateData.profile?.credits ?? 0}. Please upgrade your plan.`,
+          interaction_limit_reached: `Interaction limit reached (${gateData.current}/${gateData.limit}). Please upgrade your plan.`,
+        };
+        setSubscriptionAlert({
+          isOpen: true,
+          reason: reason,
+          message: messages[reason] || `Cannot run analysis: ${reason}`,
+        });
         return;
       }
-      if (typeof creditCheckData.currentCredits === 'number') {
-        setUserCredits(creditCheckData.currentCredits);
+      if (gateData.profile && typeof gateData.profile.credits === 'number') {
+        setUserCredits(gateData.profile.credits);
       }
     } catch (creditError) {
-      console.error('Credit check error:', creditError);
-      setServerError('Failed to verify credits. Please try again.');
+      console.error('Subscription check error:', creditError);
+      setServerError('Failed to verify subscription. Please try again.');
       return;
     }
 
@@ -3634,34 +3634,45 @@ function OptimizePageContent() {
       return;
     }
 
-    // 1) Check credits for running both analyses (scaled by query count)
+    // 1) Check subscription limits for running combined analysis
     try {
       const requiredCredits = perplexityQueries.length + googleQueries.length;
-      const creditCheckResponse = await fetch('/api/analyze/check-credits', {
+      const gateResponse = await fetch('/api/subscription/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
-          creditsRequired: requiredCredits,
+          operation: 'run_analysis',
         }),
       });
 
-      if (!creditCheckResponse.ok) {
-        throw new Error('Failed to check credits');
+      if (!gateResponse.ok) {
+        throw new Error('Failed to check subscription limits');
       }
 
-      const creditCheckData = await creditCheckResponse.json();
+      const gateData = await gateResponse.json();
 
-      if (!creditCheckData.hasEnoughCredits) {
-        setServerError(`Insufficient credits for combined analysis. Required: ${requiredCredits}, Available: ${creditCheckData.currentCredits}. Please purchase more credits to continue.`);
+      if (!gateData.allowed) {
+        const reason = gateData.reason;
+        const messages: Record<string, string> = {
+          trial_expired: 'Your free trial has expired. Please upgrade to continue.',
+          account_inactive: 'Your account is inactive. Please contact support.',
+          no_credits: `Insufficient credits for combined analysis. Required: ${requiredCredits}, Available: ${gateData.profile?.credits ?? 0}. Please upgrade your plan.`,
+          interaction_limit_reached: `Interaction limit reached (${gateData.current}/${gateData.limit}). Please upgrade your plan.`,
+        };
+        setSubscriptionAlert({
+          isOpen: true,
+          reason: reason,
+          message: messages[reason] || `Cannot run analysis: ${reason}`,
+        });
         return;
       }
-      if (typeof creditCheckData.currentCredits === 'number') {
-        setUserCredits(creditCheckData.currentCredits);
+      if (gateData.profile && typeof gateData.profile.credits === 'number') {
+        setUserCredits(gateData.profile.credits);
       }
     } catch (creditError) {
-      console.error('Credit check error:', creditError);
-      setServerError('Failed to verify credits. Please try again.');
+      console.error('Subscription check error:', creditError);
+      setServerError('Failed to verify subscription. Please try again.');
       return;
     }
 
@@ -5954,21 +5965,49 @@ function OptimizePageContent() {
                       })}
                     </List>
                   ) : null}
-                  <Button
-                    type="button"
-                    onClick={handleDismissWarning}
-                    sx={{
-                      backgroundColor: accentColor,
-                      color: "#0D0F14",
-                      fontWeight: 600,
-                      px: 3,
-                      "&:hover": {
-                        backgroundColor: "#26B869",
-                      },
-                    }}
-                  >
-                    Got it, I'll review the form
-                  </Button>
+                  <Stack direction="row" spacing={1.5}>
+                    <Button
+                      type="button"
+                      variant="outlined"
+                      color="danger"
+                      onClick={() => {
+                        setIgnoredMissingFields((prev) => {
+                          const currentIgnored = Array.isArray(prev) ? prev : [];
+                          const next = Array.from(new Set([...currentIgnored, ...pendingMissingFields]));
+                          return next;
+                        });
+                        handleDismissWarning();
+                      }}
+                      sx={{
+                        flex: 1,
+                        borderColor: "rgba(243, 91, 100, 0.4)",
+                        color: "#F35B64",
+                        fontWeight: 600,
+                        "&:hover": {
+                          borderColor: "rgba(243, 91, 100, 0.6)",
+                          backgroundColor: "rgba(243, 91, 100, 0.08)",
+                        },
+                      }}
+                    >
+                      Ignore & Continue
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleDismissWarning}
+                      sx={{
+                        flex: 1,
+                        backgroundColor: accentColor,
+                        color: "#0D0F14",
+                        fontWeight: 600,
+                        px: 3,
+                        "&:hover": {
+                          backgroundColor: "#26B869",
+                        },
+                      }}
+                    >
+                      Got it, I'll review the form
+                    </Button>
+                  </Stack>
                 </Stack>
               </ModalDialog>
             </Modal>

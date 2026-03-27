@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Box, Typography, Card, IconButton, Tooltip, Modal, ModalDialog, ModalClose, Stack, Button, CircularProgress, Alert, Avatar, Chip } from "@mui/joy";
+import { Box, Typography, Card, IconButton, Tooltip, Modal, ModalDialog, ModalClose, Stack, Button, CircularProgress, Alert, Avatar, Chip, Switch } from "@mui/joy";
 import MenuIcon from "@mui/icons-material/Menu";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import WarningIcon from "@mui/icons-material/Warning";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
+import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import { useProductStore } from "../optimize/store";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -36,6 +37,9 @@ function ProductsPageContent() {
     deleteProductFromSupabase,
     setUserInfo,
     setUserCredits,
+    setSubscriptionAlert,
+    refreshSubscription,
+    toggleDailyTracker,
     userInfo,
     userCredits,
   } = useProductStore();
@@ -80,26 +84,9 @@ function ProductsPageContent() {
   }, []);
 
   useEffect(() => {
-    const fetchCredits = async () => {
-      if (!user) return;
-      try {
-        const response = await fetch('/api/analyze/check-credits', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: user.id }),
-        });
-        if (!response.ok) throw new Error('Failed to fetch credits');
-        const data = await response.json();
-        if (typeof data.currentCredits === 'number') {
-          setUserCredits(data.currentCredits);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user credits:', error);
-      }
-    };
-
-    fetchCredits();
-  }, [user, setUserCredits]);
+    if (!user) return;
+    refreshSubscription(user.id);
+  }, [user, refreshSubscription]);
 
   const userInitials = userInfo?.name
     ? userInfo.name
@@ -111,7 +98,39 @@ function ProductsPageContent() {
     : userInfo?.email?.[0]?.toUpperCase() || 'U';
 
   const handleAddProduct = async () => {
+    if (!user) return;
     setIsAddingProduct(true);
+
+    // Gate: check product creation limit
+    try {
+      const gateResponse = await fetch('/api/subscription/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, operation: 'create_product' }),
+      });
+      if (gateResponse.ok) {
+        const gateData = await gateResponse.json();
+        if (!gateData.allowed) {
+          const reason = gateData.reason;
+          const messages: Record<string, string> = {
+            trial_expired: 'Your free trial has expired. Please upgrade to continue.',
+            account_inactive: 'Your account is inactive. Please contact support.',
+            product_limit_reached: `Product limit reached (${gateData.current}/${gateData.limit}). Please upgrade your plan to add more products.`,
+          };
+          setSubscriptionAlert({
+            isOpen: true,
+            reason: reason,
+            message: messages[reason] || `Cannot create product: ${reason}`,
+          });
+          setIsAddingProduct(false);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Product gate check failed:', error);
+      // Don't block on gate failure — allow through
+    }
+
     resetForm();
     router.push("/optimize");
   };

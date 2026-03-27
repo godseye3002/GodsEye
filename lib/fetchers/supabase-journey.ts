@@ -5,6 +5,12 @@
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+export type CtaInteraction = {
+  cta_label: string;
+  page_path: string;
+  timestamp: string;
+};
+
 export type SupabaseJourneyRow = {
   user_id:          string;
   product_id:       string;
@@ -18,6 +24,7 @@ export type SupabaseJourneyRow = {
   session_start:    string;
   session_end:      string;
   duration_seconds: number;
+  clicked_ctas:     CtaInteraction[];
 };
 
 export async function fetchJourneyFromSupabase(

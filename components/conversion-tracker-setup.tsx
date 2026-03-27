@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Box, Card, Typography, Stack, Tabs, TabList, Tab, TabPanel, Button } from "@mui/joy";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { CodeCircleIcon, Copy01Icon, CheckmarkCircle01Icon, InformationCircleIcon } from "@hugeicons/core-free-icons";
+import { CodeCircleIcon, Copy01Icon, CheckmarkCircle01Icon, InformationCircleIcon, CursorIcon, TargetIcon } from "@hugeicons/core-free-icons";
 import { useAuth } from "@/lib/auth-context";
 import { useProductStore } from "@/app/optimize/store";
 
@@ -209,6 +209,49 @@ export function ConversionTrackerSetup() {
             </Stack>
           </TabPanel>
         </Tabs>
+
+        {/* New CTA Tracking Section */}
+        <Box sx={{ pt: 2, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <Stack spacing={3}>
+            <Box>
+              <Typography level="h4" sx={{ color: "#F2F5FA", fontWeight: 700, mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+                <Box
+                  sx={{
+                    p: 1,
+                    borderRadius: "10px",
+                    background: "linear-gradient(135deg, rgba(46, 212, 122, 0.15), rgba(46, 212, 122, 0.03))",
+                    border: "1px solid rgba(46, 212, 122, 0.25)",
+                    display: "flex",
+                  }}
+                >
+                  <HugeiconsIcon icon={TargetIcon} size={18} style={{ color: "#2ED47A" }} />
+                </Box>
+                Conversion (CTA) Tracking
+              </Typography>
+              <Typography level="body-sm" sx={{ color: "rgba(242, 245, 250, 0.6)" }}>
+                Track high-intent button clicks (like "Sign Up" or "Book Demo") by adding a simple attribute to your elements.
+              </Typography>
+            </Box>
+
+            <Box sx={{ p: 2.5, borderRadius: "16px", bgcolor: "rgba(46, 212, 122, 0.04)", border: "1px solid rgba(46, 212, 122, 0.12)" }}>
+              <Stack spacing={2}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={{ px: 1.25, py: 0.5, borderRadius: '6px', bgcolor: 'rgba(46, 212, 122, 0.2)', color: '#2ED47A', fontSize: '11px', fontWeight: 800, letterSpacing: '0.05em' }}>PRO TIP</Box>
+                  <Typography level="body-sm" sx={{ color: '#fff', fontWeight: 600 }}>Use descriptive labels</Typography>
+                </Box>
+                <Typography level="body-xs" sx={{ color: "rgba(242, 245, 250, 0.7)", lineHeight: 1.6 }}>
+                  Simply add the <code style={{ color: "#2ED47A", fontWeight: 700 }}>data-godseye-cta</code> attribute to any clickable element. The value you provide will appear as a branch in your Conversion Dashboard tree.
+                </Typography>
+                
+                <Box sx={{ ...codeBoxStyles, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  {`<button data-godseye-cta="Primary Signup">
+  Sign Up Now
+</button>`}
+                </Box>
+              </Stack>
+            </Box>
+          </Stack>
+        </Box>
       </Stack>
     </Card>
   );
