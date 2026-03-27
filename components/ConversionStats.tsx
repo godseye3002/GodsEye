@@ -149,7 +149,21 @@ export default function ConversionStats({
   const groupedJourneysMap = rawJourneys.reduce((acc, j) => {
     const pathSteps = j.path_array ?? j.journey?.split(" → ") ?? [];
     const normalizedPathKey = pathSteps.map(normalizePath).join(" → ");
-    const key = `${j.source}|||${normalizedPathKey}`;
+    
+    // Create a precise interaction key to avoid "CTA contamination" between different sessions
+    // We deduplicate contiguous identical interactions (same Page + same CTA) to handle double-clicks
+    const rawCtas = (j as any).clicked_ctas || [];
+    const dedupedCtas = rawCtas.filter((c: any, index: number) => {
+      if (index === 0) return true;
+      const prev = rawCtas[index - 1];
+      return c.cta_label !== prev.cta_label || normalizePath(c.page_path) !== normalizePath(prev.page_path);
+    });
+
+    const interactionKey = dedupedCtas.length > 0
+      ? dedupedCtas.map((c: any) => `${normalizePath(c.page_path)}:${c.cta_label}`).join(">>") 
+      : "no-cta";
+      
+    const key = `${j.source}|||${normalizedPathKey}|||${interactionKey}`;
 
     if (!acc[key]) {
       acc[key] = {
@@ -160,10 +174,10 @@ export default function ConversionStats({
       };
     }
     acc[key].count += 1;
-    // Accumulate CTA interactions from this specific session
-    const ctas = (j as any).clicked_ctas;
-    if (Array.isArray(ctas)) {
-      for (const c of ctas) {
+    
+    // Accumulate CTA interactions (they will be identical for everything in this group now)
+    if (acc[key].sessionCtas.length === 0 && dedupedCtas.length > 0) {
+      for (const c of dedupedCtas) {
         acc[key].sessionCtas.push({ cta_label: c.cta_label, page_path: c.page_path });
       }
     }
