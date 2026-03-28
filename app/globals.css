@@ -210,7 +210,9 @@ body {
 }
 
 @theme inline {
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-inter);
+  --font-array: var(--font-array);
+  --font-khand: var(--font-khand);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

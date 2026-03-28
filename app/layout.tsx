@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import Script from 'next/script';
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +15,25 @@ const inter = Inter({
   display: "swap",
 });
 
+const arrayFont = localFont({
+  src: [
+    { path: "./fonts/Array/Array-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/Array/Array-Bold.woff2", weight: "700", style: "normal" },
+    { path: "./fonts/Array/Array-BoldWide.woff2", weight: "800", style: "normal" },
+  ],
+  variable: "--font-array",
+});
+
+const khandFont = localFont({
+  src: [
+    { path: "./fonts/Khand/Khand-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/Khand/Khand-Medium.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/Khand/Khand-SemiBold.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/Khand/Khand-Bold.woff2", weight: "700", style: "normal" },
+  ],
+  variable: "--font-khand",
+});
+
 export const metadata: Metadata = {
   title: "GodsEye - AEO SaaS Platform",
   description: "AI Engine Optimization platform to help your products get discovered by AI search engines",
@@ -25,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn(inter.variable, "dark")} style={{ colorScheme: 'dark' }}>
+    <html lang="en" className={cn(inter.variable, arrayFont.variable, khandFont.variable, "dark")} style={{ colorScheme: 'dark' }} suppressHydrationWarning>
       <head>
         <meta name="emotion-insertion-point" content="" />
         <Script
