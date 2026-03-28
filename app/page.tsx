@@ -7,8 +7,9 @@ import { useAuth } from "@/lib/auth-context";
 import { testimonials } from "@/app/data/testimonials";
 import { TestimonialCarousel } from "@/components/TestimonialCarousel";
 import { motion, Variants } from "framer-motion";
-import SplineHeroBackground from "@/components/SplineHeroBackground";
 import { ScrambleText } from "@/components/ScrambleText";
+import HeroParticleBackground from "@/components/HeroParticleBackground";
+import InteractiveParticleLogo from "@/components/InteractiveParticleLogo";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -22,6 +23,7 @@ export default function LandingPage() {
   const shiftSectionRef = useRef<HTMLDivElement>(null);
   const shiftScenesRef = useRef<HTMLDivElement>(null);
   const shiftIndicatorRef = useRef<HTMLDivElement>(null);
+  const shiftLabelsRef = useRef<HTMLDivElement>(null);
   const gapCardsRef = useRef<HTMLDivElement>(null);
   const jobsRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -70,19 +72,20 @@ export default function LandingPage() {
     mm.add("(prefers-reduced-motion: no-preference)", () => {
       /* ── ACT 2: "The Shift" scrollytelling pin ── */
       if (shiftSectionRef.current && shiftScenesRef.current) {
-        const scenes = shiftScenesRef.current.querySelectorAll("[data-scene]");
+        const scenes = Array.from(shiftScenesRef.current.querySelectorAll("[data-scene]"));
+        const labels = shiftLabelsRef.current?.querySelectorAll("[data-scene-label]");
         const indicator = shiftIndicatorRef.current;
 
         const tl = gsap.timeline({
           scrollTrigger: {
             trigger: shiftSectionRef.current,
             start: "top top",
-            end: `+=${window.innerHeight * 3.5}`,
+            end: `+=${window.innerHeight * 4}`,
             pin: true,
             scrub: 1.5,
             snap: {
               snapTo: 1 / (scenes.length - 1),
-              duration: { min: 0.2, max: 0.6 },
+              duration: { min: 0.2, max: 0.8 },
               delay: 0.1,
               ease: "power2.inOut",
             },
@@ -90,21 +93,41 @@ export default function LandingPage() {
         });
 
         scenes.forEach((scene, i) => {
+          // Normalize initial states
           if (i === 0) {
-            gsap.set(scene, { opacity: 1, y: 0 });
+            gsap.set(scene, { opacity: 1, y: 0, scale: 1 });
           } else {
-            gsap.set(scene, { opacity: 0, y: 30 });
+            gsap.set(scene, { opacity: 0, y: 30, scale: 0.98 });
           }
 
           if (i > 0) {
             const pos = `scene${i}`;
-            // Fade out previous scene
-            tl.to(scenes[i - 1], { opacity: 0, y: -40, duration: 0.5 }, pos);
-            // Fade in current scene
-            tl.to(scene, { opacity: 1, y: 0, duration: 0.5 }, pos);
-            // Move indicator
+            
+            // 1. Fade OUT previous scene (Recede)
+            tl.to(scenes[i - 1], { 
+              opacity: 0, 
+              y: -30, 
+              scale: 0.97, 
+              duration: 0.5, 
+              ease: "power2.inOut" 
+            }, pos);
+
+            // 2. Fade IN current scene (Ascend)
+            tl.to(scene, { 
+              opacity: 1, 
+              y: 0, 
+              scale: 1, 
+              duration: 0.5, 
+              ease: "power2.inOut" 
+            }, pos);
+
+            // 3. Update Nav
             if (indicator) {
-              tl.to(indicator, { y: i * 56, duration: 0.5 }, pos);
+              tl.to(indicator, { y: i * 56, duration: 0.4, ease: "power2.inOut" }, pos);
+            }
+            if (labels && labels[i-1] && labels[i]) {
+              tl.to(labels[i-1], { color: "rgba(242, 245, 250, 0.55)", duration: 0.4 }, pos);
+              tl.to(labels[i], { color: "#F2F5FA", duration: 0.4 }, pos);
             }
           }
         });
@@ -377,8 +400,9 @@ export default function LandingPage() {
         justifyContent: "center",
         textAlign: "center",
         px: { xs: 2, md: 4 },
+        overflow: "hidden",
       }}>
-        <SplineHeroBackground />
+        <HeroParticleBackground />
 
         <motion.div
           variants={containerVariants}
@@ -400,14 +424,15 @@ export default function LandingPage() {
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               textShadow: "0 0 30px rgba(255,255,255,0.1)",
+              textAlign: "center",
             }}>
               <ScrambleText text="GodsEye" delay={0.5} duration={1.8} />
             </Typography>
           </motion.div>
 
-          {/* Headline */}
+          {/* Subheader and Mission */}
           <motion.div variants={itemVariants}>
-            <Typography level="h1" sx={{
+            <Typography sx={{
               fontSize: { xs: "1.25rem", md: "1.75rem" },
               fontWeight: 500, color: secondary, letterSpacing: "0.02em", lineHeight: 1.4, mb: 5,
               fontFamily: "var(--font-khand)",
@@ -501,7 +526,7 @@ export default function LandingPage() {
             <Box component="span" sx={{ color: accent, display: "block" }}>AI gets you chosen.</Box>
           </Typography>
 
-          <Box sx={{ position: "relative" }}>
+          <Box ref={shiftLabelsRef} sx={{ position: "relative" }}>
             {/* Active indicator */}
             <Box
               ref={shiftIndicatorRef}
@@ -509,16 +534,19 @@ export default function LandingPage() {
                 position: "absolute", left: 0, top: 0,
                 width: 3, height: 44, borderRadius: 4,
                 backgroundColor: accent,
-                transition: "none", /* GSAP controls this */
+                transition: "none",
               }}
             />
             {shiftScenes.map((scene, i) => (
               <Box key={i} sx={{ pl: 3, py: 1.5, mb: 0.5 }}>
-                <Typography sx={{
-                  color: i === 0 ? primary : secondary,
-                  fontWeight: 600, fontSize: "0.9rem",
-                  fontFamily: "var(--font-khand)",
-                }}>
+                <Typography 
+                  data-scene-label
+                  sx={{
+                    color: i === 0 ? primary : secondary,
+                    fontWeight: 600, fontSize: "0.9rem",
+                    fontFamily: "var(--font-khand)",
+                  }}
+                >
                   {scene.label}
                 </Typography>
               </Box>
@@ -539,6 +567,7 @@ export default function LandingPage() {
                 border: `1px solid ${col.borderColor}`,
                 borderRadius: "20px",
                 p: { xs: 3, md: 4 },
+                willChange: "transform, opacity",
               }}
             >
               <Typography level="title-md" sx={{ color: col.color, fontWeight: 700, mb: 2.5, fontFamily: "var(--font-khand)" }}>
