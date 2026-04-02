@@ -85,7 +85,7 @@ export function DashboardDocumentation() {
                                     <Typography level="title-md" sx={{ color: 'white' }}>Mentions</Typography>
                                 </Stack>
                                 <Typography level="body-sm" sx={{ color: '#A2A7B4', mb: 2 }}>
-                                    The <span style={{ color: '#fff' }}>total brand references found</span>, aggregated across all queries. This shows the raw volume of how often the AI talks about you.
+                                    The <span style={{ color: '#fff' }}>total brand references found</span> (including citation mentions), aggregated across all queries. This shows the raw volume of how often the AI talks about you.
                                 </Typography>
                                 <Chip size="sm" variant="soft" color="neutral" sx={{ color: '#8b5cf6', fontWeight: 600 }}>
                                     Story: Market Loudness

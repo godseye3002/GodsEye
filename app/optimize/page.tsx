@@ -7455,32 +7455,16 @@ function OptimizePageContent() {
                 <Stack spacing={2}>
                   {allPerplexityQueries.map((query, index) => {
                     return (
-                      <Card
+                      <Box
                         key={`perplexity-${index}`}
-                        variant="outlined"
                         sx={{
-                          p: 2.5,
-                          background: selectedPerplexityQueries.includes(query)
-                            ? "linear-gradient(135deg, rgba(46, 212, 122, 0.08), rgba(46, 212, 122, 0.03))"
-                            : "linear-gradient(135deg, rgba(17, 19, 24, 0.8), rgba(13, 15, 20, 0.9))",
-                          backdropFilter: "blur(8px)",
-                          border: selectedPerplexityQueries.includes(query)
-                            ? "1px solid rgba(46, 212, 122, 0.6)"
-                            : "1px solid rgba(46, 212, 122, 0.15)",
-                          borderRadius: "14px",
-                          boxShadow: selectedPerplexityQueries.includes(query)
-                            ? "0 4px 16px rgba(46, 212, 122, 0.15)"
-                            : "0 2px 8px rgba(0, 0, 0, 0.2)",
-                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                          "&:hover": {
-                            backgroundColor: "rgba(17, 19, 24, 0.9)",
-                            borderColor: "rgba(46, 212, 122, 0.4)",
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.3)",
-                          }
+                          p: 0.5,
+                          backgroundColor: "transparent",
+                          border: "none",
+                          transition: "all 0.2s ease",
                         }}
                       >
-                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                           <Checkbox
                             checked={selectedPerplexityQueries.includes(query) || usedPerplexityQueries.includes(query)}
                             disabled={usedPerplexityQueries.includes(query)}
@@ -7583,114 +7567,7 @@ function OptimizePageContent() {
                                     </Chip>
                                   )}
                                   {usedPerplexityQueries.includes(query) ? (() => {
-                                    const analyses = getAnalysesForQuery(query, 'perplexity');
-                                    const analysisCount = analyses.length;
-                                    const trend = getTrendIndicator(analyses);
-
-                                    return (
-                                      <Box sx={{ position: 'relative' }}>
-                                        <Tooltip title="View Perplexity analysis result" placement="top">
-                                          <Button
-                                            size="sm"
-                                            variant="outlined"
-                                            loading={loadingResultKey === `perplexity-${query}`}
-                                            disabled={loadingResultKey === `perplexity-${query}`}
-                                            onClick={() => handleViewAnalysisResult(query, 'perplexity')}
-                                            onContextMenu={handleResultMenuOpen}
-                                            sx={{
-                                              minWidth: analysisCount > 1 ? 110 : 90,
-                                              borderColor: "rgba(46, 212, 122, 0.3)",
-                                              color: "#2ED47A",
-                                              fontWeight: 600,
-                                              fontSize: "0.75rem",
-                                              position: 'relative',
-                                              boxShadow: analysisCount > 1 ? '0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.1)' : 'none',
-                                              "&:hover": {
-                                                backgroundColor: "rgba(46, 212, 122, 0.1)",
-                                                borderColor: "rgba(46, 212, 122, 0.5)",
-                                              },
-                                            }}
-                                          >
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                              <Typography sx={{ fontSize: '0.75rem' }}>
-                                                📄 Result
-                                              </Typography>
-                                              {analysisCount > 1 && (
-                                                <Chip
-                                                  size="sm"
-                                                  variant="solid"
-                                                  sx={{
-                                                    ml: 0.5,
-                                                    backgroundColor: "rgba(46, 212, 122, 0.2)",
-                                                    color: "#2ED47A",
-                                                    fontSize: "0.7rem",
-                                                    fontWeight: 600,
-                                                    minWidth: 20,
-                                                    height: 20,
-                                                    borderRadius: '10px',
-                                                  }}
-                                                >
-                                                  {analysisCount}
-                                                </Chip>
-                                              )}
-                                              {trend && (
-                                                <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#2ED47A' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
-                                                  {trend.icon}
-                                                </Typography>
-                                              )}
-                                            </Box>
-                                          </Button>
-                                        </Tooltip>
-                                        {analysisCount > 1 && (
-                                          <Menu
-                                            anchorEl={resultMenuAnchor}
-                                            open={Boolean(resultMenuAnchor)}
-                                            onClose={handleResultMenuClose}
-                                            sx={{
-                                              '& .MuiList-root': {
-                                                py: 0.5,
-                                              },
-                                            }}
-                                          >
-                                            <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                              <Typography level="title-sm" sx={{ color: '#2ED47A', fontWeight: 600 }}>
-                                                Analysis History
-                                              </Typography>
-                                            </Box>
-                                            {analyses.map((analysis: any, index: number) => (
-                                              <MenuItem
-                                                key={analysis.id}
-                                                onClick={() => handleViewAnalysisById(analysis.id, 'perplexity')}
-                                                sx={{
-                                                  py: 0.75,
-                                                  px: 1.5,
-                                                  display: 'flex',
-                                                  justifyContent: 'space-between',
-                                                  alignItems: 'center',
-                                                  '&:hover': {
-                                                    backgroundColor: 'rgba(46, 212, 122, 0.1)',
-                                                  },
-                                                }}
-                                              >
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                  <Typography level="body-sm" sx={{ fontSize: '0.8rem' }}>
-                                                    {index === 0 ? 'Latest' : index === 1 ? 'v2' : `v${index + 1}`}
-                                                  </Typography>
-                                                  {index === 0 && trend && (
-                                                    <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#2ED47A' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
-                                                      {trend.icon}
-                                                    </Typography>
-                                                  )}
-                                                </Box>
-                                                <Typography level="body-sm" sx={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                                                  {formatRelativeTime(analysis.created_at)}
-                                                </Typography>
-                                              </MenuItem>
-                                            ))}
-                                          </Menu>
-                                        )}
-                                      </Box>
-                                    );
+                                    return null;
                                   })() : (
                                     <Tooltip title="Edit query" placement="top">
                                       <IconButton
@@ -7715,7 +7592,7 @@ function OptimizePageContent() {
                             )}
                           </Box>
                         </Box>
-                      </Card>
+                      </Box>
                     );
                   })}
                 </Stack>
@@ -7745,32 +7622,16 @@ function OptimizePageContent() {
                 <Stack spacing={2}>
                   {allGoogleQueries.map((query, index) => {
                     return (
-                      <Card
+                      <Box
                         key={`google-${index}`}
-                        variant="outlined"
                         sx={{
-                          p: 2.5,
-                          background: selectedGoogleQueries.includes(query)
-                            ? "linear-gradient(135deg, rgba(46, 212, 122, 0.08), rgba(46, 212, 122, 0.03))"
-                            : "linear-gradient(135deg, rgba(17, 19, 24, 0.8), rgba(13, 15, 20, 0.9))",
-                          backdropFilter: "blur(8px)",
-                          border: selectedGoogleQueries.includes(query)
-                            ? "1px solid rgba(46, 212, 122, 0.6)"
-                            : "1px solid rgba(46, 212, 122, 0.15)",
-                          borderRadius: "14px",
-                          boxShadow: selectedGoogleQueries.includes(query)
-                            ? "0 4px 16px rgba(46, 212, 122, 0.15)"
-                            : "0 2px 8px rgba(0, 0, 0, 0.2)",
-                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                          "&:hover": {
-                            backgroundColor: "rgba(17, 19, 24, 0.9)",
-                            borderColor: "rgba(46, 212, 122, 0.4)",
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.3)",
-                          }
+                          p: 0.5,
+                          backgroundColor: "transparent",
+                          border: "none",
+                          transition: "all 0.2s ease",
                         }}
                       >
-                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                           <Checkbox
                             checked={selectedGoogleQueries.includes(query) || usedGoogleQueries.includes(query)}
                             disabled={usedGoogleQueries.includes(query)}
@@ -7897,114 +7758,7 @@ function OptimizePageContent() {
                                     </Chip>
                                   )}
                                   {usedGoogleQueries.includes(query) ? (() => {
-                                    const analyses = getAnalysesForQuery(query, 'google_overview');
-                                    const analysisCount = analyses.length;
-                                    const trend = getTrendIndicator(analyses);
-
-                                    return (
-                                      <Box sx={{ position: 'relative' }}>
-                                        <Tooltip title="View Google AI Overview analysis result" placement="top">
-                                          <Button
-                                            size="sm"
-                                            variant="outlined"
-                                            loading={loadingResultKey === `google_overview-${query}`}
-                                            disabled={loadingResultKey === `google_overview-${query}`}
-                                            onClick={() => handleViewAnalysisResult(query, 'google_overview')}
-                                            onContextMenu={handleResultMenuOpen}
-                                            sx={{
-                                              minWidth: analysisCount > 1 ? 110 : 90,
-                                              borderColor: "rgba(66, 133, 244, 0.3)",
-                                              color: "#4285F4",
-                                              fontWeight: 600,
-                                              fontSize: "0.75rem",
-                                              position: 'relative',
-                                              boxShadow: analysisCount > 1 ? '0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.1)' : 'none',
-                                              "&:hover": {
-                                                backgroundColor: "rgba(66, 133, 244, 0.1)",
-                                                borderColor: "rgba(66, 133, 244, 0.5)",
-                                              },
-                                            }}
-                                          >
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                              <Typography sx={{ fontSize: '0.75rem' }}>
-                                                🌐 Result
-                                              </Typography>
-                                              {analysisCount > 1 && (
-                                                <Chip
-                                                  size="sm"
-                                                  variant="solid"
-                                                  sx={{
-                                                    ml: 0.5,
-                                                    backgroundColor: "rgba(66, 133, 244, 0.2)",
-                                                    color: "#4285F4",
-                                                    fontSize: "0.7rem",
-                                                    fontWeight: 600,
-                                                    minWidth: 20,
-                                                    height: 20,
-                                                    borderRadius: '10px',
-                                                  }}
-                                                >
-                                                  {analysisCount}
-                                                </Chip>
-                                              )}
-                                              {trend && (
-                                                <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#4285F4' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
-                                                  {trend.icon}
-                                                </Typography>
-                                              )}
-                                            </Box>
-                                          </Button>
-                                        </Tooltip>
-                                        {analysisCount > 1 && (
-                                          <Menu
-                                            anchorEl={resultMenuAnchor}
-                                            open={Boolean(resultMenuAnchor)}
-                                            onClose={handleResultMenuClose}
-                                            sx={{
-                                              '& .MuiList-root': {
-                                                py: 0.5,
-                                              },
-                                            }}
-                                          >
-                                            <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                              <Typography level="title-sm" sx={{ color: '#4285F4', fontWeight: 600 }}>
-                                                Analysis History
-                                              </Typography>
-                                            </Box>
-                                            {analyses.map((analysis: any, index: number) => (
-                                              <MenuItem
-                                                key={analysis.id}
-                                                onClick={() => handleViewAnalysisById(analysis.id, 'google_overview')}
-                                                sx={{
-                                                  py: 0.75,
-                                                  px: 1.5,
-                                                  display: 'flex',
-                                                  justifyContent: 'space-between',
-                                                  alignItems: 'center',
-                                                  '&:hover': {
-                                                    backgroundColor: 'rgba(66, 133, 244, 0.1)',
-                                                  },
-                                                }}
-                                              >
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                  <Typography level="body-sm" sx={{ fontSize: '0.8rem' }}>
-                                                    {index === 0 ? 'Latest' : index === 1 ? 'v2' : `v${index + 1}`}
-                                                  </Typography>
-                                                  {index === 0 && trend && (
-                                                    <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#4285F4' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
-                                                      {trend.icon}
-                                                    </Typography>
-                                                  )}
-                                                </Box>
-                                                <Typography level="body-sm" sx={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                                                  {formatRelativeTime(analysis.created_at)}
-                                                </Typography>
-                                              </MenuItem>
-                                            ))}
-                                          </Menu>
-                                        )}
-                                      </Box>
-                                    );
+                                    return null;
                                   })() : (
                                     <Tooltip title="Edit query (minimum 6 words for AI Overview)" placement="top">
                                       <IconButton
@@ -8029,7 +7783,7 @@ function OptimizePageContent() {
                             )}
                           </Box>
                         </Box>
-                      </Card>
+                      </Box>
                     );
                   })}
                 </Stack>
@@ -8125,32 +7879,16 @@ function OptimizePageContent() {
                 <Stack spacing={2}>
                   {allChatgptQueries.map((query, index) => {
                     return (
-                      <Card
+                      <Box
                         key={`chatgpt-${index}`}
-                        variant="outlined"
                         sx={{
-                          p: 2.5,
-                          background: selectedChatgptQueries.includes(query)
-                            ? "linear-gradient(135deg, rgba(46, 212, 122, 0.08), rgba(46, 212, 122, 0.03))"
-                            : "linear-gradient(135deg, rgba(17, 19, 24, 0.8), rgba(13, 15, 20, 0.9))",
-                          backdropFilter: "blur(8px)",
-                          border: selectedChatgptQueries.includes(query)
-                            ? "1px solid rgba(46, 212, 122, 0.6)"
-                            : "1px solid rgba(46, 212, 122, 0.15)",
-                          borderRadius: "14px",
-                          boxShadow: selectedChatgptQueries.includes(query)
-                            ? "0 4px 16px rgba(46, 212, 122, 0.15)"
-                            : "0 2px 8px rgba(0, 0, 0, 0.2)",
-                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                          "&:hover": {
-                            backgroundColor: "rgba(17, 19, 24, 0.9)",
-                            borderColor: "rgba(46, 212, 122, 0.4)",
-                            transform: "translateY(-2px)",
-                            boxShadow: "0 6px 20px rgba(0, 0, 0, 0.3)",
-                          }
+                          p: 0.5,
+                          backgroundColor: "transparent",
+                          border: "none",
+                          transition: "all 0.2s ease",
                         }}
                       >
-                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                           <Checkbox
                             checked={selectedChatgptQueries.includes(query) || usedChatgptQueries.includes(query)}
                             disabled={usedChatgptQueries.includes(query)}
@@ -8253,114 +7991,7 @@ function OptimizePageContent() {
                                     </Chip>
                                   )}
                                   {usedChatgptQueries.includes(query) ? (() => {
-                                    const analyses = getAnalysesForQuery(query, 'chatgpt');
-                                    const analysisCount = analyses.length;
-                                    const trend = getTrendIndicator(analyses);
-
-                                    return (
-                                      <Box sx={{ position: 'relative' }}>
-                                        <Tooltip title="View ChatGPT analysis result" placement="top">
-                                          <Button
-                                            size="sm"
-                                            variant="outlined"
-                                            loading={loadingResultKey === `chatgpt-${query}`}
-                                            disabled={loadingResultKey === `chatgpt-${query}`}
-                                            onClick={() => handleViewAnalysisResult(query, 'chatgpt')}
-                                            onContextMenu={handleResultMenuOpen}
-                                            sx={{
-                                              minWidth: analysisCount > 1 ? 110 : 90,
-                                              borderColor: "rgba(46, 212, 122, 0.3)",
-                                              color: "#2ED47A",
-                                              fontWeight: 600,
-                                              fontSize: "0.75rem",
-                                              position: 'relative',
-                                              boxShadow: analysisCount > 1 ? '0 2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.1)' : 'none',
-                                              "&:hover": {
-                                                backgroundColor: "rgba(46, 212, 122, 0.1)",
-                                                borderColor: "rgba(46, 212, 122, 0.5)",
-                                              },
-                                            }}
-                                          >
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                              <Typography sx={{ fontSize: '0.75rem' }}>
-                                                📄 Result
-                                              </Typography>
-                                              {analysisCount > 1 && (
-                                                <Chip
-                                                  size="sm"
-                                                  variant="solid"
-                                                  sx={{
-                                                    ml: 0.5,
-                                                    backgroundColor: "rgba(46, 212, 122, 0.2)",
-                                                    color: "#2ED47A",
-                                                    fontSize: "0.7rem",
-                                                    fontWeight: 600,
-                                                    minWidth: 20,
-                                                    height: 20,
-                                                    borderRadius: '10px',
-                                                  }}
-                                                >
-                                                  {analysisCount}
-                                                </Chip>
-                                              )}
-                                              {trend && (
-                                                <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#2ED47A' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
-                                                  {trend.icon}
-                                                </Typography>
-                                              )}
-                                            </Box>
-                                          </Button>
-                                        </Tooltip>
-                                        {analysisCount > 1 && (
-                                          <Menu
-                                            anchorEl={resultMenuAnchor}
-                                            open={Boolean(resultMenuAnchor)}
-                                            onClose={handleResultMenuClose}
-                                            sx={{
-                                              '& .MuiList-root': {
-                                                py: 0.5,
-                                              },
-                                            }}
-                                          >
-                                            <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                              <Typography level="title-sm" sx={{ color: '#2ED47A', fontWeight: 600 }}>
-                                                Analysis History
-                                              </Typography>
-                                            </Box>
-                                            {analyses.map((analysis: any, index: number) => (
-                                              <MenuItem
-                                                key={analysis.id}
-                                                onClick={() => handleViewAnalysisById(analysis.id, 'chatgpt')}
-                                                sx={{
-                                                  py: 0.75,
-                                                  px: 1.5,
-                                                  display: 'flex',
-                                                  justifyContent: 'space-between',
-                                                  alignItems: 'center',
-                                                  '&:hover': {
-                                                    backgroundColor: 'rgba(46, 212, 122, 0.1)',
-                                                  },
-                                                }}
-                                              >
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                  <Typography level="body-sm" sx={{ fontSize: '0.8rem' }}>
-                                                    {index === 0 ? 'Latest' : index === 1 ? 'v2' : `v${index + 1}`}
-                                                  </Typography>
-                                                  {index === 0 && trend && (
-                                                    <Typography sx={{ fontSize: '0.8rem', color: trend.direction === 'up' ? '#2ED47A' : trend.direction === 'down' ? '#F35B64' : '#6c757d' }}>
-                                                      {trend.icon}
-                                                    </Typography>
-                                                  )}
-                                                </Box>
-                                                <Typography level="body-sm" sx={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                                                  {formatRelativeTime(analysis.created_at)}
-                                                </Typography>
-                                              </MenuItem>
-                                            ))}
-                                          </Menu>
-                                        )}
-                                      </Box>
-                                    );
+                                    return null;
                                   })() : (
                                     <Tooltip title="Edit query" placement="top">
                                       <IconButton
@@ -8385,7 +8016,7 @@ function OptimizePageContent() {
                             )}
                           </Box>
                         </Box>
-                      </Card>
+                      </Box>
                     );
                   })}
                 </Stack>

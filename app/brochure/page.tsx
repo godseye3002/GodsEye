@@ -3,6 +3,7 @@
 import { Box, Container, Stack, Typography, Card, Divider, Button, Chip } from "@mui/joy";
 import { testimonials } from "@/app/data/testimonials";
 import { TestimonialCarousel } from "@/components/TestimonialCarousel";
+import ReactMarkdown from "react-markdown";
 
 export default function BrochurePage() {
     const accent = "#2ED47A";
@@ -224,11 +225,11 @@ export default function BrochurePage() {
                         },
                         {
                             num: "04",
-                            title: "Your Fix Plan, Delivered",
+                            title: "Professional GEO Analyst via MCP",
                             color: "#FBBF24",
                             bg: "rgba(251,191,36,0.07)",
                             bdr: "rgba(251,191,36,0.2)",
-                            body: "After the audit, you get a prioritized action plan. Which pages to update. Which sections to rewrite. Which schema to add. Your developer can implement in hours, not weeks. We also plug directly into your team's workflow so nothing gets lost.",
+                            body: "After tracking is done, the **GodsEye MCP Agent** turns your developer workflow into a strategic hub. Using MCP with **Claude AI** gives you a professional **GEO Analyst** who tells you exactly what to do to improve visibility. It plugs directly into your IDE, allowing your team to implement fixes instantly with an AI co-pilot that understands your conversion goals and writes the optimized code on the spot.",
                         },
                         {
                             num: "05",
@@ -250,10 +251,24 @@ export default function BrochurePage() {
                                 }}>{item.num}</Box>
                                 <Box>
                                     <Typography level="title-lg" sx={{ color: item.color, fontWeight: 700, mb: 1 }}>{item.title}</Typography>
-                                    <Typography level="body-md" sx={{ color: secondary, lineHeight: 1.75 }}>{item.body}</Typography>
+                                    <Typography level="body-md" component="div" sx={{ 
+                                        color: secondary, 
+                                        lineHeight: 1.75,
+                                        '& p': { m: 0 },
+                                        '& strong': { color: primary, fontWeight: 600 }
+                                    }}>
+                                        <ReactMarkdown>{item.body}</ReactMarkdown>
+                                    </Typography>
                                     {item.highlight && (
-                                        <Typography level="body-md" sx={{ color: primary, fontWeight: 600, mt: 1.5, lineHeight: 1.7 }}>
-                                            {item.highlight}
+                                        <Typography level="body-md" component="div" sx={{ 
+                                            color: primary, 
+                                            fontWeight: 600, 
+                                            mt: 1.5, 
+                                            lineHeight: 1.7,
+                                            '& p': { m: 0 },
+                                            '& strong': { color: accent, fontWeight: 700 }
+                                        }}>
+                                            <ReactMarkdown>{item.highlight}</ReactMarkdown>
                                         </Typography>
                                     )}
                                 </Box>

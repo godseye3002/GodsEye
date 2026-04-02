@@ -77,8 +77,8 @@ You get a ranked, specific action list:
 
 Nothing vague. Everything is implementable.
 
-**Step 4 — Execute in Workflow**
-GodsEye plugs directly into your team's workflow. It’s like giving your developer an AI co-pilot that knows your strategy. (This allows your tech team to fix things instantly inside their coding environment).
+**Step 4 — GodsEye MCP Agent**
+GodsEye doesn't just show you the data—it lives where your development happens. Our **GodsEye MCP Agent** plugs directly into your team's existing developer environment (IDE). When used with **Claude AI**, it acts as a **professional GEO Analyst** who tells you exactly what to do to improve visibility. It takes the specific "visibility fix list" and allows your developers to implement changes instantly, with an AI co-pilot that already knows exactly what needs and how to optimize it for AI search engines.
 
 **Step 5 — Re-Audit & Track Progress**
 Once changes go live, we re-run the audit for the same queries. You see movement in your visibility score and AI Presence Score over time. You know what worked.

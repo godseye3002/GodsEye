@@ -106,8 +106,8 @@ export function SectionCards({ data }: { data: TopCardsData | null }) {
           <div className="line-clamp-1 flex gap-2 font-medium">
             Total brand references found
           </div>
-          <div className="text-muted-foreground">
-            Aggregated across all queries
+          <div className="text-muted-foreground leading-tight">
+            Total across all queries (incl. citations)
           </div>
         </CardFooter>
       </Card>

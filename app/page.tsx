@@ -12,6 +12,7 @@ import HeroParticleBackground from "@/components/HeroParticleBackground";
 import InteractiveParticleLogo from "@/components/InteractiveParticleLogo";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import ReactMarkdown from "react-markdown";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -334,6 +335,12 @@ export default function LandingPage() {
       title: "Track Real Conversions",
       body: "Add one script tag to your site. From that moment, every AI-referred visitor, every page they visit, and every button they click is tracked and attributed.",
       color: accent,
+    },
+    {
+      step: "04",
+      title: "Analyze & Fix with MCP",
+      body: "Use the **GodsEye MCP Agent** with **Claude AI** for a professional **GEO Analyst** experience. It plugs into your IDE to help your team implement optimized fixes instantly.",
+      color: "#FBBF24",
     },
   ];
 
@@ -780,27 +787,35 @@ export default function LandingPage() {
             <Box ref={timelineLineRef} sx={{ position: "absolute", top: "50%", left: 0, right: 0, height: 2, bgcolor: accent, borderRadius: 2 }} />
           </Box>
 
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 3 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4, 1fr)" }, gap: 2.5 }}>
             {timelineSteps.map((item) => (
               <Box
                 key={item.step}
                 data-timeline-step
                 sx={{
-                  p: { xs: 3, md: 4 }, borderRadius: "20px",
+                  p: { xs: 3, md: 3.5 }, borderRadius: "20px",
                   bgcolor: cardBg, border: `1px solid ${border}`,
                   position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
                   "&:hover": { borderColor: `${item.color}44`, transform: "translateY(-4px)" },
                   transition: "border-color 0.3s cubic-bezier(0.23, 1, 0.32, 1), transform 0.3s cubic-bezier(0.23, 1, 0.32, 1)",
                 }}
               >
-                <Typography sx={{ color: `${item.color}22`, fontWeight: 900, fontSize: "4rem", lineHeight: 1, mb: 2, fontStyle: "italic" }}>
+                <Typography sx={{ color: `${item.color}22`, fontWeight: 900, fontSize: "3.5rem", lineHeight: 1, mb: 1.5, fontStyle: "italic" }}>
                   {item.step}
                 </Typography>
-                <Typography level="h4" sx={{ color: primary, fontWeight: 700, mb: 1.5, fontSize: "1.2rem", fontFamily: "var(--font-khand)" }}>
+                <Typography level="h4" sx={{ color: primary, fontWeight: 700, mb: 1.2, fontSize: "1.15rem", fontFamily: "var(--font-khand)" }}>
                   {item.title}
                 </Typography>
-                <Typography level="body-md" sx={{ color: secondary, lineHeight: 1.7 }}>
-                  {item.body}
+                <Typography level="body-md" component="div" sx={{ 
+                  color: secondary, 
+                  lineHeight: 1.6,
+                  fontSize: "0.95rem",
+                  '& p': { m: 0 },
+                  '& strong': { color: primary, fontWeight: 600 }
+                }}>
+                  <ReactMarkdown>{item.body}</ReactMarkdown>
                 </Typography>
               </Box>
             ))}

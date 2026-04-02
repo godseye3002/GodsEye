@@ -1123,24 +1123,16 @@ export function DashboardQueryBatchesCard() {
                 <Stack spacing={2}>
                   {allPerplexityQueries.map((query, index) => {
                     return (
-                      <Card
+                      <Box
                         key={`perplexity-${index}`}
-                        variant="outlined"
                         sx={{
-                          p: 2,
-                          backgroundColor: "rgba(17, 19, 24, 0.4)",
-                          backdropFilter: "blur(6px)",
-                          borderRadius: "12px",
-                          border: selectedPerplexityQueries.includes(query)
-                            ? "2px solid rgba(46, 212, 122, 0.6)"
-                            : "1px solid rgba(46, 212, 122, 0.15)",
+                          p: 0.5,
+                          backgroundColor: "transparent",
+                          border: "none",
                           transition: "all 0.2s ease",
-                          "&:hover": {
-                            backgroundColor: "rgba(17, 19, 24, 0.55)",
-                          }
                         }}
                       >
-                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                           <Checkbox
                             checked={
                               selectedPerplexityQueries.includes(query) || usedPerplexityQueries.includes(query)
@@ -1251,7 +1243,7 @@ export function DashboardQueryBatchesCard() {
                                     const analysisCount = analyses.length;
                                     const trend = getTrendIndicator(analyses);
 
-                                    return (
+                                    return null; /* (
                                       <Box sx={{ position: "relative" }}>
                                         <Tooltip title="View Perplexity analysis result" placement="top">
                                           <Button
@@ -1395,7 +1387,7 @@ export function DashboardQueryBatchesCard() {
                                           </Menu>
                                         )}
                                       </Box>
-                                    );
+                                    ); */
                                   })() : (
                                     <Tooltip title="Edit query" placement="top">
                                       <IconButton
@@ -1420,7 +1412,7 @@ export function DashboardQueryBatchesCard() {
                             )}
                           </Box>
                         </Box>
-                      </Card>
+                      </Box>
                     );
                   })}
                 </Stack>
@@ -1444,19 +1436,16 @@ export function DashboardQueryBatchesCard() {
                 <Stack spacing={2}>
                   {allGoogleQueries.map((query, index) => {
                     return (
-                      <Card
+                      <Box
                         key={`google-${index}`}
-                        variant="outlined"
                         sx={{
-                          p: 2,
-                          backgroundColor: "rgba(17, 19, 24, 0.6)",
-                          border: selectedGoogleQueries.includes(query)
-                            ? "2px solid rgba(46, 212, 122, 0.5)"
-                            : "1px solid rgba(46, 212, 122, 0.2)",
+                          p: 0.5,
+                          backgroundColor: "transparent",
+                          border: "none",
                           transition: "all 0.2s ease",
                         }}
                       >
-                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                           <Checkbox
                             checked={selectedGoogleQueries.includes(query) || usedGoogleQueries.includes(query)}
                             disabled={usedGoogleQueries.includes(query)}
@@ -1606,7 +1595,7 @@ export function DashboardQueryBatchesCard() {
                                     const analysisCount = analyses.length;
                                     const trend = getTrendIndicator(analyses);
 
-                                    return (
+                                    return null; /* (
                                       <Box sx={{ position: "relative" }}>
                                         <Tooltip title="View Google AI Overview analysis result" placement="top">
                                           <Button
@@ -1750,7 +1739,7 @@ export function DashboardQueryBatchesCard() {
                                           </Menu>
                                         )}
                                       </Box>
-                                    );
+                                    ); */
                                   })() : (
                                     <Tooltip title="Edit query (minimum 6 words for AI Overview)" placement="top">
                                       <IconButton
@@ -1775,7 +1764,7 @@ export function DashboardQueryBatchesCard() {
                             )}
                           </Box>
                         </Box>
-                      </Card>
+                      </Box>
                     );
                   })}
                 </Stack>
@@ -1855,19 +1844,16 @@ export function DashboardQueryBatchesCard() {
                 <Stack spacing={2}>
                   {allChatgptQueries.map((query, index) => {
                     return (
-                      <Card
+                      <Box
                         key={`chatgpt-${index}`}
-                        variant="outlined"
                         sx={{
-                          p: 2,
-                          backgroundColor: "rgba(17, 19, 24, 0.6)",
-                          border: selectedChatgptQueries.includes(query)
-                            ? "2px solid rgba(46, 212, 122, 0.5)"
-                            : "1px solid rgba(46, 212, 122, 0.2)",
+                          p: 0.5,
+                          backgroundColor: "transparent",
+                          border: "none",
                           transition: "all 0.2s ease",
                         }}
                       >
-                        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                           <Checkbox
                             checked={selectedChatgptQueries.includes(query) || usedChatgptQueries.includes(query)}
                             disabled={usedChatgptQueries.includes(query)}
@@ -1976,7 +1962,7 @@ export function DashboardQueryBatchesCard() {
                                     const analysisCount = analyses.length;
                                     const trend = getTrendIndicator(analyses);
 
-                                    return (
+                                    return null; /* (
                                       <Box sx={{ position: "relative" }}>
                                         <Tooltip title="View ChatGPT analysis result" placement="top">
                                           <Button
@@ -2120,7 +2106,7 @@ export function DashboardQueryBatchesCard() {
                                           </Menu>
                                         )}
                                       </Box>
-                                    );
+                                    ); */
                                   })() : (
                                     <Tooltip title="Edit query" placement="top">
                                       <IconButton
@@ -2145,7 +2131,7 @@ export function DashboardQueryBatchesCard() {
                             )}
                           </Box>
                         </Box>
-                      </Card>
+                      </Box>
                     );
                   })}
                 </Stack>
