@@ -57,8 +57,17 @@ export async function GET(request: Request) {
             .limit(1)
             .single();
 
+        // Helper to safely parse strings or numbers from the database
+        const parseNumber = (v: any): number | null => {
+            if (v === null || v === undefined || v === '') return null;
+            const parsed = typeof v === 'number' ? v : parseFloat(String(v));
+            return isNaN(parsed) ? null : parsed;
+        };
+
         // Calculate trends (percentage change)
-        const calculateTrend = (current: number | null, previous: number | null): number | null => {
+        const calculateTrend = (currentVal: any, previousVal: any): number | null => {
+            const current = parseNumber(currentVal);
+            const previous = parseNumber(previousVal);
             if (current === null || previous === null || previous === 0) {
                 return null;
             }
@@ -89,21 +98,28 @@ export async function GET(request: Request) {
         const getBest = (key: string) => {
             if (!allSnapshots || allSnapshots.length === 0) return null;
             const values = allSnapshots
-                .map((s: any) => s[key])
-                .filter((v: any) => typeof v === 'number');
+                .map((s: any) => parseNumber(s[key]))
+                .filter((v: number | null): v is number => v !== null);
             return values.length > 0 ? Math.max(...values) : null;
         };
 
         const responseData = {
             ...currentSnapshot,
+            brand_coverage: parseNumber(currentSnapshot.brand_coverage),
+            total_mentions: parseNumber(currentSnapshot.total_mentions),
+            visibility_rate: parseNumber(currentSnapshot.visibility_rate),
+            global_sov_score: parseNumber(currentSnapshot.global_sov_score),
+            citation_score: parseNumber(currentSnapshot.citation_score),
+            avg_dominance_rate: parseNumber(currentSnapshot.avg_dominance_rate),
+            avg_conversion_probability: parseNumber(currentSnapshot.avg_conversion_probability),
             ...trends,
-            prev_brand_coverage: previousSnapshot?.brand_coverage ?? null,
-            prev_total_mentions: previousSnapshot?.total_mentions ?? null,
-            prev_visibility_rate: previousSnapshot?.visibility_rate ?? null,
-            prev_global_sov_score: previousSnapshot?.global_sov_score ?? null,
-            prev_citation_score: previousSnapshot?.citation_score ?? null,
-            prev_avg_dominance_rate: previousSnapshot?.avg_dominance_rate ?? null,
-            prev_avg_conversion_probability: previousSnapshot?.avg_conversion_probability ?? null,
+            prev_brand_coverage: parseNumber(previousSnapshot?.brand_coverage),
+            prev_total_mentions: parseNumber(previousSnapshot?.total_mentions),
+            prev_visibility_rate: parseNumber(previousSnapshot?.visibility_rate),
+            prev_global_sov_score: parseNumber(previousSnapshot?.global_sov_score),
+            prev_citation_score: parseNumber(previousSnapshot?.citation_score),
+            prev_avg_dominance_rate: parseNumber(previousSnapshot?.avg_dominance_rate),
+            prev_avg_conversion_probability: parseNumber(previousSnapshot?.avg_conversion_probability),
             best_brand_coverage: getBest('brand_coverage'),
             best_total_mentions: getBest('total_mentions'),
             best_visibility_rate: getBest('visibility_rate'),

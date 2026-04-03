@@ -337,6 +337,7 @@ function OptimizePageContent() {
   const [inputMode, setInputMode] = useState<'url' | 'text'>('url');
   const [productText, setProductText] = useState('');
   const [isTextProcessing, setIsTextProcessing] = useState(false);
+  const [isSavingUrl, setIsSavingUrl] = useState(false);
 
   const maxPerplexityQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_PERPLEXITY_QUERIES, 1);
   const maxGoogleQueries = parsePositiveInt(process.env.NEXT_PUBLIC_MAX_GOOGLE_QUERIES, 1);
@@ -1549,7 +1550,20 @@ function OptimizePageContent() {
     const l = f.toLowerCase();
     return l === 'features' || l.startsWith('features');
   });
-  const hasFormBlockingMissing = hasSpecificationMissing || hasFeaturesMissing;
+  const hasUrlMissing = !formData.url || !formData.url.trim();
+  
+  // URL Format Validation
+  const isValidUrlFormat = (() => {
+    if (hasUrlMissing) return false;
+    try {
+      new URL(formData.url);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  const hasFormBlockingMissing = hasSpecificationMissing || hasFeaturesMissing || hasUrlMissing || !isValidUrlFormat;
 
   // Track if user has dismissed the warning in this session using sessionStorage
   const [hasDismissedWarning, setHasDismissedWarning] = useState(() => {
@@ -1621,24 +1635,24 @@ function OptimizePageContent() {
     const MAX_RETRIES = 2;
     const RETRY_DELAYS = [2000, 5000]; // 2 seconds, then 5 seconds
 
-    // Validate input based on mode
-    if (inputMode === 'url') {
-      if (!formData.url.trim()) {
-        setScrapingError("Please enter a valid URL");
-        return;
-      }
+    // URL is now always required
+    if (!formData.url.trim()) {
+      setScrapingError("Please enter a valid Product URL first");
+      return;
+    }
 
-      // Validate URL format
-      try {
-        new URL(formData.url);
-      } catch {
-        setScrapingError("Please enter a valid URL format (e.g., https://example.com)");
-        return;
-      }
-    } else {
+    // Validate URL format
+    try {
+      new URL(formData.url);
+    } catch {
+      setScrapingError("Please enter a valid URL format (e.g., https://example.com)");
+      return;
+    }
+
+    if (inputMode === 'text') {
       // Text mode validation
       if (!productText.trim()) {
-        setScrapingError("Please enter product description text");
+        setScrapingError("Please enter product description text or upload a file");
         return;
       }
 
@@ -1799,6 +1813,39 @@ function OptimizePageContent() {
 
     // Reset file input
     event.target.value = '';
+  };
+  
+  // Custom handler for saving ONLY the product URL
+  const handleSaveProductUrl = async () => {
+    if (!currentProductId || !user?.id) return;
+    
+    // Basic validation
+    if (!formData.url.trim()) {
+      setScrapingError("URL cannot be empty");
+      return;
+    }
+    
+    try {
+      new URL(formData.url);
+    } catch {
+      setScrapingError("Please enter a valid URL format");
+      return;
+    }
+
+    setIsSavingUrl(true);
+    setScrapingError(null);
+    
+    try {
+      await updateProductInSupabase(currentProductId, user.id);
+      // Refresh products to sync store
+      await loadProductsFromSupabase(user.id);
+      console.log("[URL Update] Product URL updated successfully");
+    } catch (error: any) {
+      console.error("[URL Update] Failed to update product URL:", error);
+      setServerError(error.message || "Failed to update product URL");
+    } finally {
+      setIsSavingUrl(false);
+    }
   };
 
   // Helper function to generate a query for a specific pipeline
@@ -5180,10 +5227,97 @@ function OptimizePageContent() {
                 e.preventDefault();
                 handleGenerateQueryOnly();
               }}>
+                {/* Always show Product URL input */}
+                <Box sx={{ mb: 4 }}>
+                  <FormLabel sx={{ fontWeight: 600, mb: 1, display: "block", color: "#ffffff" }}>
+                    Product URL <span style={{ color: "#F35B64" }}>*</span>
+                  </FormLabel>
+                  <Stack
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={2}
+                    alignItems={{ xs: "stretch", md: "center" }}
+                  >
+                    <Input
+                      placeholder="https://example.com/your-product (Mandatory)"
+                      value={formData.url}
+                      onChange={(e) => handleInputChange("url", e.target.value)}
+                      size="md"
+                      sx={{
+                        flex: 1,
+                        background: "rgba(17, 19, 24, 0.8)",
+                        backdropFilter: "blur(8px)",
+                        border: !formData.url.trim() ? "1px solid rgba(243, 91, 100, 0.4)" : "1px solid rgba(46, 212, 122, 0.1)",
+                        borderRadius: "12px",
+                        minHeight: 44,
+                        transition: "all 0.2s ease",
+                        "&:focus-within": {
+                          border: !formData.url.trim() ? "1px solid rgba(243, 91, 100, 0.6)" : "1px solid rgba(46, 212, 122, 0.3)",
+                          backgroundColor: "rgba(17, 19, 24, 0.95)",
+                          boxShadow: "0 0 15px rgba(46, 212, 122, 0.08)",
+                        },
+                        "& input": {
+                          color: "#ffffff",
+                          fontSize: "0.95rem",
+                          paddingY: 1,
+                        },
+                        "&::placeholder": {
+                          color: "rgba(255, 255, 255, 0.4)",
+                        }
+                      }}
+                    />
+                    <Select
+                      aria-label="Search Location"
+                      value={selectedLocation}
+                      onChange={(_, v) => v && setSelectedLocation(v)}
+                      size="md"
+                      sx={{
+                        minWidth: { xs: "100%", md: 140 },
+                        minHeight: 44,
+                        background: "rgba(17, 19, 24, 0.8)",
+                        border: "1px solid rgba(46, 212, 122, 0.1)",
+                        borderRadius: "12px",
+                        color: textPrimary,
+                        transition: "all 0.2s ease",
+                        '&:hover': {
+                          borderColor: 'rgba(46, 212, 122, 0.3)',
+                          backgroundColor: 'rgba(17, 19, 24, 0.9)',
+                        },
+                      }}
+                    >
+                      {LOCATION_OPTIONS.map((loc) => (
+                        <Option key={loc} value={loc}>{loc}</Option>
+                      ))}
+                    </Select>
+
+                    {/* Show save button ONLY if URL is changed from saved product */}
+                    {currentProductId && currentProduct && formData.url.trim() !== (currentProduct.formData?.url || '').trim() && (
+                      <Button
+                        size="md"
+                        variant="solid"
+                        onClick={handleSaveProductUrl}
+                        loading={isSavingUrl}
+                        disabled={!isValidUrlFormat}
+                        sx={{
+                          backgroundColor: "#2ED47A",
+                          color: "#0D0F14",
+                          fontWeight: 700,
+                          borderRadius: "12px",
+                          minWidth: 100,
+                          "&:hover": {
+                            backgroundColor: "#26B869",
+                          }
+                        }}
+                      >
+                        Save
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
+
                 {/* Input Mode Toggle */}
                 <Box sx={{ mb: 4 }}>
                   <FormLabel sx={{ fontWeight: 600, mb: 2, display: "block", color: "#ffffff" }}>
-                    Input Method
+                    Details Input Method
                   </FormLabel>
                   <Stack direction="row" spacing={2} sx={{ mb: 4 }}>
                     <Button
@@ -5205,7 +5339,7 @@ function OptimizePageContent() {
                         }
                       }}
                     >
-                      🌐 URL Input
+                      🌐 Auto-Scrape
                     </Button>
                     <Button
                       variant={inputMode === 'text' ? 'solid' : 'outlined'}
@@ -5226,110 +5360,50 @@ function OptimizePageContent() {
                         }
                       }}
                     >
-                      📝 Text Input
+                      📝 Manual Text
                     </Button>
                   </Stack>
                 </Box>
 
-                {/* Conditional Input Section */}
+                {/* Conditional Input Content */}
                 {inputMode === 'url' ? (
                   <Box sx={{ mb: 4 }}>
-                    <FormLabel sx={{ fontWeight: 600, mb: 1, display: "block", color: "#ffffff" }}>
-                      Product URL
-                    </FormLabel>
-                    <Stack
-                      direction={{ xs: "column", md: "row" }}
-                      spacing={2}
-                      alignItems={{ xs: "stretch", md: "center" }}
+                    <Button
+                      type="button"
+                      onClick={() => scrapeProductData()}
+                      disabled={isScraping || !formData.url.trim() || !isValidUrlFormat}
+                      size="md"
+                      fullWidth
+                      sx={{
+                        minHeight: 48,
+                        fontSize: "1rem",
+                        borderRadius: "14px",
+                        fontWeight: 700,
+                        backgroundColor: "#2ED47A",
+                        color: "#0D0F14",
+                        border: "1px solid rgba(46, 212, 122, 0.4)",
+                        boxShadow: "0 8px 32px rgba(46, 212, 122, 0.2)",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        "&:hover": {
+                          backgroundColor: "#26B869",
+                          borderColor: "rgba(46, 212, 122, 0.6)",
+                          boxShadow: "0 12px 40px rgba(46, 212, 122, 0.3)",
+                          transform: "translateY(-1px)",
+                        },
+                        "&:disabled": {
+                          backgroundColor: "rgba(46, 212, 122, 0.15)",
+                          borderColor: "rgba(46, 212, 122, 0.1)",
+                          color: "rgba(242, 245, 250, 0.3)",
+                          boxShadow: "none",
+                          cursor: "not-allowed",
+                        },
+                      }}
                     >
-                      <Input
-                        placeholder="https://example.com/your-product"
-                        value={formData.url}
-                        onChange={(e) => handleInputChange("url", e.target.value)}
-                        size="md"
-                        sx={{
-                          flex: 1,
-                          background: "rgba(17, 19, 24, 0.8)",
-                          backdropFilter: "blur(8px)",
-                          border: "1px solid rgba(46, 212, 122, 0.1)",
-                          borderRadius: "12px",
-                          minHeight: 44,
-                          transition: "all 0.2s ease",
-                          "&:focus-within": {
-                            border: "1px solid rgba(46, 212, 122, 0.3)",
-                            backgroundColor: "rgba(17, 19, 24, 0.95)",
-                            boxShadow: "0 0 15px rgba(46, 212, 122, 0.08)",
-                          },
-                          "& input": {
-                            color: "#ffffff",
-                            fontSize: "0.95rem",
-                            paddingY: 1,
-                          },
-                          "&::placeholder": {
-                            color: "rgba(255, 255, 255, 0.4)",
-                          }
-                        }}
-                      />
-                      <Select
-                        aria-label="Search Location"
-                        value={selectedLocation}
-                        onChange={(_, v) => v && setSelectedLocation(v)}
-                        size="md"
-                        sx={{
-                          minWidth: { xs: "100%", md: 140 },
-                          minHeight: 44,
-                          background: "rgba(17, 19, 24, 0.8)",
-                          border: "1px solid rgba(46, 212, 122, 0.1)",
-                          borderRadius: "12px",
-                          color: textPrimary,
-                          transition: "all 0.2s ease",
-                          '&:hover': {
-                            borderColor: 'rgba(46, 212, 122, 0.3)',
-                            backgroundColor: 'rgba(17, 19, 24, 0.9)',
-                          },
-                        }}
-                      >
-                        {LOCATION_OPTIONS.map((loc) => (
-                          <Option key={loc} value={loc}>{loc}</Option>
-                        ))}
-                      </Select>
-                      <Button
-                        type="button"
-                        onClick={() => scrapeProductData()}
-                        disabled={isScraping || ((inputMode as 'url' | 'text') === 'url' && !formData.url.trim()) || ((inputMode as 'url' | 'text') === 'text' && !productText.trim())}
-                        size="md"
-                        sx={{
-                          minHeight: 48,
-                          px: 4,
-                          fontSize: "1rem",
-                          borderRadius: "14px",
-                          fontWeight: 700,
-                          backgroundColor: "#2ED47A",
-                          color: "#0D0F14",
-                          border: "1px solid rgba(46, 212, 122, 0.4)",
-                          boxShadow: "0 8px 32px rgba(46, 212, 122, 0.2)",
-                          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                          "&:hover": {
-                            backgroundColor: "#26B869",
-                            borderColor: "rgba(46, 212, 122, 0.6)",
-                            boxShadow: "0 12px 40px rgba(46, 212, 122, 0.3)",
-                            transform: "translateY(-1px)",
-                          },
-                          "&:disabled": {
-                            backgroundColor: "rgba(46, 212, 122, 0.15)",
-                            borderColor: "rgba(46, 212, 122, 0.1)",
-                            color: "rgba(242, 245, 250, 0.3)",
-                            boxShadow: "none",
-                            cursor: "not-allowed",
-                          },
-                        }}
-                      >
-                        {isScraping ? (
-                          <CircularProgress size="sm" thickness={2} sx={{ color: "#0D0F14", mr: 1 }} />
-                        ) : null}
-                        {isScraping ? 'Processing...' : (inputMode === 'url' ? 'Fetch Info' : 'Process Text')}
-                      </Button>
-                    </Stack>
+                      {isScraping ? (
+                        <CircularProgress size="sm" thickness={2} sx={{ color: "#0D0F14", mr: 1 }} />
+                      ) : null}
+                      {isScraping ? 'Processing...' : 'Fetch Info from URL'}
+                    </Button>
 
                     {/* Error Display */}
                     {scrapingError && (
@@ -5384,7 +5458,7 @@ function OptimizePageContent() {
                       <Button
                         type="button"
                         onClick={() => scrapeProductData()}
-                        disabled={isScraping || !productText.trim()}
+                        disabled={isScraping || !productText.trim() || !formData.url.trim()}
                         size="md"
                         sx={{
                           minHeight: 44,
@@ -5392,7 +5466,7 @@ function OptimizePageContent() {
                           fontSize: "0.95rem",
                           borderRadius: "999px",
                           fontWeight: 600,
-                          backgroundColor: accentColor,
+                          backgroundColor: "#2ED47A",
                           color: "#0D0F14",
                           border: "1px solid rgba(46, 212, 122, 0.32)",
                           boxShadow: "0 8px 24px rgba(46, 212, 122, 0.25)",

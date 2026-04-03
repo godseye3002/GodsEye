@@ -23,12 +23,12 @@ function formatTrend(value: number | null | undefined, suffix: string = "%"): { 
 }
 
 export function SectionCards({ data }: { data: TopCardsData | null }) {
-  const brandCoverage = data?.brand_coverage !== null ? `${data?.brand_coverage}%` : "0%"
-  const totalMentions = data?.total_mentions !== null ? data?.total_mentions.toLocaleString() : "0"
-  const visibilityRate = data?.visibility_rate !== null ? `${data?.visibility_rate}%` : "0%"
-  const avgDominance = data?.avg_dominance_rate !== null ? `${data?.avg_dominance_rate}%` : "0%"
-  const avgConvProb = data?.avg_conversion_probability !== null ? `${data?.avg_conversion_probability}%` : "0%"
-  const citationScore = data?.citation_score !== null ? data?.citation_score.toLocaleString() : "0"
+  const brandCoverage = (data?.brand_coverage != null && parseFloat(String(data.brand_coverage)) > 0) ? `${data.brand_coverage}%` : "0%"
+  const totalMentions = (data?.total_mentions != null && parseFloat(String(data.total_mentions)) > 0) ? data.total_mentions.toLocaleString() : "0"
+  const visibilityRate = (data?.visibility_rate != null && parseFloat(String(data.visibility_rate)) > 0) ? `${data.visibility_rate}%` : "0%"
+  const avgDominance = (data?.avg_dominance_rate != null && parseFloat(String(data.avg_dominance_rate)) > 0) ? `${data.avg_dominance_rate}%` : "0%"
+  const avgConvProb = (data?.avg_conversion_probability != null && parseFloat(String(data.avg_conversion_probability)) > 0) ? `${data.avg_conversion_probability}%` : "0%"
+  const citationScore = (data?.citation_score != null && parseFloat(String(data.citation_score)) > 0) ? data.citation_score.toLocaleString() : "0"
 
   const coverageTrend = formatTrend(data?.brand_coverage_trend, "%")
   const mentionsTrend = formatTrend(data?.total_mentions_trend, "")
@@ -47,14 +47,14 @@ export function SectionCards({ data }: { data: TopCardsData | null }) {
               {brandCoverage}
             </CardTitle>
             <div className="flex flex-col ml-1">
-              {data?.prev_brand_coverage !== null && (
+              {data?.prev_brand_coverage != null && (
                 <span className="text-xs text-muted-foreground/60 font-medium whitespace-nowrap">
-                  vs {data?.prev_brand_coverage}%
+                  vs {data.prev_brand_coverage}%
                 </span>
               )}
-              {data?.best_brand_coverage !== null && (
+              {data?.best_brand_coverage != null && (
                 <span className="text-[10px] text-emerald-500/80 font-bold whitespace-nowrap leading-none mt-0.5" title="All-time Best Performance">
-                  Best: {data?.best_brand_coverage}%
+                  Best: {data.best_brand_coverage}%
                 </span>
               )}
             </div>
@@ -83,14 +83,14 @@ export function SectionCards({ data }: { data: TopCardsData | null }) {
               {totalMentions}
             </CardTitle>
             <div className="flex flex-col ml-1">
-              {data?.prev_total_mentions !== null && (
+              {data?.prev_total_mentions != null && (
                 <span className="text-xs text-muted-foreground/60 font-medium whitespace-nowrap">
-                  vs {data?.prev_total_mentions?.toLocaleString()}
+                  vs {data.prev_total_mentions.toLocaleString()}
                 </span>
               )}
-              {data?.best_total_mentions !== null && (
+              {data?.best_total_mentions != null && (
                 <span className="text-[10px] text-emerald-500/80 font-bold whitespace-nowrap leading-none mt-0.5" title="All-time Best Performance">
-                  Best: {data?.best_total_mentions?.toLocaleString()}
+                  Best: {data.best_total_mentions.toLocaleString()}
                 </span>
               )}
             </div>
@@ -119,14 +119,14 @@ export function SectionCards({ data }: { data: TopCardsData | null }) {
               {visibilityRate}
             </CardTitle>
             <div className="flex flex-col ml-1">
-              {data?.prev_visibility_rate !== null && (
+              {data?.prev_visibility_rate != null && (
                 <span className="text-xs text-muted-foreground/60 font-medium whitespace-nowrap">
-                  vs {data?.prev_visibility_rate}%
+                  vs {data.prev_visibility_rate}%
                 </span>
               )}
-              {data?.best_visibility_rate !== null && (
+              {data?.best_visibility_rate != null && (
                 <span className="text-[10px] text-emerald-500/80 font-bold whitespace-nowrap leading-none mt-0.5" title="All-time Best Performance">
-                  Best: {data?.best_visibility_rate}%
+                  Best: {data.best_visibility_rate}%
                 </span>
               )}
             </div>
@@ -155,14 +155,14 @@ export function SectionCards({ data }: { data: TopCardsData | null }) {
               {avgDominance}
             </CardTitle>
             <div className="flex flex-col ml-1">
-              {data?.prev_avg_dominance_rate !== null && (
+              {data?.prev_avg_dominance_rate != null && (
                 <span className="text-xs text-muted-foreground/60 font-medium whitespace-nowrap">
-                  vs {data?.prev_avg_dominance_rate}%
+                  vs {data.prev_avg_dominance_rate}%
                 </span>
               )}
-              {data?.best_avg_dominance_rate !== null && (
+              {data?.best_avg_dominance_rate != null && (
                 <span className="text-[10px] text-emerald-500/80 font-bold whitespace-nowrap leading-none mt-0.5" title="All-time Best Performance">
-                  Best: {data?.best_avg_dominance_rate}%
+                  Best: {data.best_avg_dominance_rate}%
                 </span>
               )}
             </div>
@@ -191,14 +191,14 @@ export function SectionCards({ data }: { data: TopCardsData | null }) {
               {avgConvProb}
             </CardTitle>
             <div className="flex flex-col ml-1">
-              {data?.prev_avg_conversion_probability !== null && (
+              {data?.prev_avg_conversion_probability != null && (
                 <span className="text-xs text-muted-foreground/60 font-medium whitespace-nowrap">
-                  vs {data?.prev_avg_conversion_probability}%
+                  vs {data.prev_avg_conversion_probability}%
                 </span>
               )}
-              {data?.best_avg_conversion_probability !== null && (
+              {data?.best_avg_conversion_probability != null && (
                 <span className="text-[10px] text-emerald-500/80 font-bold whitespace-nowrap leading-none mt-0.5" title="All-time Best Performance">
-                  Best: {data?.best_avg_conversion_probability}%
+                  Best: {data.best_avg_conversion_probability}%
                 </span>
               )}
             </div>
@@ -227,14 +227,14 @@ export function SectionCards({ data }: { data: TopCardsData | null }) {
               {citationScore}
             </CardTitle>
             <div className="flex flex-col ml-1">
-              {data?.prev_citation_score !== null && (
+              {data?.prev_citation_score != null && (
                 <span className="text-xs text-muted-foreground/60 font-medium whitespace-nowrap">
-                  vs {data?.prev_citation_score?.toLocaleString()}
+                  vs {data.prev_citation_score.toLocaleString()}
                 </span>
               )}
-              {data?.best_citation_score !== null && (
+              {data?.best_citation_score != null && (
                 <span className="text-[10px] text-emerald-500/80 font-bold whitespace-nowrap leading-none mt-0.5" title="All-time Best Performance">
-                  Best: {data?.best_citation_score?.toLocaleString()}
+                  Best: {data.best_citation_score.toLocaleString()}
                 </span>
               )}
             </div>
