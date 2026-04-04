@@ -43,9 +43,40 @@ export default function BrochurePage() {
                     </Typography>
 
                     <Typography level="body-lg" sx={{ color: secondary, maxWidth: 640, mx: "auto", lineHeight: 1.75, mb: 5 }}>
-                        GodsEye turns AI search visibility into measurable revenue — by making sure AI engines recommend 
+                        GodsEye turns AI search visibility into measurable revenue — by making sure AI engines recommend
                         your brand, and then tracking exactly how those recommendations convert into real customers.
                     </Typography>
+
+                    {/* 3-Part Punch Line */}
+                    <Box sx={{
+                        display: "flex", flexWrap: "wrap", justifyContent: "center",
+                        mb: 5, maxWidth: 860, mx: "auto",
+                        border: "1px solid rgba(255,255,255,0.07)",
+                        borderRadius: "16px",
+                        overflow: "hidden",
+                        backdropFilter: "blur(8px)",
+                        backgroundColor: "rgba(17,19,24,0.6)",
+                    }}>
+                        {[
+                            { icon: "◎", label: "Track", desc: "See exactly where you rank in AI answers — across every engine.", color: "#38BDF8" },
+                            { icon: "⚡", label: "Fix", desc: "Get the precise reason and implementation-ready steps to win.", color: "#2ED47A" },
+                            { icon: "$", label: "Measure", desc: "Prove AI is driving real conversions — not just impressions.", color: "#A78BFA" },
+                        ].map((item, i) => (
+                            <Box key={item.label} sx={{
+                                flex: "1 1 200px",
+                                px: { xs: 3, md: 4 }, py: { xs: 2.5, md: 3 },
+                                borderRight: i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none",
+                                textAlign: "center",
+                            }}>
+                                <Typography sx={{ fontSize: "1.35rem", color: item.color, mb: 0.75, fontWeight: 800, letterSpacing: "-0.01em" }}>
+                                    {item.icon} {item.label}
+                                </Typography>
+                                <Typography sx={{ fontSize: "0.95rem", color: secondary, lineHeight: 1.6 }}>
+                                    {item.desc}
+                                </Typography>
+                            </Box>
+                        ))}
+                    </Box>
 
                     <Button
                         component="a"
@@ -74,11 +105,11 @@ export default function BrochurePage() {
 
                 <Stack spacing={4}>
                     <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8 }}>
-                        A few years ago, someone looking for a JEE coaching center, a SaaS tool, or a D2C skincare brand would open Google, 
+                        A few years ago, someone looking for a JEE coaching center, a SaaS tool, or a D2C skincare brand would open Google,
                         see ten links, and click. That's how the game worked.
                     </Typography>
                     <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8 }}>
-                        Today, the same person opens ChatGPT or Perplexity, asks a question, and gets <strong style={{ color: primary }}>one answer</strong>. 
+                        Today, the same person opens ChatGPT or Perplexity, asks a question, and gets <strong style={{ color: primary }}>one answer</strong>.
                         They read it. They trust it. They act on it. They don't scroll through links.
                     </Typography>
                     <Card sx={{ bgcolor: warnBg, border: `1px solid ${warnBorder}`, p: 3, borderRadius: "16px" }}>
@@ -106,7 +137,7 @@ export default function BrochurePage() {
 
                 <Stack spacing={4}>
                     <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8 }}>
-                        Here's what we see all the time: a marketing team pays for content, hires an SEO agency, and tries to get into AI responses. 
+                        Here's what we see all the time: a marketing team pays for content, hires an SEO agency, and tries to get into AI responses.
                         Maybe they start showing up occasionally. But then the real question hits them:
                     </Typography>
 
@@ -118,11 +149,11 @@ export default function BrochurePage() {
                     </Card>
 
                     <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8 }}>
-                        Right now, <strong style={{ color: primary }}>AI search is a black box for most businesses</strong>. Your Google Analytics will not tell you 
+                        Right now, <strong style={{ color: primary }}>AI search is a black box for most businesses</strong>. Your Google Analytics will not tell you
                         a ChatGPT user visited your site. It will label them "Direct Traffic" and the story ends there.
                     </Typography>
                     <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8 }}>
-                        You could be getting hundreds of AI-referred visitors every week and have no idea. You wouldn't know which AI engine sent them, 
+                        You could be getting hundreds of AI-referred visitors every week and have no idea. You wouldn't know which AI engine sent them,
                         what page they landed on, or whether they clicked your "Book a Call" button.
                     </Typography>
                     <Typography level="title-lg" sx={{ color: danger }}>
@@ -174,7 +205,7 @@ export default function BrochurePage() {
                             That is not brand awareness. That is engineered revenue.
                         </Typography>
                         <Typography level="body-md" sx={{ color: secondary, lineHeight: 1.7 }}>
-                            The difference between a brand that "hopes AI is helping" and a brand that knows AI is generating 
+                            The difference between a brand that "hopes AI is helping" and a brand that knows AI is generating
                             $47,000 in pipeline this month is measurement.
                         </Typography>
                     </Card>
@@ -192,7 +223,7 @@ export default function BrochurePage() {
                     That is why we built GodsEye.
                 </Typography>
                 <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8, mb: 6 }}>
-                    GodsEye has two jobs. First, it makes sure AI engines recommend your brand. Second — and this is the part other tools skip — 
+                    GodsEye has two jobs. First, it makes sure AI engines recommend your brand. Second — and this is the part other tools skip —
                     it proves that recommendation is actually driving revenue.
                 </Typography>
 
@@ -233,7 +264,7 @@ export default function BrochurePage() {
                         },
                         {
                             num: "05",
-                            title: "Daily Monitoring — Set It and Forget It",
+                            title: "Frequent Monitoring — Set It and Forget It",
                             color: accent,
                             bg: "rgba(46,212,122,0.07)",
                             bdr: "rgba(46,212,122,0.25)",
@@ -251,8 +282,8 @@ export default function BrochurePage() {
                                 }}>{item.num}</Box>
                                 <Box>
                                     <Typography level="title-lg" sx={{ color: item.color, fontWeight: 700, mb: 1 }}>{item.title}</Typography>
-                                    <Typography level="body-md" component="div" sx={{ 
-                                        color: secondary, 
+                                    <Typography level="body-md" component="div" sx={{
+                                        color: secondary,
                                         lineHeight: 1.75,
                                         '& p': { m: 0 },
                                         '& strong': { color: primary, fontWeight: 600 }
@@ -260,10 +291,10 @@ export default function BrochurePage() {
                                         <ReactMarkdown>{item.body}</ReactMarkdown>
                                     </Typography>
                                     {item.highlight && (
-                                        <Typography level="body-md" component="div" sx={{ 
-                                            color: primary, 
-                                            fontWeight: 600, 
-                                            mt: 1.5, 
+                                        <Typography level="body-md" component="div" sx={{
+                                            color: primary,
+                                            fontWeight: 600,
+                                            mt: 1.5,
                                             lineHeight: 1.7,
                                             '& p': { m: 0 },
                                             '& strong': { color: accent, fontWeight: 700 }
@@ -277,6 +308,71 @@ export default function BrochurePage() {
                     ))}
                 </Stack>
             </Container>
+
+            <Divider sx={{ opacity: 0.07 }} />
+
+            {/* ── SECTION 4.5: THE GODSEYEAGENT (THE FIX) ────────── */}
+            <Box sx={{ background: "linear-gradient(180deg, rgba(56,189,248,0.04) 0%, transparent 100%)", borderTop: "1px solid rgba(56,189,248,0.12)" }}>
+                <Container maxWidth="lg" sx={{ py: { xs: 5, md: 8 } }}>
+                    <Chip variant="soft" sx={{ bgcolor: "rgba(56,189,248,0.1)", color: "#38BDF8", fontWeight: 700, mb: 3, letterSpacing: "0.1em" }}>
+                        THE GODSEYEAGENT
+                    </Chip>
+                    <Typography level="h2" sx={{ color: primary, fontWeight: 800, fontSize: { xs: "1.9rem", md: "2.8rem" }, lineHeight: 1.2, mb: 2 }}>
+                        We don&apos;t just show you the score.
+                        <Box component="span" sx={{ color: "#38BDF8", display: "block" }}>We give you the exact playbook to win.</Box>
+                    </Typography>
+                    <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8, mb: 6 }}>
+                        Most AEO tools stop at telling you that you&apos;re invisible. GodsEye goes three steps further — it finds out <strong style={{ color: primary }}>why</strong> your competitor won, generates the <strong style={{ color: primary }}>precise fix</strong>, and deploys it directly in your IDE through our MCP Agent.
+                    </Typography>
+
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 3 }}>
+                        {[
+                            {
+                                step: "01", color: danger, tag: "TRACK",
+                                title: "We Find the Gap",
+                                body: "GodsEye runs your brand through hundreds of real AI queries and highlights exactly which searches you're losing — and to whom.",
+                            },
+                            {
+                                step: "02", color: "#38BDF8", tag: "FIX",
+                                title: "We Diagnose the Why",
+                                body: "Our Agent analyzes the winning competitor's content, structure, and citations to extract precisely why AI prefers them — not guesswork, exact signals.",
+                            },
+                            {
+                                step: "03", color: accent, tag: "MEASURE",
+                                title: "We Ship the Fix",
+                                body: "Through our VS Code MCP integration, the Agent pushes implementation-ready edits and then re-audits to confirm the revenue improvement.",
+                            },
+                        ].map((item) => (
+                            <Card key={item.step} sx={{
+                                bgcolor: `${item.color}08`,
+                                border: `1px solid ${item.color}28`,
+                                p: { xs: 3, md: 4 }, borderRadius: "20px",
+                                position: "relative", overflow: "hidden",
+                                "&:hover": { borderColor: `${item.color}55`, transform: "translateY(-4px)" },
+                                transition: "border-color 0.3s ease, transform 0.3s ease",
+                            }}>
+                                <Typography sx={{
+                                    position: "absolute", top: -8, right: 16,
+                                    fontSize: "5rem", fontWeight: 900,
+                                    color: `${item.color}10`, lineHeight: 1,
+                                    fontStyle: "italic", userSelect: "none",
+                                }}>{item.step}</Typography>
+                                <Chip variant="soft" sx={{ bgcolor: `${item.color}18`, color: item.color, fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.1em", mb: 2 }}>
+                                    {item.tag}
+                                </Chip>
+                                <Typography level="title-lg" sx={{ color: primary, fontWeight: 800, mb: 1.5 }}>{item.title}</Typography>
+                                <Typography level="body-md" sx={{ color: secondary, lineHeight: 1.75 }}>{item.body}</Typography>
+                            </Card>
+                        ))}
+                    </Box>
+
+                    <Card sx={{ mt: 4, bgcolor: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.18)", p: { xs: 3, md: 4 }, borderRadius: "16px", textAlign: "center" }}>
+                        <Typography level="title-lg" sx={{ color: primary, fontWeight: 700 }}>
+                            &quot;We don&apos;t just tell you there&apos;s a problem. We track it, fix it, and prove it with revenue.&quot;
+                        </Typography>
+                    </Card>
+                </Container>
+            </Box>
 
             <Divider sx={{ opacity: 0.07 }} />
 
@@ -342,24 +438,24 @@ export default function BrochurePage() {
                 </Typography>
                 <Stack spacing={3}>
                     <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8 }}>
-                        Right now, most of your competitors are not doing this. They are still in SEO mode while their customers have moved to AI search. 
+                        Right now, most of your competitors are not doing this. They are still in SEO mode while their customers have moved to AI search.
                         The brands that move first win the most ground — and get to hold it.
                     </Typography>
                     <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8 }}>
-                        Early SEO adopters in 2009 held page-one rankings for years. This is that same moment, but for AI search. 
+                        Early SEO adopters in 2009 held page-one rankings for years. This is that same moment, but for AI search.
                         The question is whether you act on it now, or watch someone else claim your space.
                     </Typography>
                     <Card sx={{ bgcolor: "rgba(46,212,122,0.04)", border: `1px solid rgba(46,212,122,0.2)`, p: 3.5, borderRadius: "16px" }}>
                         <Typography level="title-md" sx={{ color: accent, fontWeight: 700, mb: 0.5 }}>Our Current Stage: Free Pilot</Typography>
                         <Typography level="body-md" sx={{ color: secondary, lineHeight: 1.75 }}>
-                            We are working with a small group of early clients on a completely free pilot. You get the full audit, full access to the conversion tracker, 
+                            We are working with a small group of early clients on a completely free pilot. You get the full audit, full access to the conversion tracker,
                             and a complete fix plan — at zero cost. We do this because we want proof of what GodsEye can do, and you deserve to see value before you spend anything.
                         </Typography>
                         <Typography level="body-sm" sx={{ color: secondary, mt: 1.5 }}>
                             What's included in the pilot:
                         </Typography>
                         <Box component="ul" sx={{ pl: 2, mt: 1, color: secondary }}>
-                            <li><Typography level="body-sm" sx={{ color: secondary }}>Full AI Visibility Audit across ChatGPT, Perplexity, and Google AI</Typography></li>
+                            <li><Typography level="body-sm" sx={{ color: secondary }}>Full AI Visibility Audit across Perplexity and Google AI</Typography></li>
                             <li><Typography level="body-sm" sx={{ color: secondary }}>7 days of live Conversion & CTA Tracking on your website</Typography></li>
                             <li><Typography level="body-sm" sx={{ color: secondary }}>A prioritized, specific fix plan for your team</Typography></li>
                         </Box>

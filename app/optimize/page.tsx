@@ -66,6 +66,7 @@ import type { QueryData } from "./store";
 import { warmupService } from "@/lib/warmupService";
 import { fetchUsedQueriesFromAnalysisClient } from "@/lib/analysis-queries";
 import { callAIScraper } from "@/lib/ai-scraper";
+import { AnalysisProgressUI } from "@/components/analysis-progress-ui";
 import {
   Feature,
   OptimizationAnalysis,
@@ -167,21 +168,27 @@ function serializeQueriesForHistory(queries: string[]) {
   return JSON.stringify(cleaned);
 }
 
-const analyzingDotPulse = keyframes`
-  0%, 80%, 100% { transform: scale(0.65); opacity: 0.35; }
-  40% { transform: scale(1); opacity: 1; }
-`;
-
 const pulse = keyframes`
-  0%, 80%, 100% {
-    transform: scale(0);
-    opacity: 0.5;
-  }
-  40% {
-    transform: scale(1);
-    opacity: 1;
-  }
-`;
+    0%, 80%, 100% {
+      transform: scale(0.65);
+      opacity: 0.35;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  `;
+
+const analyzingDotPulse = keyframes`
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(0.85);
+      opacity: 0.5;
+    }
+  `;
 
 function OptimizePageContent() {
   const router = useRouter();
@@ -285,6 +292,12 @@ function OptimizePageContent() {
     selectedBatchId,
     setSelectedBatchId,
     setGenerateBatchModalOpen,
+    isPerplexityScraping,
+    setIsPerplexityScraping,
+    isGoogleScraping,
+    setIsGoogleScraping,
+    isChatgptScraping,
+    setIsChatgptScraping,
   } = useProductStore();
 
   const currentProduct = products.find((p) => p.id === currentProductId) || null;
@@ -311,10 +324,7 @@ function OptimizePageContent() {
   const [isNewBatchEnabled, setIsNewBatchEnabled] = useState(false);
   const [isGeneratingChatgptQueries, setIsGeneratingChatgptQueries] = useState(false);
 
-  // Loading states for individual scrapers
-  const [isPerplexityScraping, setIsPerplexityScraping] = useState(false);
-  const [isGoogleScraping, setIsGoogleScraping] = useState(false);
-  const [isChatgptScraping, setIsChatgptScraping] = useState(false);
+  // Loading states for individual scrapers — now in global store (persist across navigation)
   const [isLoadingQueries, setIsLoadingQueries] = useState(false);
   const [hasLoadedQueriesForProduct, setHasLoadedQueriesForProduct] = useState(false);
   const [loadingResultKey, setLoadingResultKey] = useState<string | null>(null);
@@ -1551,7 +1561,7 @@ function OptimizePageContent() {
     return l === 'features' || l.startsWith('features');
   });
   const hasUrlMissing = !formData.url || !formData.url.trim();
-  
+
   // URL Format Validation
   const isValidUrlFormat = (() => {
     if (hasUrlMissing) return false;
@@ -1814,17 +1824,17 @@ function OptimizePageContent() {
     // Reset file input
     event.target.value = '';
   };
-  
+
   // Custom handler for saving ONLY the product URL
   const handleSaveProductUrl = async () => {
     if (!currentProductId || !user?.id) return;
-    
+
     // Basic validation
     if (!formData.url.trim()) {
       setScrapingError("URL cannot be empty");
       return;
     }
-    
+
     try {
       new URL(formData.url);
     } catch {
@@ -1834,7 +1844,7 @@ function OptimizePageContent() {
 
     setIsSavingUrl(true);
     setScrapingError(null);
-    
+
     try {
       await updateProductInSupabase(currentProductId, user.id);
       // Refresh products to sync store
@@ -5082,7 +5092,7 @@ function OptimizePageContent() {
 
               </>
             )}
-            
+
             {/* Deep Analysis Strategy Card */}
             {!dashboardIsLoading && currentProductId && (
               <Box sx={{ mt: 2 }}>
@@ -5091,13 +5101,13 @@ function OptimizePageContent() {
                   productId={currentProductId || ''}
                   analysisHash={
                     (activeSection === 'google' ? currentProduct?.deep_analysis_google_hash :
-                    activeSection === 'perplexity' ? currentProduct?.deep_analysis_perplexity_hash :
-                    currentProduct?.deep_analysis_chatgpt_hash) ?? null
+                      activeSection === 'perplexity' ? currentProduct?.deep_analysis_perplexity_hash :
+                        currentProduct?.deep_analysis_chatgpt_hash) ?? null
                   }
                   isAnalysisUpToDate={
                     activeSection === 'google' ? !!currentProduct?.deep_analysis_google_up_to_date :
-                    activeSection === 'perplexity' ? !!currentProduct?.deep_analysis_perplexity_up_to_date :
-                    !!currentProduct?.deep_analysis_chatgpt_up_to_date
+                      activeSection === 'perplexity' ? !!currentProduct?.deep_analysis_perplexity_up_to_date :
+                        !!currentProduct?.deep_analysis_chatgpt_up_to_date
                   }
                 />
               </Box>
@@ -7136,6 +7146,7 @@ function OptimizePageContent() {
           </ModalDialog>
         </Modal>
 
+
         {/* Generated Query Section */}
         {activeSection === "query" && (
           <Card
@@ -7347,115 +7358,133 @@ function OptimizePageContent() {
               </Box>
             ) : (
               <Box>
-                <Typography level="h2" sx={{ mb: 3, color: textPrimary, textAlign: "center" }}>
-                  Generated Search Queries
-                </Typography>
+                {(() => {
+                  const showAnalysisProgress = isAnalyzing || isPerplexityScraping || isGoogleScraping || isChatgptScraping;
 
-                {/* Analysis Mode Display */}
-                <Box sx={{ mb: 4, textAlign: "center" }}>
-                  <Chip
-                    size="md"
-                    variant="soft"
-                    sx={{
-                      backgroundColor: getAnalysisModeDisplay().color === '#2ED47A'
-                        ? "rgba(46, 212, 122, 0.12)"
-                        : "rgba(243, 91, 100, 0.12)",
-                      color: getAnalysisModeDisplay().color,
-                      fontWeight: 600,
-                      px: 3,
-                    }}
-                  >
-                    {getAnalysisModeDisplay().text}
-                  </Chip>
-                </Box>
+                  if (showAnalysisProgress) {
+                    return (
+                      <AnalysisProgressUI
+                        isPerplexityScraping={isPerplexityScraping}
+                        isGoogleScraping={isGoogleScraping}
+                        isChatgptScraping={isChatgptScraping}
+                      />
+                    );
+                  }
 
-                <Box sx={{ mb: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography level="title-md" sx={{ color: textPrimary }}>
-                        {queryBatches.find((b: any) => b.id === selectedBatchId)?.name || 'Batch'}
+                  return (
+                    <>
+                      <Typography level="h2" sx={{ mb: 3, color: textPrimary, textAlign: "center" }}>
+                        Generated Search Queries
                       </Typography>
-                    </Box>
-                    <Stack direction="row" spacing={3} alignItems="center">
-                      {(() => {
-                        const batch = queryBatches.find((b: any) => b.id === selectedBatchId);
-                        return (
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mr: 1, opacity: 0.9 }}>
-                            <Typography level="body-xs" sx={{ color: "rgba(162, 167, 180, 0.9)", fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                              Daily Tracking
+
+                      {/* Analysis Mode Display */}
+                      <Box sx={{ mb: 4, textAlign: "center" }}>
+                        <Chip
+                          size="md"
+                          variant="soft"
+                          sx={{
+                            backgroundColor: getAnalysisModeDisplay().color === '#2ED47A'
+                              ? "rgba(46, 212, 122, 0.12)"
+                              : "rgba(243, 91, 100, 0.12)",
+                            color: getAnalysisModeDisplay().color,
+                            fontWeight: 600,
+                            px: 3,
+                          }}
+                        >
+                          {getAnalysisModeDisplay().text}
+                        </Chip>
+                      </Box>
+
+                      <Box sx={{ mb: 4 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3 }}>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography level="title-md" sx={{ color: textPrimary }}>
+                              {queryBatches.find((b: any) => b.id === selectedBatchId)?.name || 'Batch'}
                             </Typography>
-                            <Switch
+                          </Box>
+                          <Stack direction="row" spacing={3} alignItems="center">
+                            {(() => {
+                              const batch = queryBatches.find((b: any) => b.id === selectedBatchId);
+                              return (
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mr: 1, opacity: 0.9 }}>
+                                  <Typography level="body-xs" sx={{ color: "rgba(162, 167, 180, 0.9)", fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                                    Daily Tracking
+                                  </Typography>
+                                  <Switch
+                                    size="sm"
+                                    checked={batch?.daily_tracker || false}
+                                    onChange={() => handleToggleDailyTracking(selectedBatchId!, batch?.daily_tracker || false)}
+                                    sx={{
+                                      "--Switch-trackBackground": "rgba(255, 255, 255, 0.1)",
+                                      "&.Mui-checked": {
+                                        "--Switch-trackBackground": "#2ED47A",
+                                      },
+                                    }}
+                                  />
+                                </Box>
+                              );
+                            })()}
+                            <Button
                               size="sm"
-                              checked={batch?.daily_tracker || false}
-                              onChange={() => handleToggleDailyTracking(selectedBatchId!, batch?.daily_tracker || false)}
+                              variant="outlined"
+                              onClick={() => {
+                                setSelectedBatchId(null);
+                                setAllPerplexityQueries([]);
+                                setAllGoogleQueries([]);
+                                setAllChatgptQueries([]);
+                                setSelectedPerplexityQueries([]);
+                                setSelectedGoogleQueries([]);
+                                setSelectedChatgptQueries([]);
+                                setUsedPerplexityQueries([]);
+                                setUsedGoogleQueries([]);
+                                setUsedChatgptQueries([]);
+                              }}
                               sx={{
-                                "--Switch-trackBackground": "rgba(255, 255, 255, 0.1)",
-                                "&.Mui-checked": {
-                                  "--Switch-trackBackground": "#2ED47A",
+                                borderColor: "rgba(242, 245, 250, 0.25)",
+                                color: textPrimary,
+                                borderRadius: "10px",
+                                fontWeight: 600,
+                                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                                "&:hover": {
+                                  backgroundColor: "rgba(242, 245, 250, 0.08)",
+                                  borderColor: "rgba(242, 245, 250, 0.45)",
+                                  transform: "translateY(-1px)",
                                 },
                               }}
-                            />
-                          </Box>
-                        );
-                      })()}
-                      <Button
-                        size="sm"
-                        variant="outlined"
-                        onClick={() => {
-                          setSelectedBatchId(null);
-                          setAllPerplexityQueries([]);
-                          setAllGoogleQueries([]);
-                          setAllChatgptQueries([]);
-                          setSelectedPerplexityQueries([]);
-                          setSelectedGoogleQueries([]);
-                          setSelectedChatgptQueries([]);
-                          setUsedPerplexityQueries([]);
-                          setUsedGoogleQueries([]);
-                          setUsedChatgptQueries([]);
-                        }}
-                        sx={{
-                          borderColor: "rgba(242, 245, 250, 0.25)",
-                          color: textPrimary,
-                          borderRadius: "10px",
-                          fontWeight: 600,
-                          transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                          "&:hover": {
-                            backgroundColor: "rgba(242, 245, 250, 0.08)",
-                            borderColor: "rgba(242, 245, 250, 0.45)",
-                            transform: "translateY(-1px)",
-                          },
-                        }}
-                      >
-                        Back to Batches
-                      </Button>
-                      <Tooltip title="Coming Soon" placement="top" arrow>
-                        <span>
-                          <Button
-                            size="sm"
-                            onClick={handleGenerateQueryOnly}
-                            loading={isGeneratingQuery}
-                            disabled
-                            sx={{
-                              backgroundColor: "transparent",
-                              border: "1px solid rgba(242, 245, 250, 0.15)",
-                              color: "rgba(242, 245, 250, 0.3)",
-                              fontWeight: 600,
-                              borderRadius: "10px",
-                              cursor: "not-allowed",
-                            }}
-                          >
-                            Generate New Batch
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    </Stack>
-                  </Box>
-                </Box>
+                            >
+                              Back to Batches
+                            </Button>
+                            <Tooltip title="Coming Soon" placement="top" arrow>
+                              <span>
+                                <Button
+                                  size="sm"
+                                  onClick={handleGenerateQueryOnly}
+                                  loading={isGeneratingQuery}
+                                  disabled
+                                  sx={{
+                                    backgroundColor: "transparent",
+                                    border: "1px solid rgba(242, 245, 250, 0.15)",
+                                    color: "rgba(242, 245, 250, 0.3)",
+                                    fontWeight: 600,
+                                    borderRadius: "10px",
+                                    cursor: "not-allowed",
+                                  }}
+                                >
+                                  Generate New Batch
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          </Stack>
+                        </Box>
+                      </Box>
+                    </>
+                  );
+                })()}
               </Box>
             )}
 
             {/* Perplexity Queries Section */}
-            {selectedBatchId && allPerplexityQueries.length > 0 && (
+            {selectedBatchId && allPerplexityQueries.length > 0 && !isAnalyzing && !(isPerplexityScraping || isGoogleScraping || isChatgptScraping) && (
               <Box sx={{ mb: 4 }}>
                 <Box sx={{ mb: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -7674,7 +7703,7 @@ function OptimizePageContent() {
             )}
 
             {/* Google Queries Section */}
-            {selectedBatchId && allGoogleQueries.length > 0 && (
+            {selectedBatchId && allGoogleQueries.length > 0 && !isAnalyzing && !(isPerplexityScraping || isGoogleScraping || isChatgptScraping) && (
               <Box sx={{ mb: 6 }}>
                 <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1.5 }}>
                   <Typography level="h3" sx={{ color: textPrimary, fontSize: "1.25rem", fontWeight: 700 }}>
@@ -7865,7 +7894,7 @@ function OptimizePageContent() {
             )}
 
             {/* ChatGPT Queries Section */}
-            {process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true' && selectedBatchId && allChatgptQueries.length === 0 && (
+            {process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true' && selectedBatchId && allChatgptQueries.length === 0 && !isAnalyzing && !(isPerplexityScraping || isGoogleScraping || isChatgptScraping) && (
               <Box sx={{ mb: 6 }}>
                 <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1.5 }}>
                   <Typography level="h3" sx={{ color: textPrimary, fontSize: "1.25rem", fontWeight: 700 }}>
@@ -7931,7 +7960,7 @@ function OptimizePageContent() {
                 </Card>
               </Box>
             )}
-            {process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true' && selectedBatchId && allChatgptQueries.length > 0 && (
+            {process.env.NEXT_PUBLIC_CHATGPT_PIPELINE === 'true' && selectedBatchId && allChatgptQueries.length > 0 && !isAnalyzing && !(isPerplexityScraping || isGoogleScraping || isChatgptScraping) && (
               <Box sx={{ mb: 6 }}>
                 <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1.5 }}>
                   <Typography level="h3" sx={{ color: textPrimary, fontSize: "1.25rem", fontWeight: 700 }}>
@@ -8277,7 +8306,7 @@ function OptimizePageContent() {
             )}
 
             {/* Optimize for AI Search Button - Single unified button */}
-            {selectedBatchId && (allPerplexityQueries.length > 0 || allGoogleQueries.length > 0 || allChatgptQueries.length > 0) && (
+            {selectedBatchId && !isAnalyzing && !(isPerplexityScraping || isGoogleScraping || isChatgptScraping) && (allPerplexityQueries.length > 0 || allGoogleQueries.length > 0 || allChatgptQueries.length > 0) && (
               <Box sx={{ mt: 6, textAlign: "center" }}>
                 {/* Loading Indicators */}
                 {(isPerplexityScraping || isGoogleScraping || isChatgptScraping) && (
@@ -8423,7 +8452,7 @@ function OptimizePageContent() {
                       )}
 
                     {/* Optimize for AI Search Button */}
-                    {(() => {
+                    {!(isPerplexityScraping || isGoogleScraping || isChatgptScraping) && (() => {
                       const requiredCredits = selectedPerplexityQueries.length + selectedGoogleQueries.length + selectedChatgptQueries.length;
                       const hasInsufficientCredits = userCredits !== null && userCredits < requiredCredits;
 
@@ -8435,57 +8464,31 @@ function OptimizePageContent() {
                             </Typography>
                           )}
                           <Button
-                            type="button"
-                            disabled={hasInsufficientCredits || isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping || isChatgptScraping || requiredCredits === 0}
-                            onClick={async () => {
-                              if (!user) {
-                                setServerError('Please sign in to analyze products');
-                                router.push('/auth');
-                                return;
-                              }
-
-                              // Check if any queries are selected
-                              if (requiredCredits === 0) {
-                                setQueryGenerationError('Please select at least one query to proceed with analysis.');
-                                return;
-                              }
-
-                              // Use selected queries for analysis
-                              await handleUseSelectedQueries();
-                            }}
+                            size="lg"
+                            onClick={handleUseSelectedQueries}
+                            loading={isAnalyzing}
+                            disabled={isAnalyzing || (requiredCredits === 0) || hasInsufficientCredits}
                             sx={{
-                              minWidth: 320,
-                              borderRadius: "16px",
-                              backgroundColor: (isGeneratingQuery || isAnalyzing || isPerplexityScraping || isGoogleScraping || isChatgptScraping || requiredCredits === 0 || hasInsufficientCredits)
-                                ? "rgba(46, 212, 122, 0.2)"
-                                : "#2ED47A",
+                              minWidth: 240,
+                              backgroundColor: "#2ED47A",
                               color: "#0D0F14",
-                              fontWeight: 800,
-                              fontSize: "1.1rem",
-                              letterSpacing: "0.02em",
-                              py: 2.5,
-                              boxShadow: (requiredCredits === 0 || hasInsufficientCredits) ? "none" : "0 8px 32px rgba(46, 212, 122, 0.3)",
-                              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                              "&:hover:not(:disabled)": {
+                              fontWeight: 700,
+                              borderRadius: "14px",
+                              px: 4,
+                              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                              "&:hover": {
                                 backgroundColor: "#26B869",
-                                transform: "translateY(-2px) scale(1.02)",
-                                boxShadow: "0 12px 48px rgba(46, 212, 122, 0.5)",
+                                transform: "translateY(-1px)",
+                                boxShadow: "0 4px 20px rgba(46, 212, 122, 0.25)",
                               },
                               "&:disabled": {
-                                backgroundColor: "rgba(242, 245, 250, 0.05)",
-                                color: "rgba(242, 245, 250, 0.2)",
-                                borderColor: "rgba(242, 245, 250, 0.1)",
+                                backgroundColor: "rgba(46, 212, 122, 0.1)",
+                                color: "rgba(46, 212, 122, 0.4)",
+                                borderColor: "transparent"
                               }
                             }}
                           >
-                            {isAnalyzing ? (
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                                <CircularProgress sx={{ "--CircularProgress-size": "20px", "--CircularProgress-thickness": "3px", color: "inherit" }} />
-                                Analyzing...
-                              </Box>
-                            ) : (
-                              isPerplexityScraping || isGoogleScraping || isChatgptScraping ? "Processing Analytics..." : `Optimize for AI Search (${requiredCredits})`
-                            )}
+                            Optimize for AI Search
                           </Button>
                         </>
                       );
@@ -8496,7 +8499,6 @@ function OptimizePageContent() {
             )}
           </Card>
         )}
-
       </Box>
     </Box>
   );

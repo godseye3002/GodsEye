@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Box, Typography, Button } from "@mui/joy";
+import { Box, Typography, Button, Divider } from "@mui/joy";
 import { useAuth } from "@/lib/auth-context";
 import { testimonials } from "@/app/data/testimonials";
 import { TestimonialCarousel } from "@/components/TestimonialCarousel";
@@ -19,6 +19,7 @@ gsap.registerPlugin(ScrollTrigger);
 export default function LandingPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [pricingMode, setPricingMode] = useState<"standard" | "custom">("standard");
 
   /* ── refs ─────────────────────────────── */
   const shiftSectionRef = useRef<HTMLDivElement>(null);
@@ -70,68 +71,119 @@ export default function LandingPage() {
     // Respect reduced motion
     const mm = gsap.matchMedia();
 
+    let wheelCleanup: (() => void) | null = null;
+
     mm.add("(prefers-reduced-motion: no-preference)", () => {
-      /* ── ACT 2: "The Shift" scrollytelling pin ── */
+      /* ── ACT 2: "The Shift" — Discrete step slider ── */
       if (shiftSectionRef.current && shiftScenesRef.current) {
         const scenes = Array.from(shiftScenesRef.current.querySelectorAll("[data-scene]"));
         const labels = shiftLabelsRef.current?.querySelectorAll("[data-scene-label]");
         const indicator = shiftIndicatorRef.current;
+        const total = scenes.length;
+        let currentIndex = 0;
+        let isCoolingDown = false;
+        let isPinned = false;
 
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: shiftSectionRef.current,
-            start: "top top",
-            end: `+=${window.innerHeight * 4}`,
-            pin: true,
-            scrub: 1.5,
-            snap: {
-              snapTo: 1 / (scenes.length - 1),
-              duration: { min: 0.2, max: 0.8 },
-              delay: 0.1,
-              ease: "power2.inOut",
-            },
-          },
-        });
-
+        // Set all scenes to initial state
         scenes.forEach((scene, i) => {
-          // Normalize initial states
-          if (i === 0) {
-            gsap.set(scene, { opacity: 1, y: 0, scale: 1 });
-          } else {
-            gsap.set(scene, { opacity: 0, y: 30, scale: 0.98 });
+          gsap.set(scene, {
+            opacity: i === 0 ? 1 : 0,
+            y: i === 0 ? 0 : 30,
+            scale: i === 0 ? 1 : 0.95,
+            zIndex: i === 0 ? 10 : 1,
+          });
+        });
+        if (labels) {
+          Array.from(labels).forEach((label, i) => {
+            gsap.set(label, { color: i === 0 ? primary : secondary });
+          });
+        }
+
+        // Function to animate to a given scene index
+        const goToScene = (nextIndex: number, force = false) => {
+          if (nextIndex < 0 || nextIndex >= total) return;
+          if (!force && nextIndex === currentIndex) return;
+
+          const prevIndex = currentIndex;
+          currentIndex = nextIndex;
+
+          // Exit old scene
+          gsap.to(scenes[prevIndex], {
+            opacity: 0, y: -40, scale: 0.95, zIndex: 1,
+            duration: 0.6, ease: "power2.inOut",
+          });
+
+          // Enter new scene
+          gsap.fromTo(scenes[nextIndex],
+            { opacity: 0, y: 30, scale: 0.95, zIndex: 10 },
+            { opacity: 1, y: 0, scale: 1, zIndex: 10, duration: 0.6, ease: "power2.out" }
+          );
+
+          // Update indicator
+          if (indicator) {
+            gsap.to(indicator, { y: nextIndex * 56, duration: 0.5, ease: "power2.inOut" });
           }
 
-          if (i > 0) {
-            const pos = `scene${i}`;
-            
-            // 1. Fade OUT previous scene (Recede)
-            tl.to(scenes[i - 1], { 
-              opacity: 0, 
-              y: -30, 
-              scale: 0.97, 
-              duration: 0.5, 
-              ease: "power2.inOut" 
-            }, pos);
+          // Update label colors
+          if (labels) {
+            Array.from(labels).forEach((label, i) => {
+              gsap.to(label, { color: i === nextIndex ? primary : secondary, duration: 0.4 });
+            });
+          }
+        };
 
-            // 2. Fade IN current scene (Ascend)
-            tl.to(scene, { 
-              opacity: 1, 
-              y: 0, 
-              scale: 1, 
-              duration: 0.5, 
-              ease: "power2.inOut" 
-            }, pos);
+        const handleWheel = (e: WheelEvent) => {
+          if (!isPinned) return;
 
-            // 3. Update Nav
-            if (indicator) {
-              tl.to(indicator, { y: i * 56, duration: 0.4, ease: "power2.inOut" }, pos);
-            }
-            if (labels && labels[i-1] && labels[i]) {
-              tl.to(labels[i-1], { color: "rgba(242, 245, 250, 0.55)", duration: 0.4 }, pos);
-              tl.to(labels[i], { color: "#F2F5FA", duration: 0.4 }, pos);
+          // Only take control if we are in the middle of scenes
+          // If at start/end and scrolling out, let natural scroll happen
+          const direction = e.deltaY > 0 ? 1 : -1;
+          if (direction === 1 && currentIndex === total - 1) return;
+          if (direction === -1 && currentIndex === 0) return;
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (isCoolingDown) return;
+
+          if (direction === 1 && currentIndex < total - 1) {
+            isCoolingDown = true;
+            goToScene(currentIndex + 1);
+            setTimeout(() => { isCoolingDown = false; }, 1000);
+          } else if (direction === -1 && currentIndex > 0) {
+            isCoolingDown = true;
+            goToScene(currentIndex - 1);
+            setTimeout(() => { isCoolingDown = false; }, 1000);
+          }
+        };
+
+        // Pin the section using ScrollTrigger
+        ScrollTrigger.create({
+          trigger: shiftSectionRef.current,
+          start: "top top",
+          end: `+=${window.innerHeight * 4}`, // Increased length for scrollbar visibility
+          pin: true,
+          pinSpacing: true,
+          onEnter: () => { isPinned = true; },
+          onLeaveBack: () => { isPinned = false; },
+          onLeave: () => { isPinned = false; },
+          onUpdate: (self) => {
+            // This allows the scrollbar (dragging) to also trigger scene changes
+            // Map progress (0 to 1) to index (0 to total-1)
+            const progressIndex = Math.min(
+              Math.floor(self.progress * total),
+              total - 1
+            );
+
+            // Only update via scrollbar if NOT currently cooling down from a wheel event
+            if (!isCoolingDown && progressIndex !== currentIndex) {
+              goToScene(progressIndex);
             }
           }
         });
+
+        window.addEventListener("wheel", handleWheel, { passive: false });
+        wheelCleanup = () => window.removeEventListener("wheel", handleWheel);
       }
 
       /* ── ACT 3: Visibility Gap — stagger cards ── */
@@ -226,6 +278,7 @@ export default function LandingPage() {
     });
 
     return () => {
+      wheelCleanup?.();
       mm.revert();
     };
   }, []);
@@ -253,12 +306,26 @@ export default function LandingPage() {
       bg: "rgba(46,212,122,0.04)",
       lines: [
         'Customer asks ChatGPT "best accounting software"',
-        "AI names one brand. Usually the same one every time.",
-        "Your AI reputation determines if they hear your name",
+        "AI names some brands. Usually the same ones every time.",
+        "Your brands reputation determines if they hear your name",
         "Most companies have zero visibility into this channel",
       ],
       note: "This is happening right now. Most brands are invisible.",
       noteColor: danger,
+    },
+    {
+      label: "The GodsEye Agent",
+      color: "#38BDF8",
+      borderColor: "rgba(56,189,248,0.25)",
+      bg: "rgba(56,189,248,0.04)",
+      lines: [
+        "We don't just tell you that you are invisible",
+        "We analyze 'why?' AI chose your competitor",
+        "Get implementation-ready fixes tailored to your brand",
+        "Deploy optimizations through our GodsEye Agent MCP",
+      ],
+      note: "Moving from realization to optimization instantly.",
+      noteColor: "#38BDF8",
     },
     {
       label: "The Blind Spot",
@@ -282,8 +349,8 @@ export default function LandingPage() {
       lines: [
         "See exactly where you rank in AI answers",
         "Know which AI engine sent each visitor",
-        "Track the full journey from AI click to conversion",
-        "Prove AI is driving real revenue — not just traffic",
+        "Reveal the competitors winning your visibility",
+        "GodsEye Agent analyzes the 'Why' behind every result",
       ],
       note: "GodsEye closes the loop. Visibility + Attribution.",
       noteColor: accent,
@@ -345,11 +412,11 @@ export default function LandingPage() {
   ];
 
   return (
-    <Box sx={{ minHeight: "100vh", width: "100%", backgroundColor: "#0D0F14", overflowX: "hidden" }}>
+    <Box sx={{ minHeight: "100vh", width: "100%", backgroundColor: "#0D0F14", overflowX: "hidden", scrollBehavior: "smooth" }}>
 
       {/* ══════════ NAV ══════════ */}
       <Box sx={{
-        position: "sticky", top: 0, zIndex: 50,
+        position: "sticky", top: 0, zIndex: 100,
         backgroundColor: "rgba(13, 15, 20, 0.85)",
         backdropFilter: "blur(14px)",
         borderBottom: `1px solid ${border}`,
@@ -367,17 +434,38 @@ export default function LandingPage() {
 
           <Box sx={{ display: { xs: "none", md: "flex" }, gap: 4, alignItems: "center" }}>
             {[
+              { label: "How It Works", href: "#how-it-works" },
+              { label: "Pricing", href: "#pricing" },
               { label: "Documentation", href: "/mcp-documentation" },
               { label: "Client Brochure", href: "/brochure" },
-            ].map(link => (
-              <Typography
-                key={link.label}
-                component="a" href={link.href} level="body-md"
-                sx={{ color: secondary, textDecoration: "none", fontWeight: 500, fontFamily: "var(--font-khand)", "&:hover": { color: accent } }}
-              >
-                {link.label}
-              </Typography>
-            ))}
+            ].map(link => {
+              const isAnchor = link.href.startsWith("#");
+              return (
+                <Typography
+                  key={link.label}
+                  component="a" 
+                  href={link.href} 
+                  level="body-md"
+                  onClick={(e) => {
+                    if (isAnchor) {
+                      e.preventDefault();
+                      const target = document.querySelector(link.href);
+                      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }}
+                  sx={{ 
+                    color: secondary, 
+                    textDecoration: "none", 
+                    fontWeight: 500, 
+                    fontFamily: "var(--font-khand)", 
+                    "&:hover": { color: accent },
+                    transition: "color 0.2s ease"
+                  }}
+                >
+                  {link.label}
+                </Typography>
+              );
+            })}
           </Box>
 
           <Button
@@ -419,7 +507,7 @@ export default function LandingPage() {
         >
           {/* Brand Mark */}
           <motion.div variants={itemVariants}>
-            <Typography sx={{ 
+            <Typography sx={{
               color: primary,
               fontSize: { xs: "3.5rem", md: "5.5rem" },
               fontWeight: 900,
@@ -437,17 +525,50 @@ export default function LandingPage() {
             </Typography>
           </motion.div>
 
-          {/* Subheader and Mission */}
+          {/* Subheader */}
           <motion.div variants={itemVariants}>
             <Typography sx={{
-              fontSize: { xs: "1.25rem", md: "1.75rem" },
-              fontWeight: 500, color: secondary, letterSpacing: "0.02em", lineHeight: 1.4, mb: 5,
+              fontSize: { xs: "1.15rem", md: "1.6rem" },
+              fontWeight: 500, color: secondary, letterSpacing: "0.02em", lineHeight: 1.5, mb: 4,
               fontFamily: "var(--font-khand)",
               maxWidth: 640, mx: "auto",
             }}>
               Your customers ask AI who to trust.
               <Box component="span" sx={{ color: accent, fontWeight: 700 }}> Are they hearing your name?</Box>
             </Typography>
+          </motion.div>
+
+          {/* 3-Part Punch Line: Track → Fix → Measure */}
+          <motion.div variants={itemVariants}>
+            <Box sx={{
+              display: "flex", gap: { xs: 0, md: 0 }, justifyContent: "center", flexWrap: "wrap",
+              mb: 5, maxWidth: 880, mx: "auto",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: "16px",
+              overflow: "hidden",
+              backdropFilter: "blur(8px)",
+              backgroundColor: "rgba(17,19,24,0.6)",
+            }}>
+              {[
+                { icon: "◎", label: "Track", desc: "See exactly where you rank in AI answers — across every engine.", color: "#38BDF8" },
+                { icon: "⚡", label: "Fix", desc: "Get the precise reason and implementation-ready steps to win.", color: accent },
+                { icon: "$", label: "Measure", desc: "Prove AI is driving real conversions — not just impressions.", color: "#A78BFA" },
+              ].map((item, i) => (
+                <Box key={item.label} sx={{
+                  flex: "1 1 200px",
+                  px: { xs: 3, md: 4 }, py: { xs: 2.5, md: 3 },
+                  borderRight: i < 2 ? "1px solid rgba(255,255,255,0.07)" : "none",
+                  textAlign: "center",
+                }}>
+                  <Typography sx={{ fontSize: "1.35rem", color: item.color, mb: 0.75, fontWeight: 800, letterSpacing: "-0.01em" }}>
+                    {item.icon} {item.label}
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.95rem", color: secondary, lineHeight: 1.6, fontFamily: "var(--font-khand)" }}>
+                    {item.desc}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
           </motion.div>
 
           {/* CTAs */}
@@ -546,7 +667,7 @@ export default function LandingPage() {
             />
             {shiftScenes.map((scene, i) => (
               <Box key={i} sx={{ pl: 3, py: 1.5, mb: 0.5 }}>
-                <Typography 
+                <Typography
                   data-scene-label
                   sx={{
                     color: i === 0 ? primary : secondary,
@@ -598,6 +719,103 @@ export default function LandingPage() {
               <Typography level="body-sm" sx={{ color: col.noteColor, fontStyle: "italic" }}>{col.note}</Typography>
             </Box>
           ))}
+        </Box>
+      </Box>
+
+      {/* ══════════ ACT 2.5 — "THE FIX" (GodsEye Agent Section) ══════════ */}
+      <Box sx={{ borderTop: `1px solid rgba(56,189,248,0.12)`, background: "linear-gradient(180deg, rgba(56,189,248,0.03) 0%, transparent 100%)" }}>
+        <Box sx={{ maxWidth: 1280, mx: "auto", px: { xs: 2, md: 4 }, py: { xs: 7, md: 11 } }}>
+
+          <Box sx={{ maxWidth: 780, mx: "auto", textAlign: "center", mb: { xs: 5, md: 8 } }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.6, ease: strongEaseOut }}>
+              <Typography level="body-sm" sx={{ color: "#38BDF8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", mb: 2, fontFamily: "var(--font-khand)" }}>
+                The GodsEye Agent
+              </Typography>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.6, delay: 0.08, ease: strongEaseOut }}>
+              <Typography level="h2" sx={{ fontSize: { xs: "2rem", md: "3rem" }, fontWeight: 800, color: primary, fontFamily: "var(--font-khand)", lineHeight: 1.15, mb: 3 }}>
+                We don&apos;t just show you the score.
+                <Box component="span" sx={{ color: "#38BDF8", display: "block" }}>We give you the exact playbook to win.</Box>
+              </Typography>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.6, delay: 0.16, ease: strongEaseOut }}>
+              <Typography level="body-lg" sx={{ color: secondary, lineHeight: 1.8 }}>
+                Most AEO tools stop at telling you that you&apos;re invisible. GodsEye goes three steps further — it finds out <Box component="span" sx={{ color: primary, fontWeight: 600 }}>why</Box> your competitor won, generates the <Box component="span" sx={{ color: primary, fontWeight: 600 }}>precise fix</Box>, and deploys it directly in your IDE through our MCP Agent.
+              </Typography>
+            </motion.div>
+          </Box>
+
+          {/* 3-step fix flow */}
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" }, gap: 3 }}>
+            {[
+              {
+                step: "01",
+                color: danger,
+                title: "We Find the Gap",
+                body: "GodsEye runs your brand through hundreds of real AI queries and highlights exactly which searches you're losing — and to whom.",
+                tag: "Track",
+              },
+              {
+                step: "02",
+                color: "#38BDF8",
+                title: "We Diagnose the Why",
+                body: "Our Agent analyzes the winning competitor's content, structure, and citations to extract precisely why AI prefers them — not guesswork, exact signals.",
+                tag: "Fix",
+              },
+              {
+                step: "03",
+                color: accent,
+                title: "We Ship the Fix",
+                body: "Through our VS Code MCP integration, the Agent pushes implementation-ready edits to your content team or codebase — and then re-audits to confirm the improvement.",
+                tag: "Measure",
+              },
+            ].map((item) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.6, ease: strongEaseOut }}
+              >
+                <Box sx={{
+                  height: "100%",
+                  p: { xs: 3, md: 4 },
+                  borderRadius: "20px",
+                  bgcolor: `${item.color}08`,
+                  border: `1px solid ${item.color}28`,
+                  position: "relative",
+                  overflow: "hidden",
+                  "&:hover": { borderColor: `${item.color}55`, transform: "translateY(-4px)" },
+                  transition: "border-color 0.3s ease, transform 0.3s ease",
+                }}>
+                  {/* Background step number */}
+                  <Typography sx={{ position: "absolute", top: -8, right: 16, fontSize: "5rem", fontWeight: 900, color: `${item.color}10`, lineHeight: 1, fontStyle: "italic", userSelect: "none" }}>
+                    {item.step}
+                  </Typography>
+                  {/* Tag pill */}
+                  <Box sx={{ display: "inline-flex", px: 1.5, py: 0.5, bgcolor: `${item.color}18`, border: `1px solid ${item.color}44`, borderRadius: "6px", mb: 2.5 }}>
+                    <Typography sx={{ color: item.color, fontWeight: 700, fontSize: "0.7rem", letterSpacing: "0.1em" }}>{item.tag.toUpperCase()}</Typography>
+                  </Box>
+                  <Typography level="title-lg" sx={{ color: primary, fontWeight: 800, mb: 1.5, fontFamily: "var(--font-khand)", fontSize: "1.3rem" }}>
+                    {item.title}
+                  </Typography>
+                  <Typography level="body-md" sx={{ color: secondary, lineHeight: 1.75 }}>
+                    {item.body}
+                  </Typography>
+                </Box>
+              </motion.div>
+            ))}
+          </Box>
+
+          {/* Closing statement */}
+          <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2, ease: strongEaseOut }}>
+            <Box sx={{ mt: 5, p: { xs: 3, md: 4 }, bgcolor: "rgba(56,189,248,0.05)", border: "1px solid rgba(56,189,248,0.18)", borderRadius: "16px", textAlign: "center" }}>
+              <Typography level="title-lg" sx={{ color: primary, fontWeight: 700 }}>
+                &quot;We don&apos;t just tell you there&apos;s a problem. We track it, fix it, and prove it with revenue.&quot;
+              </Typography>
+            </Box>
+          </motion.div>
+
         </Box>
       </Box>
 
@@ -766,7 +984,7 @@ export default function LandingPage() {
       </Box>
 
       {/* ══════════ ACT 5 — "HOW IT WORKS" (GSAP Timeline Scrub) ══════════ */}
-      <Box sx={{ borderTop: `1px solid ${border}`, bgcolor: "rgba(17,19,24,0.4)" }}>
+      <Box id="how-it-works" sx={{ borderTop: `1px solid ${border}`, bgcolor: "rgba(17,19,24,0.4)" }}>
         <Box ref={timelineRef} sx={{ maxWidth: 1280, mx: "auto", px: { xs: 2, md: 4 }, py: { xs: 6, md: 10 } }}>
           <Box sx={{ textAlign: "center", mb: { xs: 5, md: 8 } }}>
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, ease: strongEaseOut }}>
@@ -808,8 +1026,8 @@ export default function LandingPage() {
                 <Typography level="h4" sx={{ color: primary, fontWeight: 700, mb: 1.2, fontSize: "1.15rem", fontFamily: "var(--font-khand)" }}>
                   {item.title}
                 </Typography>
-                <Typography level="body-md" component="div" sx={{ 
-                  color: secondary, 
+                <Typography level="body-md" component="div" sx={{
+                  color: secondary,
                   lineHeight: 1.6,
                   fontSize: "0.95rem",
                   '& p': { m: 0 },
@@ -838,6 +1056,206 @@ export default function LandingPage() {
           </motion.div>
         </Box>
         <TestimonialCarousel testimonials={testimonials} variant="landing" />
+      </Box>
+
+      {/* ══════════ ACT 6.5 — PRICING ══════════ */}
+      <Box id="pricing" sx={{ borderTop: `1px solid ${border}`, bgcolor: "rgba(17,19,24,0.3)" }}>
+        <Box sx={{ maxWidth: 1280, mx: "auto", px: { xs: 2, md: 4 }, py: { xs: 8, md: 12 } }}>
+          <Box sx={{ textAlign: "center", mb: { xs: 6, md: 10 } }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+              <Typography level="body-sm" sx={{ color: accent, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.15em", mb: 2, fontFamily: "var(--font-khand)" }}>
+                Pricing & Plans
+              </Typography>
+              <Typography level="h2" sx={{ fontSize: { xs: "2.2rem", md: "3.2rem" }, fontWeight: 800, color: primary, fontFamily: "var(--font-khand)", lineHeight: 1.1, mb: 3 }}>
+                Protect your margins.
+                <Box component="span" sx={{ color: accent, display: "block" }}>Scale your visibility.</Box>
+              </Typography>
+              <Typography level="body-lg" sx={{ color: secondary, maxWidth: 640, mx: "auto" }}>
+                Whether you&apos;re a solo founder or a global enterprise, GodsEye gives you the clarity to win in the AI search landscape.
+              </Typography>
+            </motion.div>
+          </Box>
+
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 8 }}>
+            <Box sx={{
+              display: "flex", p: 0.5, bgcolor: "rgba(255,255,255,0.04)", borderRadius: "12px", border: `1px solid ${border}`,
+              position: "relative"
+            }}>
+              {(["standard", "custom"] as const).map((mode) => (
+                <Button
+                  key={mode}
+                  variant="plain"
+                  onClick={() => setPricingMode(mode)}
+                  sx={{
+                    px: 3, py: 1, borderRadius: "10px",
+                    fontWeight: 700, fontSize: "0.85rem", textTransform: "capitalize",
+                    color: pricingMode === mode ? "#000" : secondary,
+                    bgcolor: pricingMode === mode ? accent : "transparent",
+                    "&:hover": { bgcolor: pricingMode === mode ? accent : "rgba(255,255,255,0.05)" },
+                    transition: "all 0.2s ease",
+                    zIndex: 1,
+                  }}
+                >
+                  {mode === "standard" ? "Standard" : "Pro Custom"}
+                </Button>
+              ))}
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "repeat(4, 1fr)" }, gap: 2.5, alignItems: "stretch" }}>
+            {[
+              {
+                name: "Free",
+                price: "$0",
+                tagline: "7-Day Scout Pilot",
+                color: secondary,
+                features: [
+                  "1 Active Product",
+                  "10 AI Queries total",
+                  "Conversion Tracking (500)",
+                  "Static SOV Snapshot",
+                ],
+                button: "Start Trial",
+                variant: "outlined" as const,
+              },
+              {
+                name: "Starter",
+                price: "$89",
+                tagline: "For Small In-House Monitoring",
+                color: "#38BDF8",
+                features: [
+                  "1 Active Product",
+                  "40 AI Queries /mo",
+                  "Weekly Tracking & Alerts",
+                  "Starter Conversion (10k)",
+                  "GodsEye MCP Agent",
+                ],
+                button: "Choose Starter",
+                variant: "outlined" as const,
+              },
+              {
+                name: "Pro",
+                price: pricingMode === "standard" ? "$199" : "Custom",
+                tagline: pricingMode === "standard" ? "Serious In-House Optimization" : "High-Volume Performance",
+                color: accent,
+                isPopular: true,
+                features: pricingMode === "standard" ? [
+                  "1 Active Product",
+                  "100 AI Queries /mo",
+                  "Weekly Tracking & Alerts",
+                  "Full Conversion Suite (30k)",
+                  "Deep Analysis (Comp. Audit)",
+                ] : [
+                  "Multiple Products Support",
+                  "Custom Query Buckets",
+                  "Enhanced Conversion Caps",
+                  "Priority Agent Access",
+                  "GodsEye MCP Expert Support",
+                ],
+                button: pricingMode === "standard" ? "Choose Pro" : "Contact Sales",
+                variant: "solid" as const,
+              },
+              {
+                name: "Agency",
+                price: "Custom",
+                tagline: "Agencies & Mega Brands",
+                color: "#A78BFA",
+                features: [
+                  "Multiple Products (Wide)",
+                  "Daily/Weekly Tracking",
+                  "Unlimited Conversions",
+                  "White-label PDF Reports",
+                  "Extended MCP Support",
+                ],
+                button: "Contact Sales",
+                variant: "outlined" as const,
+              },
+            ].map((plan, i) => (
+              <motion.div
+                key={plan.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: i * 0.1, ease: strongEaseOut }}
+              >
+                <Box sx={{
+                  height: "100%",
+                  bgcolor: plan.isPopular ? "rgba(46, 212, 122, 0.03)" : cardBg,
+                  border: `1px solid ${plan.isPopular ? accent : border}`,
+                  borderRadius: "24px",
+                  p: { xs: 3, md: 4 },
+                  display: "flex",
+                  flexDirection: "column",
+                  position: "relative",
+                  "&:hover": { borderColor: plan.color, transform: "translateY(-6px)" },
+                  transition: "all 0.3s cubic-bezier(0.23, 1, 0.32, 1)",
+                  boxShadow: plan.isPopular ? "0 30px 60px rgba(46, 212, 122, 0.12)" : "none",
+                }}>
+                  {plan.isPopular && (
+                    <Box sx={{
+                      position: "absolute", top: 16, right: 16,
+                      px: 1.5, py: 0.4, bgcolor: accent, borderRadius: "999px",
+                      color: "#000", fontWeight: 700, fontSize: "0.65rem", textTransform: "uppercase",
+                    }}>
+                      {pricingMode === "standard" ? "Best Value" : "Pro High-Volume"}
+                    </Box>
+                  )}
+                  <Typography level="title-sm" sx={{ color: plan.color, fontWeight: 700, mb: 1, textTransform: "uppercase", letterSpacing: "0.1em", fontSize: "0.75rem" }}>
+                    {plan.name}
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5, mb: 1 }}>
+                    <Typography sx={{ color: primary, fontSize: "2rem", fontWeight: 800, fontFamily: "var(--font-khand)" }}>{plan.price}</Typography>
+                    {plan.price !== "Custom" && <Typography sx={{ color: secondary, fontSize: "0.85rem" }}>/mo</Typography>}
+                  </Box>
+                  <Typography sx={{ color: secondary, fontSize: "0.85rem", mb: 3, lineHeight: 1.4 }}>{plan.tagline}</Typography>
+
+                  <Divider sx={{ mb: 3, opacity: 0.1 }} />
+
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mb: 4, flex: 1 }}>
+                    {plan.features.map(feat => (
+                      <Box key={feat} sx={{ display: "flex", gap: 1.2, alignItems: "flex-start" }}>
+                        <Box sx={{ width: 16, height: 16, borderRadius: "50%", bgcolor: `${plan.color}15`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, mt: 0.2 }}>
+                          <Typography sx={{ fontSize: "0.65rem", color: plan.color, fontWeight: 900 }}>✓</Typography>
+                        </Box>
+                        <Typography level="body-sm" sx={{ color: primary, fontSize: "0.85rem", lineHeight: 1.4 }}>{feat}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+
+                  <Button
+                    fullWidth
+                    variant={plan.variant}
+                    onClick={() => {
+                      if (plan.price === "Custom") {
+                        window.location.href = `mailto:godseye3002@gmail.com?subject=GodsEye ${plan.name} ${pricingMode} Inquiry`;
+                      } else {
+                        router.push("/auth");
+                      }
+                    }}
+                    sx={{
+                      borderRadius: "12px",
+                      py: 1.25,
+                      fontWeight: 700,
+                      fontFamily: "var(--font-khand)",
+                      fontSize: "0.95rem",
+                      ...(plan.variant === "solid" ? {
+                        bgcolor: accent,
+                        color: "#000",
+                        "&:hover": { bgcolor: "#26B869" }
+                      } : {
+                        borderColor: border,
+                        color: primary,
+                        "&:hover": { borderColor: plan.color, bgcolor: "rgba(255,255,255,0.03)" }
+                      })
+                    }}
+                  >
+                    {plan.button}
+                  </Button>
+                </Box>
+              </motion.div>
+            ))}
+          </Box>
+        </Box>
       </Box>
 
       {/* ══════════ ACT 7 — CTA ══════════ */}
@@ -916,7 +1334,7 @@ export default function LandingPage() {
           alignItems: "center", justifyContent: "space-between", gap: 2,
         }}>
           <Typography level="body-sm" sx={{ color: "rgba(242,245,250,0.3)" }}>
-            © 2025 GodsEye — AI Visibility & Conversion Intelligence
+            © 2026 GodsEye — AI Visibility & Conversion Intelligence
           </Typography>
           <Typography level="body-sm" sx={{ color: "rgba(242,245,250,0.3)" }}>
             godseye3002@gmail.com

@@ -154,18 +154,18 @@ export default function HeroParticleBackground() {
               particles.push({
                 x, y, originX: x, originY: y,
                 color: Math.random() > 0.8 ? "rgba(255,255,255,0.4)" : "#FFFFFF",
-                size: Math.random() * 1.5 + 0.5,
+                size: Math.random() * 1.0 + 0.3, // Reduced from 1.5 + 0.5
                 vx: 0, vy: 0,
                 phaseX: Math.random() * 1000,
                 phaseY: Math.random() * 1000,
               });
             }
             // 2. High-Density Background Atmosphere (Restored & Boosted)
-            else if (Math.random() > 0.93) {
+            else if (Math.random() > 0.91) { // Increased density (from 0.93) to compensate for smaller size
               particles.push({
                 x, y, originX: x, originY: y,
                 color: "rgba(242, 245, 250, 0.35)",
-                size: Math.random() * 1.5 + 0.4,
+                size: Math.random() * 0.8 + 0.2, // Reduced from 1.5 + 0.4
                 vx: 0, vy: 0,
                 phaseX: Math.random() * 1000,
                 phaseY: Math.random() * 1000,

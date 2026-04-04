@@ -85,6 +85,9 @@ interface ProductStoreState {
   isScraping: boolean;
   isGeneratingQuery: boolean;
   isAnalyzing: boolean;
+  isPerplexityScraping: boolean;
+  isGoogleScraping: boolean;
+  isChatgptScraping: boolean;
   products: OptimizedProduct[];
   userInfo: UserInfoState | null;
   userCredits: number | null;
@@ -134,6 +137,9 @@ interface ProductStoreState {
   setIsScraping: (value: boolean) => void;
   setIsGeneratingQuery: (value: boolean) => void;
   setIsAnalyzing: (value: boolean) => void;
+  setIsPerplexityScraping: (value: boolean) => void;
+  setIsGoogleScraping: (value: boolean) => void;
+  setIsChatgptScraping: (value: boolean) => void;
   addProduct: (product: OptimizedProduct) => void;
   loadProduct: (productId: string) => void;
   deleteProduct: (productId: string) => void;
@@ -194,6 +200,9 @@ export const useProductStore = create<ProductStoreState>()(
       isScraping: false,
       isGeneratingQuery: false,
       isAnalyzing: false,
+      isPerplexityScraping: false,
+      isGoogleScraping: false,
+      isChatgptScraping: false,
       products: [],
       userInfo: null,
       userCredits: null,
@@ -252,6 +261,9 @@ export const useProductStore = create<ProductStoreState>()(
       setIsScraping: (value) => set({ isScraping: value }),
       setIsGeneratingQuery: (value) => set({ isGeneratingQuery: value }),
       setIsAnalyzing: (value) => set({ isAnalyzing: value }),
+      setIsPerplexityScraping: (value) => set({ isPerplexityScraping: value }),
+      setIsGoogleScraping: (value) => set({ isGoogleScraping: value }),
+      setIsChatgptScraping: (value) => set({ isChatgptScraping: value }),
       addProduct: (product) =>
         set((state) => ({
           products: [product, ...state.products.filter((p) => p.id !== product.id)].slice(0, 10),
@@ -286,6 +298,11 @@ export const useProductStore = create<ProductStoreState>()(
             showSOVCards: false,
             showDeepAnalysis: false,
             sovCardEngine: null,
+            // Reset analysis progress flags
+            isAnalyzing: false,
+            isPerplexityScraping: false,
+            isGoogleScraping: false,
+            isChatgptScraping: false,
           };
         }),
       deleteProduct: (productId) =>
@@ -309,6 +326,9 @@ export const useProductStore = create<ProductStoreState>()(
           isScraping: false,
           isGeneratingQuery: false,
           isAnalyzing: false,
+          isPerplexityScraping: false,
+          isGoogleScraping: false,
+          isChatgptScraping: false,
           products: state.products,
           currentProductId: null,
           isNewProductSession: true,
@@ -787,7 +807,7 @@ export const useProductStore = create<ProductStoreState>()(
     }),
     {
       name: "godseye-product-store",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState: any, version) => {
         // v2: ensure stale cached product objects are dropped so newly added DB fields
@@ -796,6 +816,16 @@ export const useProductStore = create<ProductStoreState>()(
           return {
             ...persistedState,
             products: [],
+          };
+        }
+        // v3: add persistent scraping flags — always start as false on upgrade
+        if (version < 3) {
+          return {
+            ...persistedState,
+            isAnalyzing: false,
+            isPerplexityScraping: false,
+            isGoogleScraping: false,
+            isChatgptScraping: false,
           };
         }
         return persistedState;
@@ -823,6 +853,11 @@ export const useProductStore = create<ProductStoreState>()(
         showSOVCards: state.showSOVCards,
         showDeepAnalysis: state.showDeepAnalysis,
         sovCardEngine: state.sovCardEngine,
+        // Persist analysis progress flags so the UI survives navigation
+        isAnalyzing: state.isAnalyzing,
+        isPerplexityScraping: state.isPerplexityScraping,
+        isGoogleScraping: state.isGoogleScraping,
+        isChatgptScraping: state.isChatgptScraping,
 
         // Persist Query Arrays (CHANGE: Now persist these so tab state is valid on reload)
         allPerplexityQueries: state.allPerplexityQueries,

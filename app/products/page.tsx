@@ -8,6 +8,7 @@ import WarningIcon from "@mui/icons-material/Warning";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
+import DownloadIcon from '@mui/icons-material/Download';
 import { useProductStore } from "../optimize/store";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
@@ -140,6 +141,12 @@ function ProductsPageContent() {
     setNavigatingProductId(productId);
     await loadProduct(productId);
     router.push("/optimize");
+  };
+
+  const handleDownloadReport = (event: React.MouseEvent, productId: string) => {
+    event.stopPropagation();
+    // Use the API route created for export
+    window.location.href = `/api/export-godseye-data?productId=${productId}`;
   };
 
   const handleDeleteProductClick = (event: React.MouseEvent, productId: string) => {
@@ -606,26 +613,48 @@ function ProductsPageContent() {
                   {product.description}
                 </Typography>
               </Box>
-              <Tooltip title="Delete" placement="left" variant="outlined">
-                <IconButton
-                  aria-label="Delete product"
-                  color="danger"
-                  size="sm"
-                  onClick={(event) => handleDeleteProductClick(event, product.id)}
-                  sx={{
-                    alignSelf: "flex-start",
-                    backgroundColor: "rgba(243, 91, 100, 0.14)",
-                    border: "1px solid rgba(243, 91, 100, 0.3)",
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      backgroundColor: "rgba(243, 91, 100, 0.22)",
-                      borderColor: "rgba(243, 91, 100, 0.45)",
-                    },
-                  }}
-                >
-                  <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </Tooltip>
+              <Stack direction="row" spacing={1} sx={{ alignSelf: "flex-start" }}>
+                <Tooltip title="Download AEO Report" placement="top" variant="outlined">
+                  <IconButton
+                    aria-label="Download assessment"
+                    color="primary"
+                    size="sm"
+                    onClick={(event) => handleDownloadReport(event, product.id)}
+                    sx={{
+                      backgroundColor: "rgba(56, 189, 248, 0.14)",
+                      border: "1px solid rgba(56, 189, 248, 0.3)",
+                      color: "#38BDF8",
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: "rgba(56, 189, 248, 0.22)",
+                        borderColor: "rgba(56, 189, 248, 0.45)",
+                      },
+                    }}
+                  >
+                    <DownloadIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+                
+                <Tooltip title="Delete" placement="left" variant="outlined">
+                  <IconButton
+                    aria-label="Delete product"
+                    color="danger"
+                    size="sm"
+                    onClick={(event) => handleDeleteProductClick(event, product.id)}
+                    sx={{
+                      backgroundColor: "rgba(243, 91, 100, 0.14)",
+                      border: "1px solid rgba(243, 91, 100, 0.3)",
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: "rgba(243, 91, 100, 0.22)",
+                        borderColor: "rgba(243, 91, 100, 0.45)",
+                      },
+                    }}
+                  >
+                    <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
             </Box>
             <Typography
               level="body-xs"
