@@ -58,19 +58,21 @@ export function useAnalysisListener<T = any>(productId: string, source: Analysis
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*', // Listen for ALL changes (INSERT, UPDATE, DELETE)
           schema: 'public',
           table,
           filter: `product_id=eq.${productId}`,
         },
         (payload) => {
-          setData(payload.new as T);
-          if (key) {
-            DATA_CACHE.set(key, payload.new);
-          }
-          setStatus('completed');
-          if (key) {
-            STATUS_CACHE.set(key, 'completed');
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            setData(payload.new as T);
+            if (key) {
+              DATA_CACHE.set(key, payload.new);
+            }
+            setStatus('completed');
+            if (key) {
+              STATUS_CACHE.set(key, 'completed');
+            }
           }
         }
       )

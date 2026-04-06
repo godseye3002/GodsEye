@@ -25,14 +25,23 @@ export interface AnalysisHashStatus {
 }
 
 export function computeAnalysisHashFromIds(ids: (string | number)[]): string | null {
-  if (!ids || ids.length === 0) {
+  const maxRows = Number(process.env.NEXT_PUBLIC_ANALYTICS_MAX_HASH_ROWS || 5);
+  const limitedIds = ids.slice(0, maxRows);
+
+  if (!limitedIds || limitedIds.length === 0) {
     return null;
   }
 
-  const sorted = ids.map((id) => String(id)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const sorted = limitedIds.map((id) => String(id)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const payload = sorted.join(',');
 
-  return createHash('sha256').update(payload).digest('hex');
+  const hash = createHash('sha256').update(payload).digest('hex');
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[HashDebug] Computed hash: ${hash} from IDs: [${payload}]`);
+  }
+
+  return hash;
 }
 
 export async function isAnalysisUpToDate(productId: string, source: AnalysisSource): Promise<AnalysisHashStatus> {
@@ -40,10 +49,13 @@ export async function isAnalysisUpToDate(productId: string, source: AnalysisSour
   const { table, hashColumn } = SOURCE_CONFIG[source];
 
   try {
+    const maxRows = Number(process.env.NEXT_PUBLIC_ANALYTICS_MAX_HASH_ROWS || 5);
     const { data: sourceRows, error: sourceError } = await (supabaseAdmin as any)
       .from(table)
       .select('id')
-      .eq('product_id', productId);
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false })
+      .limit(maxRows);
 
     if (sourceError) {
       if (process.env.NODE_ENV !== 'production') {

@@ -35,15 +35,15 @@ export async function GET(request: Request) {
     }
 
     const enhancedProducts = (data || []).map((product: any) => {
-      const googleIds = Array.isArray(product.product_analysis_google)
-        ? product.product_analysis_google.map((row: any) => row.id)
-        : [];
-      const perplexityIds = Array.isArray(product.product_analysis_perplexity)
-        ? product.product_analysis_perplexity.map((row: any) => row.id)
-        : [];
-      const chatgptIds = Array.isArray(product.product_analysis_chatgpt)
-        ? product.product_analysis_chatgpt.map((row: any) => row.id)
-        : [];
+      const sortDesc = (a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+
+      const googleRows = Array.isArray(product.product_analysis_google) ? [...product.product_analysis_google].sort(sortDesc) : [];
+      const perplexityRows = Array.isArray(product.product_analysis_perplexity) ? [...product.product_analysis_perplexity].sort(sortDesc) : [];
+      const chatgptRows = Array.isArray(product.product_analysis_chatgpt) ? [...product.product_analysis_chatgpt].sort(sortDesc) : [];
+
+      const googleIds = googleRows.map((row: any) => row.id);
+      const perplexityIds = perplexityRows.map((row: any) => row.id);
+      const chatgptIds = chatgptRows.map((row: any) => row.id);
 
       const computedGoogleHash = computeAnalysisHashFromIds(googleIds);
       const computedPerplexityHash = computeAnalysisHashFromIds(perplexityIds);

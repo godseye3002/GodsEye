@@ -20,6 +20,7 @@ import {
 import { startGoogleDeepAnalysis, startPerplexityDeepAnalysis, startChatgptDeepAnalysis } from "@/lib/deepAnalysisApi";
 import { useAnalysisListener } from "@/hooks/useAnalysisListener";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 interface DeepAnalysisCardProps {
   engine: 'google' | 'perplexity' | 'chatgpt';
@@ -50,11 +51,39 @@ export default function DeepAnalysisCard({
   const hasAnalysisData = Boolean(analysisHash) || Boolean(latestAnalysisRow);
   const isAnalysisCurrentlyUpToDate = Boolean(isAnalysisUpToDate || latestAnalysisRow);
 
+  // Sync internal UI status when live data changes OR parent props change
   useEffect(() => {
     if (isAnalysisUpToDate || latestAnalysisRow) {
       setLiveAnalysisStatus('completed');
     }
   }, [isAnalysisUpToDate, latestAnalysisRow, setLiveAnalysisStatus]);
+
+  // Initial data check to handle possible race conditions on page load
+  useEffect(() => {
+    if (!productId) return;
+    
+    const checkExistingData = async () => {
+      const tableMap = {
+        google: 'product_analysis_dna_google',
+        perplexity: 'product_analysis_dna_perplexity',
+        chatgpt: 'product_analysis_dna_chatgpt'
+      };
+      
+      const maxRows = Number(process.env.NEXT_PUBLIC_ANALYTICS_MAX_HASH_ROWS || 5);
+      const { data } = await supabase
+        .from(tableMap[engine])
+        .select('id')
+        .eq('product_id', productId)
+        .order('created_at', { ascending: false })
+        .limit(maxRows);
+        
+      if (data && data.length > 0) {
+        setLiveAnalysisStatus('completed');
+      }
+    };
+    
+    checkExistingData();
+  }, [productId, engine, setLiveAnalysisStatus]);
 
   const startDeepAnalysis = async () => {
     if (isStartingAnalysis || liveAnalysisStatus === 'processing' || isAnalysisCurrentlyUpToDate) {
