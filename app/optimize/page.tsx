@@ -2015,7 +2015,7 @@ function OptimizePageContent() {
           chatgpt_queries: chatgptQueries,
           client_product_json: aiReadyData,
           debug: process.env.NODE_ENV !== 'production',
-          total_no_of_query: perplexityQueries.length + googleQueries.length + chatgptQueries.length,
+          total_no_of_query: allPerplexityQueries.length + allGoogleQueries.length + allChatgptQueries.length,
         }),
       });
 

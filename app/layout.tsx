@@ -35,8 +35,8 @@ const khandFont = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "GodsEye - AEO SaaS Platform",
-  description: "AI Engine Optimization platform to help your products get discovered by AI search engines",
+  title: "GodsEye - AEO/GEO Specialist Agent for your Brand.",
+  description: "The premier AEO/GEO specialist agent designed to track, optimize, and prove your brand's visibility across ChatGPT, Perplexity, and Google AI. Scale your presence in the new era of AI search.",
 };
 
 export default function RootLayout({

@@ -10,6 +10,7 @@ import { motion, Variants } from "framer-motion";
 import { ScrambleText } from "@/components/ScrambleText";
 import HeroParticleBackground from "@/components/HeroParticleBackground";
 import InteractiveParticleLogo from "@/components/InteractiveParticleLogo";
+import Orb from '@/components/Orb';
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ReactMarkdown from "react-markdown";
@@ -135,12 +136,15 @@ export default function LandingPage() {
         const handleWheel = (e: WheelEvent) => {
           if (!isPinned) return;
 
-          // Only take control if we are in the middle of scenes
-          // If at start/end and scrolling out, let natural scroll happen
           const direction = e.deltaY > 0 ? 1 : -1;
+
+          // CRITICAL FIX: If we are at the last scene and scrolling down, 
+          // or at the first scene and scrolling up, DON'T prevent default.
+          // This allows users to "scroll out" of the pinned section naturally.
           if (direction === 1 && currentIndex === total - 1) return;
           if (direction === -1 && currentIndex === 0) return;
 
+          // Inside the sequence, we intercept the scroll to change scenes
           e.preventDefault();
           e.stopPropagation();
 
@@ -149,11 +153,11 @@ export default function LandingPage() {
           if (direction === 1 && currentIndex < total - 1) {
             isCoolingDown = true;
             goToScene(currentIndex + 1);
-            setTimeout(() => { isCoolingDown = false; }, 1000);
+            setTimeout(() => { isCoolingDown = false; }, 800);
           } else if (direction === -1 && currentIndex > 0) {
             isCoolingDown = true;
             goToScene(currentIndex - 1);
-            setTimeout(() => { isCoolingDown = false; }, 1000);
+            setTimeout(() => { isCoolingDown = false; }, 800);
           }
         };
 
@@ -161,21 +165,29 @@ export default function LandingPage() {
         ScrollTrigger.create({
           trigger: shiftSectionRef.current,
           start: "top top",
-          end: `+=${window.innerHeight * 4}`, // Increased length for scrollbar visibility
+          end: `+=${window.innerHeight * 3}`,
           pin: true,
           pinSpacing: true,
-          onEnter: () => { isPinned = true; },
-          onLeaveBack: () => { isPinned = false; },
+          onEnter: () => {
+            isPinned = true;
+            // Reset to first scene if entering from top
+            if (currentIndex !== 0) goToScene(0, true);
+          },
+          onEnterBack: () => {
+            isPinned = true;
+            // Reset to last scene if entering from bottom
+            if (currentIndex !== total - 1) goToScene(total - 1, true);
+          },
           onLeave: () => { isPinned = false; },
+          onLeaveBack: () => { isPinned = false; },
           onUpdate: (self) => {
-            // This allows the scrollbar (dragging) to also trigger scene changes
-            // Map progress (0 to 1) to index (0 to total-1)
+            // Map scroll progress to scene index
             const progressIndex = Math.min(
               Math.floor(self.progress * total),
               total - 1
             );
 
-            // Only update via scrollbar if NOT currently cooling down from a wheel event
+            // Update scene if controlled by scrollbar/touch and not cooling down
             if (!isCoolingDown && progressIndex !== currentIndex) {
               goToScene(progressIndex);
             }
@@ -436,6 +448,7 @@ export default function LandingPage() {
             {[
               { label: "How It Works", href: "#how-it-works" },
               { label: "Pricing", href: "#pricing" },
+              { label: "Case Study", href: "/case-study" },
               { label: "Documentation", href: "/mcp-documentation" },
               { label: "Client Brochure", href: "/brochure" },
             ].map(link => {
@@ -443,8 +456,8 @@ export default function LandingPage() {
               return (
                 <Typography
                   key={link.label}
-                  component="a" 
-                  href={link.href} 
+                  component="a"
+                  href={link.href}
                   level="body-md"
                   onClick={(e) => {
                     if (isAnchor) {
@@ -453,11 +466,11 @@ export default function LandingPage() {
                       target?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }
                   }}
-                  sx={{ 
-                    color: secondary, 
-                    textDecoration: "none", 
-                    fontWeight: 500, 
-                    fontFamily: "var(--font-khand)", 
+                  sx={{
+                    color: secondary,
+                    textDecoration: "none",
+                    fontWeight: 500,
+                    fontFamily: "var(--font-khand)",
                     "&:hover": { color: accent },
                     transition: "color 0.2s ease"
                   }}
@@ -497,13 +510,31 @@ export default function LandingPage() {
         px: { xs: 2, md: 4 },
         overflow: "hidden",
       }}>
-        <HeroParticleBackground />
+        {/* <HeroParticleBackground /> */}
+        <Box sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: '100vw',
+          height: '100vh',
+          zIndex: 1, // Move it above the background but below content
+          opacity: 0.6
+        }}>
+          <Orb
+            hoverIntensity={2}
+            rotateOnHover
+            hue={0}
+            forceHoverState={false}
+            backgroundColor="#0d0f14"
+          />
+        </Box>
 
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          style={{ position: "relative", zIndex: 1, maxWidth: 900 }}
+          style={{ position: "relative", zIndex: 10, maxWidth: 900 }}
         >
           {/* Brand Mark */}
           <motion.div variants={itemVariants}>
